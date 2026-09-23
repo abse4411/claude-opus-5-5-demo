@@ -122,6 +122,24 @@ export const WEAPONS = {
     recoil: { up: 0.04, upMax: 0.09, side: 0.008, sideStart: 1, recover: 5 },
     sound: 'deagle', hudName: 'R8 REVOLVER',
   },
+
+  // ---- V18 扩充（WOZ 时代风格枪械补全）----
+  aug: {
+    id: 'aug', name: 'AUG A3', slot: 0, type: 'rifle', auto: true,
+    dmg: 33, headMul: 4.0, limbMul: 0.8, rpm: 720, mag: 30, reserve: 90, reload: 2.4, draw: 0.75,
+    speed: 0.97, range: 220, falloff: 0.988, pen: 1.05, armorPen: 0.76, knock: 1.9, stagger: 0.11,
+    spread: { base: 0.0026, move: 0.034, air: 0.14, crouch: 0.6, perShot: 0.0038, max: 0.034, recover: 9 },
+    recoil: { up: 0.006, upMax: 0.06, side: 0.004, sideStart: 5, recover: 8 },
+    sound: 'ak47', hudName: 'AUG A3',
+  },
+  p90: {
+    id: 'p90', name: 'P90', slot: 0, type: 'smg', auto: true,
+    dmg: 24, headMul: 3.4, limbMul: 0.86, rpm: 900, mag: 50, reserve: 100, reload: 2.7, draw: 0.6,
+    speed: 1.02, range: 110, falloff: 0.96, pen: 0.72, armorPen: 0.66, knock: 1.3, stagger: 0.07,
+    spread: { base: 0.0042, move: 0.022, air: 0.12, crouch: 0.7, perShot: 0.0026, max: 0.04, recover: 10 },
+    recoil: { up: 0.004, upMax: 0.05, side: 0.0035, sideStart: 4, recover: 9 },
+    sound: 'mp5', hudName: 'P90',
+  },
   molotov: {
     id: 'molotov', name: '燃烧瓶', slot: 3, type: 'grenade', auto: false,
     dmg: 14, radius: 3.2, fuse: 1.8, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'MOLOTOV', mag: 1, reserve: 0,
@@ -140,7 +158,7 @@ export const WEAPONS = {
   },
 };
 
-export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24'];
+export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90'];
 
 export class WeaponState {
   constructor(id) {

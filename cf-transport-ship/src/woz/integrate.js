@@ -74,7 +74,7 @@ export class WozManager {
     g.player.primary = o.primary;
     g.player.bind(document.getElementById('c'));
     g.actors.push(g.player);
-    const prim = (i) => ['ak47', 'awm', 'famas', 'mp5', 'thompson', 'm24', 'm4a1', 'spas', 'g3sg1'][i % 9];
+    const prim = (i) => ['ak47', 'awm', 'famas', 'mp5', 'thompson', 'm24', 'm4a1', 'spas', 'g3sg1', 'aug', 'p90'][i % 11];
     for (let i = 0; i < 9; i++) {
       const b = new Bot(g, { id: id++, name: names.pop() || 'Bot' + id, team: 'GR', diff: o.diff });
       b.primary = prim(i);
@@ -119,7 +119,7 @@ export class WozManager {
     g.actors.push(g.player);
     for (let i = 0; i < cfg.humans - 1; i++) {
       const b = new Bot(g, { id: id++, name: names.pop() || 'Bot' + id, team: 'GR', diff: o.diff });
-      b.primary = ['ak47', 'awm', 'famas', 'thompson', 'm4a1', 'spas'][i % 6];
+      b.primary = ['ak47', 'awm', 'famas', 'thompson', 'm4a1', 'spas', 'aug', 'p90'][i % 8];
       g.actors.push(b);
     }
     for (let i = 0; i < cfg.mutants; i++) {

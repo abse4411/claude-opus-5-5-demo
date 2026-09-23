@@ -276,6 +276,29 @@ const builders = {
     anchor(g, 'grip', 0, -0.05, 0.1); anchor(g, 'muzzle', 0, 0, -0.42);
     return g;
   },
+  aug(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.052, 0.088, 0.44, 0.014), m.olive, 0, 0, -0.02);       // 无托机身（橄榄绿）
+    part(g, RB(0.034, 0.026, 0.24, 0.008), m.dark, 0, 0.062, -0.16);    // 一体瞄具提把
+    part(g, BX(0.026, 0.26, 0.05), m.steel, 0, -0.015, -0.3);           // 枪管护罩
+    part(g, CZ(0.017, 0.12), m.metal, 0, 0.03, -0.48);                  // 枪管
+    part(g, RB(0.028, 0.13, 0.055, 0.01), m.rubber, 0, -0.06, 0.06);    // 握把
+    part(g, RB(0.03, 0.11, 0.05, 0.01), m.rubber, 0, -0.048, -0.06);    // 弹匣（AUG 透明匣）
+    part(g, RB(0.04, 0.07, 0.2, 0.012), m.olive, 0, 0.005, 0.2, -0.06); // 枪托
+    anchor(g, 'grip', 0, -0.055, 0.08); anchor(g, 'muzzle', 0, 0.03, -0.54);
+    return g;
+  },
+  p90(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.062, 0.09, 0.42, 0.02), m.black, 0, 0, -0.02);         // 扁圆机身
+    part(g, RB(0.05, 0.03, 0.3, 0.01), m.dark, 0, 0.058, -0.08);        // 顶置 50 发弹匣
+    part(g, RB(0.03, 0.06, 0.14, 0.01), m.dark, 0, 0.03, 0.16);         // 枪托颈
+    part(g, CZ(0.014, 0.1), m.metal, 0, 0.035, -0.28);                  // 短枪管
+    part(g, RB(0.028, 0.09, 0.05, 0.01), m.rubber, 0, -0.06, 0.04);     // 握把
+    part(g, BX(0.02, 0.012, 0.1), m.metal, 0, 0.012, -0.24);            // 下导轨
+    anchor(g, 'grip', 0, -0.05, 0.06); anchor(g, 'muzzle', 0, 0.035, -0.36);
+    return g;
+  },
   thompson(m) {
     const g = new THREE.Group();
     part(g, RB(0.045, 0.075, 0.4, 0.012), m.black, 0, 0, -0.02);

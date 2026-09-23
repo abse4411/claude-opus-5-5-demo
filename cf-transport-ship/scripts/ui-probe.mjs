@@ -415,6 +415,34 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v18') {
+  // 新武器 AUG A3 / P90：商店卡片 + 装备实装（构建器无错误即通过）
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => ({
+      cards: document.querySelectorAll('#loadCards .card').length,
+      aug: !!document.querySelector('#loadCards .card[data-w="aug"]'),
+      p90: !!document.querySelector('#loadCards .card[data-w="p90"]'),
+    }));
+    check(r.cards === 12 && r.aug && r.p90, `武器: 商店 12 张主武器卡含 AUG/P90 (${r.cards})`);
+    await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'aug', diff: 'normal', quality: 'low' })));
+  }
+  await page.goto(base + '&mode=infection');
+  await page.waitForFunction(() => window.__game && window.__game.playing, null, { timeout: 60000 });
+  await page.waitForTimeout(800);
+  const w = await page.evaluate(() => {
+    const g = window.__game;
+    return { id: g.player.inv[g.player.slot].id, vm: !!g.vm };
+  });
+  check(w.id === 'aug', `武器: 重启后 AUG A3 已装备 (${w.id})`);
+  const w2 = await page.evaluate(() => {
+    const g = window.__game;
+    g.player.inv[0] = new (Object.getPrototypeOf(g.player.inv[0]).constructor)('p90');
+    g.player.slot = 0;
+    g.fastForward(0.3, 1 / 30);
+    return g.player.inv[0].id;
+  });
+  check(w2 === 'p90', `武器: P90 动态换装成功 (${w2})`);
 } else if (ver === 'v17') {
   // 阵营更名：WOZ 模式显示 保卫军/原罪军（原作阵营），TDM 保留 CF 命名
   await goto('&mode=infection');
