@@ -311,8 +311,15 @@ export class Game {
     a.radarT = 1.6;
     // 让附近的机器人听到
     for (const b of this.actors) if (b !== a && b.hear && b.team !== a.team && b.pos.distanceTo(a.pos) < 45) b.hear(a.pos, true);
-    const end = this.traceBullet(a, eye, dir, d);
-    if (!a.isPlayer || Math.random() < 0.35 || d.type === 'sniper') this.fx.tracer(muzzle, end);
+    // 霰弹等多弹丸武器：每颗弹丸独立散布与判定
+    const pellets = d.pellets || 1;
+    let end = null;
+    for (let pi = 0; pi < pellets; pi++) {
+      const dirP = pi === 0 ? dir : jitterDir(dir.clone(), d.pelletSpread ?? 0.06, Math.random);
+      const eP = this.traceBullet(a, eye, dirP, d);
+      if (pi === 0) end = eP;
+      if (pellets === 1 || pi % 3 === 0) this.fx.tracer(muzzle, eP);
+    }
     // 子弹掠过玩家
     const p = this.player;
     if (p && p.alive && a !== p && a.team !== p.team) {

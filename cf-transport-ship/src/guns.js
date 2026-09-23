@@ -265,6 +265,85 @@ const builders = {
     anchor(g, 'muzzle', 0, 0, -0.44);
     return g;
   },
+  // ---- V2 扩充枪模（紧凑程序化造型，共用锚点） ----
+  famas(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.05, 0.09, 0.42, 0.01), m.black, 0, 0, -0.03);          // 无托机身
+    part(g, RB(0.03, 0.03, 0.3, 0.006), m.metal, 0, 0.055, -0.2);       // 提把瞄具
+    part(g, BX(0.024, 0.24, 0.05), m.steel, 0, -0.02, -0.28);           // 枪管
+    part(g, RB(0.03, 0.1, 0.05, 0.01), m.rubber, 0, -0.07, 0.1);        // 握把
+    part(g, RB(0.028, 0.12, 0.06, 0.01), m.rubber, 0, -0.05, -0.02);    // 弹匣
+    anchor(g, 'grip', 0, -0.05, 0.1); anchor(g, 'muzzle', 0, 0, -0.42);
+    return g;
+  },
+  thompson(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.045, 0.075, 0.4, 0.012), m.black, 0, 0, -0.02);
+    part(g, new THREE.CylinderGeometry(0.035, 0.035, 0.16, 12), m.metal, 0, -0.05, 0.06, 0, 0, Math.PI / 2);
+    part(g, BX(0.024, 0.26, 0.045), m.steel, 0, 0, -0.28);
+    part(g, RB(0.03, 0.12, 0.05, 0.01), m.rubber, 0, -0.08, 0.08);
+    part(g, RB(0.03, 0.05, 0.14, 0.01), m.rubber, 0, -0.03, -0.16);
+    anchor(g, 'grip', 0, -0.06, 0.08); anchor(g, 'muzzle', 0, 0, -0.4);
+    return g;
+  },
+  minigun(m) {
+    const g = new THREE.Group();
+    part(g, new THREE.CylinderGeometry(0.06, 0.07, 0.3, 10), m.dark, 0, 0, 0.08, Math.PI / 2, 0, 0);
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2;
+      part(g, new THREE.CylinderGeometry(0.014, 0.014, 0.42, 8), m.metal, Math.cos(a) * 0.032, Math.sin(a) * 0.032, -0.22, Math.PI / 2, 0, 0);
+    }
+    part(g, RB(0.1, 0.12, 0.08, 0.01), m.rubber, 0, -0.08, 0.12);
+    anchor(g, 'grip', 0, -0.06, 0.12); anchor(g, 'muzzle', 0, 0, -0.46);
+    return g;
+  },
+  spas(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.05, 0.07, 0.5, 0.012), m.black, 0, 0, -0.05);
+    part(g, new THREE.CylinderGeometry(0.022, 0.022, 0.44, 10), m.steel, 0, 0.035, -0.2, Math.PI / 2, 0, 0);
+    part(g, RB(0.04, 0.035, 0.16, 0.01), m.rubber, 0, -0.055, -0.18);
+    part(g, RB(0.032, 0.1, 0.05, 0.01), m.rubber, 0, -0.07, 0.1);
+    anchor(g, 'grip', 0, -0.05, 0.1); anchor(g, 'muzzle', 0, 0, -0.44);
+    return g;
+  },
+  g3sg1(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.045, 0.08, 0.55, 0.012), m.black, 0, 0, -0.05);
+    part(g, BX(0.024, 0.3, 0.045), m.steel, 0, 0.005, -0.36);
+    part(g, new THREE.CylinderGeometry(0.026, 0.026, 0.14, 10), m.dark, 0, 0.07, -0.02, Math.PI / 2, 0, 0);
+    part(g, RB(0.03, 0.06, 0.1, 0.008), m.dark, 0, 0.075, -0.14);
+    part(g, RB(0.03, 0.11, 0.05, 0.01), m.rubber, 0, -0.08, 0.08);
+    part(g, RB(0.035, 0.09, 0.16, 0.012), m.rubber, 0, -0.01, 0.16);
+    anchor(g, 'grip', 0, -0.06, 0.09); anchor(g, 'muzzle', 0, 0, -0.54);
+    return g;
+  },
+  m24(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.042, 0.075, 0.52, 0.012), m.olive, 0, 0, -0.04);
+    part(g, BX(0.022, 0.28, 0.04), m.steel, 0, 0.005, -0.34);
+    part(g, new THREE.CylinderGeometry(0.024, 0.024, 0.16, 10), m.dark, 0, 0.068, -0.03, Math.PI / 2, 0, 0);
+    part(g, RB(0.028, 0.05, 0.1, 0.008), m.dark, 0, 0.072, -0.13);
+    part(g, RB(0.03, 0.11, 0.05, 0.01), m.rubber, 0, -0.075, 0.08);
+    anchor(g, 'grip', 0, -0.055, 0.09); anchor(g, 'muzzle', 0, 0, -0.52);
+    return g;
+  },
+  usp(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.032, 0.06, 0.2, 0.01), m.black, 0, 0, -0.02);
+    part(g, RB(0.03, 0.1, 0.045, 0.008), m.dark, 0, -0.06, 0.02);
+    part(g, new THREE.CylinderGeometry(0.018, 0.018, 0.06, 10), m.dark, 0, 0.005, -0.14, Math.PI / 2, 0, 0);
+    anchor(g, 'grip', 0, -0.05, 0.03); anchor(g, 'muzzle', 0, 0, -0.17);
+    return g;
+  },
+  r8(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.034, 0.062, 0.16, 0.01), m.steel, 0, 0, -0.02);
+    part(g, new THREE.CylinderGeometry(0.03, 0.03, 0.055, 10), m.metal, 0, 0, -0.09, Math.PI / 2, 0, 0);
+    part(g, BX(0.02, 0.22, 0.035), m.steel, 0, 0.005, -0.2);
+    part(g, RB(0.032, 0.1, 0.05, 0.008), m.rubber, 0, -0.065, 0.03);
+    anchor(g, 'grip', 0, -0.055, 0.04); anchor(g, 'muzzle', 0, 0, -0.28);
+    return g;
+  },
   he(m) {
     const g = new THREE.Group();
     const body = new THREE.SphereGeometry(0.034, 16, 12); body.scale(1, 1.25, 1);

@@ -56,13 +56,79 @@ export const WEAPONS = {
     dmgLight: 500, dmgHeavy: 9999, rangeLight: 2.2, rangeHeavy: 1.9, rateLight: 0.9, rateHeavy: 1.2, draw: 0.6,
     speed: 1.02, sound: 'knife', hudName: 'CHAINSAW', knock: 5.0, stagger: 0.3, mag: 0, reserve: 0,
   },
+
+  // ---- V2 扩充（FAMAS/G3SG1/M24 为调研确认的原作武器；霰弹枪对应原作"防守必备"）----
+  famas: {
+    id: 'famas', name: 'FAMAS', slot: 0, type: 'rifle', auto: true,
+    dmg: 30, headMul: 4.0, limbMul: 0.8, rpm: 1000, mag: 25, reserve: 75, reload: 2.3, draw: 0.8,
+    speed: 0.96, range: 200, falloff: 0.985, pen: 1.0, armorPen: 0.74, knock: 1.8, stagger: 0.1,
+    spread: { base: 0.003, move: 0.038, air: 0.14, crouch: 0.6, perShot: 0.004, max: 0.038, recover: 9 },
+    recoil: { up: 0.007, upMax: 0.07, side: 0.0045, sideStart: 6, recover: 8 },
+    sound: 'ak47', hudName: 'FAMAS',
+  },
+  thompson: {
+    id: 'thompson', name: '汤普森', slot: 0, type: 'smg', auto: true,
+    dmg: 26, headMul: 3.6, limbMul: 0.85, rpm: 780, mag: 50, reserve: 150, reload: 2.6, draw: 0.65,
+    speed: 1.0, range: 110, falloff: 0.965, pen: 0.55, armorPen: 0.58, knock: 1.4, stagger: 0.07,
+    spread: { base: 0.0045, move: 0.024, air: 0.13, crouch: 0.7, perShot: 0.003, max: 0.045, recover: 9 },
+    recoil: { up: 0.005, upMax: 0.05, side: 0.0042, sideStart: 5, recover: 9 },
+    sound: 'mp5', hudName: 'THOMPSON',
+  },
+  minigun: {
+    id: 'minigun', name: '加特林', slot: 0, type: 'rifle', auto: true,
+    dmg: 21, headMul: 3.0, limbMul: 0.85, rpm: 1400, mag: 120, reserve: 240, reload: 5.5, draw: 1.4,
+    speed: 0.72, range: 150, falloff: 0.97, pen: 0.9, armorPen: 0.62, knock: 1.3, stagger: 0.06,
+    spread: { base: 0.011, move: 0.03, air: 0.2, crouch: 0.8, perShot: 0.0016, max: 0.06, recover: 6 },
+    recoil: { up: 0.0035, upMax: 0.03, side: 0.0035, sideStart: 4, recover: 7 },
+    sound: 'ak47', hudName: 'MINIGUN',
+  },
+  spas: {
+    id: 'spas', name: 'SPAS-12', slot: 0, type: 'shotgun', auto: false,
+    dmg: 11, pellets: 8, pelletSpread: 0.075, headMul: 2.2, limbMul: 0.9, rpm: 70, mag: 8, reserve: 32, reload: 3.4, draw: 1.0,
+    speed: 0.9, range: 42, falloff: 0.9, pen: 0.3, armorPen: 0.5, knock: 0.9, stagger: 0.07,
+    spread: { base: 0.012, move: 0.02, air: 0.1, crouch: 0.7, perShot: 0, max: 0.03, recover: 4 },
+    recoil: { up: 0.045, upMax: 0.05, side: 0.006, sideStart: 0, recover: 5 },
+    sound: 'deagle', hudName: 'SPAS-12',
+  },
+  g3sg1: {
+    id: 'g3sg1', name: 'G3SG1', slot: 0, type: 'sniper', auto: true,
+    dmg: 76, headMul: 2.6, limbMul: 0.85, rpm: 280, mag: 20, reserve: 60, reload: 3.6, draw: 1.1,
+    speed: 0.8, range: 320, falloff: 0.995, pen: 2.2, armorPen: 0.92, knock: 6, stagger: 0.35,
+    spread: { base: 0.05, scoped: 0.0012, move: 0.1, air: 0.24, crouch: 0.8, perShot: 0.004, max: 0.14, recover: 4 },
+    recoil: { up: 0.03, upMax: 0.06, side: 0.005, sideStart: 0, recover: 4 },
+    zoom: [30, 15], sound: 'awm', hudName: 'G3SG1',
+  },
+  m24: {
+    id: 'm24', name: 'M24', slot: 0, type: 'sniper', auto: false,
+    dmg: 100, headMul: 2.4, limbMul: 0.84, rpm: 50, mag: 6, reserve: 30, reload: 3.2, draw: 1.05,
+    speed: 0.84, range: 360, falloff: 0.997, pen: 2.4, armorPen: 0.94, bolt: 1.25, knock: 6.5, stagger: 0.4,
+    spread: { base: 0.055, scoped: 0.0006, move: 0.1, air: 0.24, crouch: 0.85, perShot: 0, max: 0.18, recover: 4 },
+    recoil: { up: 0.033, upMax: 0.038, side: 0.004, sideStart: 0, recover: 4 },
+    zoom: [30, 12], sound: 'awm', hudName: 'M24',
+  },
+  usp: {
+    id: 'usp', name: 'USP', slot: 1, type: 'pistol', auto: false,
+    dmg: 30, headMul: 3.8, limbMul: 0.75, rpm: 380, mag: 12, reserve: 48, reload: 2.0, draw: 0.5,
+    speed: 1.0, range: 140, falloff: 0.98, pen: 0.8, armorPen: 0.66, knock: 1.7, stagger: 0.12,
+    spread: { base: 0.0035, move: 0.045, air: 0.16, crouch: 0.7, perShot: 0.024, max: 0.06, recover: 5 },
+    recoil: { up: 0.024, upMax: 0.06, side: 0.006, sideStart: 1, recover: 6 },
+    sound: 'mp5', hudName: 'USP',
+  },
+  r8: {
+    id: 'r8', name: 'R8 左轮', slot: 1, type: 'pistol', auto: false,
+    dmg: 70, headMul: 3.4, limbMul: 0.75, rpm: 140, mag: 6, reserve: 24, reload: 3.0, draw: 0.6,
+    speed: 0.98, range: 160, falloff: 0.985, pen: 1.6, armorPen: 0.88, knock: 4.5, stagger: 0.3,
+    spread: { base: 0.004, move: 0.05, air: 0.18, crouch: 0.7, perShot: 0.03, max: 0.07, recover: 4 },
+    recoil: { up: 0.04, upMax: 0.09, side: 0.008, sideStart: 1, recover: 5 },
+    sound: 'deagle', hudName: 'R8 REVOLVER',
+  },
   he: {
     id: 'he', name: '手雷', slot: 3, type: 'grenade', auto: false,
     dmg: 115, radius: 7.5, fuse: 2.6, knock: 9, stagger: 0.5, count: 1, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'HE GRENADE', mag: 1, reserve: 0,
   },
 };
 
-export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5'];
+export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24'];
 
 export class WeaponState {
   constructor(id) {

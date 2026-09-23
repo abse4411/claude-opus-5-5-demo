@@ -140,7 +140,7 @@ export class WozHud {
       this.classBtns.innerHTML = `
         <button data-c="nightrunner">[5] 夜行者</button>
         <button data-c="souleater">[6] 噬魂者</button>
-        <button data-c="devourer">[7] 暴食者</button>
+        <button data-c="devourer">[7] 猎食者</button>
       `;
       this.classBtns.addEventListener('click', (e) => {
         const c = e.target?.dataset?.c;

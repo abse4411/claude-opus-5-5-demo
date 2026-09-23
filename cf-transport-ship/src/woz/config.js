@@ -123,7 +123,7 @@ export const CLASS_LABEL = {
   [MutantClass.Mother]: '母体变异者',
   [MutantClass.Nightrunner]: '夜行者',
   [MutantClass.Souleater]: '噬魂者',
-  [MutantClass.Devourer]: '暴食者',
+  [MutantClass.Devourer]: '猎食者',
 };
 
 export const SKILL_LABEL = {
