@@ -11,7 +11,7 @@ export class Player extends Actor {
     this.lookDX = 0; this.lookDY = 0;
     this.bobT = 0; this.land = 0; this.shakeT = 0;
     this.camRoll = 0;
-    this.deathCam = null;
+    this.deathCam = null; this.spec = null;
     this.touch = { mx: 0, mz: 0, fire: false, jump: false, crouch: false };
   }
   // 输入监听只绑定一次，始终路由到当前玩家
@@ -85,7 +85,27 @@ export class Player extends Actor {
       this.mouse.lp = this.mouse.rp = false; this.touch.firePressed = false;
       this.weaponUpdate(dt, { fire: this.mouse.l || this.touch.fire, firePressed: lp, alt: this.mouse.r, altPressed: rp, reload: this.consumePressed('KeyR'), sw });
       if (this.consumePressed('KeyF')) g.vm.inspect();
+      // 丢弃 / 拾取（变异者的 E/G 由 WOZ 管理层处理）
+      const wozHuman = !g.woz?.rules || !g.woz.rules.isMutantSide(this.id);
+      if (wozHuman && this.consumePressed('KeyG')) g.dropGun(this);
+      if (wozHuman && this.consumePressed('KeyE')) g.tryPickup(this);
+      // WOZ 变异者按键必须在 pressed.clear() 前消费
+      if (g.woz) g.woz.onPlayerInput(this);
     } else {
+      // 死亡观战：鼠标继续控制视角，空格切换 自由/队友第一人称/队友第三人称
+      this.yaw -= dx * sens * 1.2;
+      this.pitch = THREE.MathUtils.clamp(this.pitch - dy * sens * 1.2, -1.4, 1.4);
+      if (this.deathCam && this.deathCam.t > 1.0 && !this.spec) {
+        this.spec = { mode: 'free', pos: g.renderer.camera.position.clone() };
+        g.hud.toast('观战：自由视角 · 空格切换视角 · WASD 移动', 2.5);
+      }
+      if (this.spec && this.consumePressed('Space')) {
+        const order = ['free', 'follow1', 'follow3'];
+        this.spec.mode = order[(order.indexOf(this.spec.mode) + 1) % 3];
+        if (this.spec.mode === 'free') this.spec.pos.copy(g.renderer.camera.position);
+        const cn = { free: '自由视角', follow1: '队友第一人称', follow3: '队友第三人称' }[this.spec.mode];
+        g.hud.toast(`观战视角：${cn}`, 1.5);
+      }
       this.pressed.delete('KeyR'); this.mouse.lp = this.mouse.rp = false;
     }
     if (this.consumePressed('KeyB')) g.toggleLoadout();
@@ -95,6 +115,36 @@ export class Player extends Actor {
   updateCamera(dt) {
     const g = this.game, cam = g.renderer.camera;
     if (!this.alive) {
+      // 观战模式：自由飞 / 队友第一人称 / 队友第三人称
+      if (this.spec && this.deathCam && this.deathCam.t > 1.0) {
+        const mate = g.actors.find((a) => a.alive && a.team === this.team && a !== this);
+        if (this.spec.mode !== 'free' && !mate) this.spec.mode = 'free';
+        cam.rotation.order = 'YXZ';
+        if (this.spec.mode === 'free') {
+          const K = this.keys, sp = 9 * dt;
+          const fwd = new THREE.Vector3(-Math.sin(this.yaw) * Math.cos(this.pitch), Math.sin(this.pitch), -Math.cos(this.yaw) * Math.cos(this.pitch));
+          const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+          if (K.has('KeyW')) this.spec.pos.addScaledVector(fwd, sp);
+          if (K.has('KeyS')) this.spec.pos.addScaledVector(fwd, -sp);
+          if (K.has('KeyD')) this.spec.pos.addScaledVector(right, sp);
+          if (K.has('KeyA')) this.spec.pos.addScaledVector(right, -sp);
+          if (K.has('Space')) this.spec.pos.y += sp;
+          if (K.has('KeyC')) this.spec.pos.y -= sp;
+          cam.position.copy(this.spec.pos);
+          cam.rotation.set(this.pitch, this.yaw, 0);
+        } else if (mate) {
+          const eye = mate.eye(new THREE.Vector3());
+          if (this.spec.mode === 'follow1') {
+            cam.position.copy(eye);
+            cam.rotation.set(mate.pitch, mate.yaw, 0);
+          } else {
+            cam.position.copy(eye).add(new THREE.Vector3(Math.sin(mate.yaw) * 2.6, -0.4, Math.cos(mate.yaw) * 2.6));
+            cam.lookAt(mate.soldier.chestWorld(new THREE.Vector3()));
+          }
+        }
+        cam.fov += (g.opts.fov - cam.fov) * Math.min(1, dt * 8); cam.updateProjectionMatrix();
+        return;
+      }
       // 死亡镜头：抬高并看向击杀者
       const dc = this.deathCam;
       if (dc) {

@@ -96,6 +96,9 @@ export function buildCityMap(scene, T, world, variant = 'street') {
     put('walk', w1, 0, 0.06, -10.4);
   }
 
+  // ---- 地面碰撞体（防坠落） ----
+  world.add({ x: 0, y: -0.5, z: 0, sx: 80, sy: 1, sz: 28, yaw: 0, mat: 'metal', surface: 'metal' });
+
   // ---- 边界（城市围墙） ----
   solid(0, -12.6, 76, 1, 3.2, 0); put('brick', BX(76, 3.2, 1), 0, 1.6, -12.6);
   solid(0, 12.6, 76, 1, 3.2, 0); put('brick', BX(76, 3.2, 1), 0, 1.6, 12.6);

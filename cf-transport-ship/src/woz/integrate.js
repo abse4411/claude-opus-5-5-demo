@@ -211,6 +211,11 @@ export class WozManager {
       if (st.side === 'mutant' && st.alive) {
         if (a.alive) a.hp = st.hp;
         a.speedMul = rules.mutantSpeedMultiplier(i);
+        // 静止不动缓慢回血（对齐原作：变异者蛰伏回复）
+        if (a.alive && (a.speed || 0) < 0.6 && rules.phase === 'battle') {
+          const cap = rules.effectiveMaxHp(st);
+          if (st.hp < cap) { st.hp = Math.min(cap, st.hp + 22 * dt); }
+        }
       } else if (st.side === 'human') {
         a.speedMul = rules.humanSpeedMultiplier(i);
       }
@@ -423,34 +428,11 @@ export class WozManager {
   }
 
   devourAndSkills(dt) {
-    const g = this.g, rules = this.rules, p = g.player;
+    const g = this.g, rules = this.rules;
     void dt;
-    // 玩家：E 吞噬 / R 技能
-    if (p.alive && rules.isMutantSide(p.id) && rules.state(p.id).alive) {
-      if (p.consumePressed && p.consumePressed('KeyE')) {
-        const corpse = this.findCorpse(p);
-        if (rules.tryDevour(p.id, corpse)) {
-          p.hp = rules.state(p.id).hp;
-          g.hud.toast('吞噬！恢复血量并获得进化点', 1.5);
-        } else if (corpse >= 0) g.hud.toast('吞噬冷却中…', 1);
-        else g.hud.toast('附近没有可吞噬的变异者尸体', 1);
-      }
-      if (p.consumePressed && p.consumePressed('KeyG')) {
-        if (rules.tryUseSkill(p.id)) { /* 效果在 onSkillFired 落地 */ }
-        else g.hud.toast(`技能充能 ${(rules.state(p.id).skillCharge * 100) | 0}%`, 1);
-      }
-      // 子体变身快捷键：5 夜行者 / 6 噬魂者 / 7 暴食者（指针锁下按钮不可点，键盘为准）
-      for (const [code, cls] of [
-        ['Digit5', MutantClass.Nightrunner],
-        ['Digit6', MutantClass.Souleater],
-        ['Digit7', MutantClass.Devourer],
-      ]) {
-        if (p.consumePressed && p.consumePressed(code)) rules.setMutantClass(p.id, cls);
-      }
-    }
-    // BOT 变异者：低血自动吞噬 / 充能满自动放技能 / 随机嘶吼
+    // BOT 变异者：低血自动吞噬 / 充能满自动放技能
     for (const a of g.actors) {
-      if (a === p || !a.alive || !a.isZombie && !rules.isMutantSide(a.id) || a.id >= rules.playerCount) continue;
+      if (a.isPlayer || !a.alive || !rules.isMutantSide(a.id) || a.id >= rules.playerCount) continue;
       const st = rules.state(a.id);
       if (!st.alive || st.side !== 'mutant') continue;
       if (st.devourCooldown <= 0 && st.hp < this.effMaxHp(st) * 0.6) {
@@ -505,6 +487,32 @@ export class WozManager {
         const m = mutants[(Math.random() * mutants.length) | 0];
         wozAudio.growl(m.isPlayer ? null : m.pos.clone());
       }
+    }
+  }
+
+  // ================= 玩家按键（在 pressed.clear() 前由 player.update 调用） =================
+  onPlayerInput(p) {
+    const g = this.g, rules = this.rules;
+    if (!rules || rules.phase !== 'battle' || !p.alive) return;
+    if (!rules.isMutantSide(p.id)) return;
+    const st = rules.state(p.id);
+    if (!st.alive) return;
+    // E 吞噬
+    if (p.consumePressed('KeyE')) {
+      const corpse = this.findCorpse(p);
+      if (rules.tryDevour(p.id, corpse)) {
+        p.hp = st.hp;
+        g.hud.toast('吞噬！恢复血量并获得进化点', 1.5);
+      } else if (corpse >= 0) g.hud.toast('吞噬冷却中…', 1);
+      else g.hud.toast('附近没有可吞噬的变异者尸体', 1);
+    }
+    // G 技能
+    if (p.consumePressed('KeyG')) {
+      if (!rules.tryUseSkill(p.id)) g.hud.toast(`技能充能 ${(st.skillCharge * 100) | 0}%`, 1);
+    }
+    // 5/6/7 子体变身
+    for (const [code, cls] of [['Digit5', MutantClass.Nightrunner], ['Digit6', MutantClass.Souleater], ['Digit7', MutantClass.Devourer]]) {
+      if (p.consumePressed(code)) rules.setMutantClass(p.id, cls);
     }
   }
 
@@ -564,7 +572,7 @@ export class WozManager {
     }
     if (this.pendingConvert.has(a.id)) {
       this.pendingConvert.delete(a.id);
-      this.convertNow(a);
+      this.convertNow(a, true); // 原地变身（对齐原作：感染后在原地转化，不去复活点）
       return;
     }
     if (st.alive && st.side === 'mutant') { this.convertNow(a, true); return; } // 复仇模式再变异重生
@@ -730,8 +738,9 @@ export class WozManager {
     a.heroLight.position.set(0, 1.6, 0);
     a.soldier.root.add(a.heroLight); // 英雄光环
     a.wozOut = false; a.alive = true; a.respawnT = 0;
-    a.inv = [new WeaponState('chainsaw')];
-    a.slot = 0;
+    a.inv = a.inv.map((w) => (w && w.def.type === 'melee' ? new WeaponState('chainsaw') : w));
+    if (!a.inv.some((w) => w && w.id === 'chainsaw')) a.inv[2] = new WeaponState('chainsaw');
+    a.slot = 2; // 电锯在军刀槽，按 3 可切回主武器/副武器/投掷
     a.readyAt = g.time + 0.5;
     a.soldier.reset();
     a.soldier.setWeapon('chainsaw');

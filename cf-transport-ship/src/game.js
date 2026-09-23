@@ -11,7 +11,7 @@ import { Effects } from './effects.js';
 import { ViewModel } from './viewmodel.js';
 import { HUD } from './hud.js';
 import { audio } from './audio.js';
-import { WEAPONS, jitterDir } from './weapons.js';
+import { WEAPONS, WeaponState, jitterDir } from './weapons.js';
 import { buildGunMerged } from './guns.js';
 import { Player } from './player.js';
 import { Bot, BOT_NAMES } from './bots.js';
@@ -34,6 +34,7 @@ export class Game {
     this.audio = audio;
     this.woz = null;
     this.zones = new Zones(this);
+    this.groundGuns = [];
     this.qs = new URLSearchParams(location.search);
   }
   async init() {
@@ -155,6 +156,8 @@ export class Game {
     for (const a of this.actors) this.renderer.scene.remove(a.soldier.root);
     for (const t of this.tags) this.renderer.scene.remove(t.sprite);
     for (const n of this.nades) this.renderer.scene.remove(n.mesh);
+    for (const gg of this.groundGuns) this.renderer.scene.remove(gg.mesh);
+    this.groundGuns = [];
     this.actors = []; this.nades = []; this.tags = []; this.timers = [];
     this.score = { BL: 0, GR: 0 };
     this.goal = o.goal; this.timeLeft = 600;
@@ -272,6 +275,57 @@ export class Game {
   }
   closeLoadout() {
     this.inLoadout = false; this.hud.show(null); this.lock();
+  }
+  // ---- 武器丢弃 / 拾取 ----
+  spawnGroundGun(pos, ws) {
+    const mesh = buildGunMerged(ws.id);
+    mesh.scale.setScalar(1.5);
+    mesh.rotation.set(0, Math.random() * 6, Math.PI / 2);
+    mesh.position.set(pos.x, 0.25, pos.z);
+    this.renderer.scene.add(mesh);
+    this.groundGuns.push({ id: ws.id, mag: ws.mag, reserve: ws.reserve, mesh, pos: mesh.position });
+  }
+  dropGun(a) {
+    const w = a.weapon;
+    if (!w || !['rifle', 'smg', 'sniper', 'pistol', 'shotgun'].includes(w.def.type)) return;
+    const eye = a.eye(new THREE.Vector3());
+    const fwd = a.forward(new THREE.Vector3());
+    this.spawnGroundGun(eye.addScaledVector(fwd, 0.8), w);
+    a.inv[a.slot] = new WeaponState('knife');
+    a.slot = 2; a.readyAt = this.time + 0.3;
+    a.soldier.setWeapon('knife');
+    if (a.isPlayer) { this.vm.equip('knife', 0.3); this.hud.slots(a.inv, 2); }
+    audio.playWeaponSwitch('knife');
+  }
+  tryPickup(a) {
+    if (this.woz?.rules?.isMutantSide(a.id)) return; // 变异者 E 是吞噬
+    let best = null, bestD = 1.8;
+    for (const gg of this.groundGuns) {
+      const d = Math.hypot(a.pos.x - gg.pos.x, a.pos.z - gg.pos.z);
+      if (d < bestD) { bestD = d; best = gg; }
+    }
+    if (!best) return;
+    const slot = WEAPONS[best.id].slot;
+    const cur = a.inv[slot];
+    if (cur && cur.id !== 'knife' && ['rifle', 'smg', 'sniper', 'pistol', 'shotgun'].includes(cur.def.type)) {
+      this.spawnGroundGun(a.pos.clone(), cur); // 手上武器交换到地上
+    }
+    a.inv[slot] = new WeaponState(best.id);
+    a.inv[slot].mag = best.mag; a.inv[slot].reserve = best.reserve;
+    a.slot = slot; a.readyAt = this.time + WEAPONS[best.id].draw;
+    a.soldier.setWeapon(best.id);
+    if (a.isPlayer) { this.vm.equip(best.id, 0.4); this.hud.slots(a.inv, a.slot); }
+    audio.playWeaponSwitch(best.id);
+    this.renderer.scene.remove(best.mesh);
+    this.groundGuns.splice(this.groundGuns.indexOf(best), 1);
+  }
+  nearGroundGun(a) {
+    let best = null, bestD = 1.8;
+    for (const gg of this.groundGuns) {
+      const d = Math.hypot(a.pos.x - gg.pos.x, a.pos.z - gg.pos.z);
+      if (d < bestD) { bestD = d; best = gg; }
+    }
+    return best;
   }
   chooseGrenade(id) {
     const p = this.player;
@@ -405,6 +459,22 @@ export class Game {
       return pt;
     }
     return o.clone().addScaledVector(dir, range);
+  }
+  sawCut(a, d, heavy) {
+    const eye = a.eye(new THREE.Vector3());
+    const dir = a.forward(new THREE.Vector3());
+    this.frame++;
+    let hit = null;
+    for (const b of this.actors) {
+      if (!b.alive || b === a || b.team === a.team) continue;
+      const r = b.soldier.hitTest(eye, dir, d.rangeLight, this.frame);
+      if (r && (!hit || r.t < hit.t)) hit = { a: b, t: r.t, part: r.part };
+    }
+    if (!hit) return;
+    const dmg = heavy ? d.dmgHeavy : d.dmgLight;
+    this.damage(hit.a, a, dmg, hit.part, a.weapon?.id || 'chainsaw', dir, false, true);
+    this.fx.impact(eye.clone().addScaledVector(dir, hit.t), dir.clone().negate(), 'flesh', dir);
+    audio.playKnife('light', 'flesh', a.isPlayer ? null : eye);
   }
   melee(a, heavy) {
     const d = WEAPONS[a.weapon?.id] || WEAPONS.knife;

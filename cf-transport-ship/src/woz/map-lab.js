@@ -69,6 +69,9 @@ export function buildLabMap(scene, T, world) {
     const g = new THREE.PlaneGeometry(76, 26); g.rotateX(-Math.PI / 2);
     put('floor', g, 0, 0, 0);
   }
+  // 地面碰撞体（防坠落）
+  world.add({ x: 0, y: -0.5, z: 0, sx: 80, sy: 1, sz: 28, yaw: 0, mat: 'metal', surface: 'metal' });
+
   // 外墙
   solid(0, -12.6, 76, 1, 4); put('wall', BX(76, 4, 1), 0, 2, -12.6);
   solid(0, 12.6, 76, 1, 4); put('wall', BX(76, 4, 1), 0, 2, 12.6);

@@ -166,7 +166,13 @@ export class Actor {
     if (inp.reload && w.canReload()) this.startReload();
     if (w.reloading) return;
     if (d.type === 'melee') {
-      if (now >= w.nextFire) {
+      if (d.continuous) {
+        // 电锯：按住左键持续切割（无攻击间隔），右键重击必杀
+        if (now >= w.nextFire) {
+          if (inp.fire) { w.nextFire = now + d.rateLight; g.sawCut(this, d, false); }
+          else if (inp.alt) { w.nextFire = now + d.rateHeavy; g.sawCut(this, d, true); }
+        }
+      } else if (now >= w.nextFire) {
         if (inp.fire) { w.nextFire = now + d.rateLight; g.melee(this, false); }
         else if (inp.alt) { w.nextFire = now + d.rateHeavy; g.melee(this, true); }
       }

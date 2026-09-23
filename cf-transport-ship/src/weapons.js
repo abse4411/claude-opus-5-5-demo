@@ -52,9 +52,9 @@ export const WEAPONS = {
     speed: 1.0, sound: 'knife', hudName: 'CLAW', knock: 4.0, stagger: 0.2, mag: 0, reserve: 0,
   },
   chainsaw: {
-    id: 'chainsaw', name: '电锯', slot: 2, type: 'melee', auto: true,
-    dmgLight: 500, dmgHeavy: 9999, rangeLight: 2.2, rangeHeavy: 1.9, rateLight: 0.9, rateHeavy: 1.2, draw: 0.6,
-    speed: 1.02, sound: 'knife', hudName: 'CHAINSAW', knock: 5.0, stagger: 0.3, mag: 0, reserve: 0,
+    id: 'chainsaw', name: '电锯', slot: 2, type: 'melee', auto: true, continuous: true,
+    dmgLight: 60, dmgHeavy: 9999, rangeLight: 2.2, rangeHeavy: 1.9, rateLight: 0.12, rateHeavy: 1.2, draw: 0.6,
+    speed: 1.02, sound: 'knife', hudName: 'CHAINSAW', knock: 0.6, stagger: 0.1, mag: 0, reserve: 0,
   },
 
   // ---- V2 扩充（FAMAS/G3SG1/M24 为调研确认的原作武器；霰弹枪对应原作"防守必备"）----
