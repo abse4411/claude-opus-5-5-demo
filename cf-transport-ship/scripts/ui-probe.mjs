@@ -395,6 +395,26 @@ if (ver === 'v1') {
     check(banner.on && banner.text.includes('人类胜利') && banner.text.includes('比分'), `结算: 横幅 [${banner.text.slice(0, 30)}]`);
     await page.screenshot({ path: `scripts/shots/${ver}-banner.png` });
   }
+} else if (ver === 'v10') {
+  // 帮助中心（H）
+  await goto('&mode=revenge');
+  {
+    await page.evaluate(() => window.__game.toggleHelp());
+    await page.waitForTimeout(300);
+    const help = await page.evaluate(() => ({
+      visible: !document.getElementById('help').classList.contains('hidden'),
+      mode: document.getElementById('helpMode').textContent,
+      desc: document.getElementById('helpDesc').textContent,
+      keys: document.getElementById('helpKeys').textContent,
+    }));
+    check(help.visible && help.mode === '生化复仇', `帮助: 打开并显示当前模式 (${help.mode})`);
+    check(help.desc.includes('复仇者') && help.desc.includes('尸潮'), '帮助: 模式机制完整');
+    check(help.keys.includes('5/6/7') && help.keys.includes('吞噬') && help.keys.includes('观战'), '帮助: 键位完整');
+    await page.screenshot({ path: `scripts/shots/${ver}-help.png` });
+    await page.evaluate(() => window.__game.toggleHelp());
+    const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
+    check(closed, '帮助: 再次按 H / 点击关闭');
+  }
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

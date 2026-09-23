@@ -274,6 +274,16 @@ export class Game {
     for (const x of document.querySelectorAll('#loadCards .card')) x.classList.toggle('on', x.dataset.w === (this.player.nextPrimary || this.player.primary));
     if (document.pointerLockElement) document.exitPointerLock();
   }
+  // 帮助中心（H）：当前模式机制 + 键位
+  toggleHelp() {
+    if (!this.playing) return;
+    if (this.helpOpen) { this.helpOpen = false; this.hud.show(null); this.lock(); return; }
+    if (this.inLoadout) this.closeLoadout();
+    this.helpOpen = true;
+    this.hud.fillHelp(this.opts.mode);
+    this.hud.show('help');
+    if (document.pointerLockElement) document.exitPointerLock();
+  }
   closeLoadout() {
     this.inLoadout = false; this.hud.show(null); this.lock();
   }

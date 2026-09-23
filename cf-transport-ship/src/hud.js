@@ -116,6 +116,7 @@ export class HUD {
       });
     }
     $('#btnLoadClose').addEventListener('click', () => this.g.closeLoadout());
+    $('#btnHelpClose').addEventListener('click', () => this.g.toggleHelp());
     if (matchMedia('(pointer:coarse)').matches) $('#touchNote').classList.remove('hidden');
     for (const a of this.root.querySelectorAll('#clinks a, .mlinks a'))
       a.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
@@ -135,8 +136,25 @@ export class HUD {
   }
   show(name) {
     if (name === 'menu' || name === 'pause') this.syncControls();
-    for (const n of ['menu', 'pause', 'end', 'loadout', 'loading']) this.el[n].classList.toggle('hidden', n !== name);
+    for (const n of ['menu', 'pause', 'end', 'loadout', 'loading', 'help']) this.el[n].classList.toggle('hidden', n !== name);
     this.el.hud.classList.toggle('hidden', name === 'menu' || name === 'loading' || name === 'end');
+  }
+  // 帮助中心：当前模式机制 + 完整键位
+  fillHelp(mode) {
+    const info = HUD.MODE_INFO[mode];
+    const el1 = document.getElementById('helpMode');
+    const el2 = document.getElementById('helpDesc');
+    const el3 = document.getElementById('helpKeys');
+    if (el1) el1.textContent = info?.name || '';
+    if (el2) el2.innerHTML = info?.desc || '';
+    if (el3) el3.innerHTML = [
+      '<kbd>W A S D</kbd> 移动 · <kbd>Shift</kbd> 静步 · <kbd>空格</kbd> 跳 · <kbd>C</kbd> 蹲',
+      '<kbd>左键</kbd> 开火 · <kbd>右键</kbd> 开镜/重击 · <kbd>R</kbd> 换弹 · <kbd>B</kbd> 武器商店',
+      '人类：<kbd>E</kbd> 拾取地面武器 / 按住安放核弹',
+      '变异者：<kbd>E</kbd> 吞噬尸体回血 · <kbd>G</kbd> 释放职业技能 · <kbd>5/6/7</kbd> 切换形态',
+      '死亡后：<kbd>空格</kbd> 切换 自由 / 队友第一人称 / 队友第三人称 观战',
+      '<kbd>Tab</kbd> 计分板 · <kbd>H</kbd> 帮助 · <kbd>Esc</kbd> 暂停',
+    ].map((s) => `<div>${s}</div>`).join('');
   }
   loading(p, text) { this.el.loadBar.style.width = (p * 100).toFixed(0) + '%'; if (text) this.el.loadTxt.textContent = text; }
 
@@ -559,8 +577,15 @@ const TEMPLATE = `
   <button class="go sec" id="btnLoadClose" style="margin-top:14px">确 定（B）</button>
 </div></div>
 
-<div id="end" class="screen hidden"><div class="endBox">
-  <div class="res" id="endRes">胜利</div><div class="sc" id="endSc"></div><div class="mvp" id="endMvp"></div><div class="mvp" id="endMe" style="color:#dfe4e8"></div>
+<div id="help" class="screen hidden"><div class="loadBox"><h2>帮助中心 · <span id="helpMode"></span></h2>
+  <div class="helpGrid">
+    <div class="hcard"><h3>模式机制</h3><p id="helpDesc"></p></div>
+    <div class="hcard"><h3>交互按键</h3><p id="helpKeys"></p></div>
+  </div>
+  <button class="go sec" id="btnHelpClose" style="margin-top:14px">关闭（H）</button>
+</div></div>
+
+<div id="end" class="screen hidden"><div class="endBox">  <div class="res" id="endRes">胜利</div><div class="sc" id="endSc"></div><div class="mvp" id="endMvp"></div><div class="mvp" id="endMe" style="color:#dfe4e8"></div>
   <div id="endTable" class="tbl"></div>
   <div style="display:flex;gap:10px;margin-top:16px"><button class="go" id="btnAgain">再 来 一 局</button><button class="go sec" id="btnMenu">主菜单</button></div>
 </div></div>

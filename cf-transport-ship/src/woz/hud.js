@@ -22,7 +22,8 @@ const PANEL_CSS = `
 #wozClasses{position:absolute;right:14px;bottom:120px;display:flex;flex-direction:column;gap:8px;pointer-events:auto}
 #wozClasses button{width:112px;padding:8px 0;border:1px solid rgba(255,140,60,.55);border-radius:8px;background:rgba(30,12,6,.72);color:#ffb488;font:600 13px "PingFang SC","Microsoft YaHei",sans-serif;cursor:pointer}
 #wozClasses button:hover{background:rgba(80,30,12,.85);color:#ffd9b8}
-#wozBanner{position:absolute;top:20%;left:50%;transform:translateX(-50%);font:700 34px "PingFang SC","Microsoft YaHei",sans-serif;color:#60e0ff;text-shadow:0 0 18px rgba(60,180,255,.8),0 2px 4px #000;opacity:0;transition:opacity .4s;pointer-events:none;white-space:nowrap}
+#wozBanner{position:absolute;top:20%;left:50%;transform:translateX(-50%);font:700 34px "PingFang SC","Microsoft YaHei",sans-serif;color:#60e0ff;text-shadow:0 0 18px rgba(60,180,255,.8),0 2px 4px #000;opacity:0;transition:opacity .4s;pointer-events:none;white-space:nowrap;text-align:center;animation:wozBannerIn .5s ease-out}
+@keyframes wozBannerIn{0%{transform:translateX(-50%) scale(1.22)}100%{transform:translateX(-50%) scale(1)}}
 #wozObj{position:absolute;top:78px;left:50%;transform:translateX(-50%);display:flex;gap:10px;pointer-events:none}
 #wozObj .pt{min-width:64px;padding:4px 10px;border-radius:6px;background:rgba(8,10,14,.66);border:1px solid rgba(255,255,255,.16);font:700 15px "PingFang SC","Microsoft YaHei",sans-serif;text-align:center;text-shadow:0 1px 2px #000}
 #wozObj .pt small{display:block;font-size:10px;font-weight:400;opacity:.85}
@@ -49,7 +50,8 @@ const PANEL_CSS = `
 #wozDirs .arw{position:absolute;left:0;top:0;will-change:transform;color:#fff}
 #wozDirs .tri{position:absolute;left:-9px;top:-10px;width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:18px solid currentColor;filter:drop-shadow(0 1px 3px rgba(0,0,0,.85))}
 #wozDirs .lab{position:absolute;font:700 13px "Microsoft YaHei",sans-serif;text-shadow:0 1px 3px #000;transform:translate(-50%,-50%)}
-#wozPick{position:absolute;left:50%;top:24%;transform:translateX(-50%);width:580px;padding:14px 18px 12px;background:rgba(8,10,14,.9);border:1px solid rgba(255,140,60,.55);border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.65);text-align:center;pointer-events:auto;backdrop-filter:blur(4px)}
+#wozPick{position:absolute;left:50%;top:24%;transform:translateX(-50%);width:580px;padding:14px 18px 12px;background:rgba(8,10,14,.9);border:1px solid rgba(255,140,60,.55);border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.65);text-align:center;pointer-events:auto;backdrop-filter:blur(4px);animation:wozPickIn .22s ease-out}
+@keyframes wozPickIn{0%{transform:translateX(-50%) scale(.9);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
 #wozPick.hidden{display:none}
 #wozPick .ptitle{font:700 18px "Microsoft YaHei",sans-serif;color:#ffb488;text-shadow:0 1px 3px #000;margin-bottom:10px;letter-spacing:2px}
 #wozPick .pcards{display:flex;gap:10px}

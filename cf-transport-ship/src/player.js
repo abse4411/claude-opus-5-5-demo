@@ -85,6 +85,7 @@ export class Player extends Actor {
       this.mouse.lp = this.mouse.rp = false; this.touch.firePressed = false;
       this.weaponUpdate(dt, { fire: this.mouse.l || this.touch.fire, firePressed: lp, alt: this.mouse.r, altPressed: rp, reload: this.consumePressed('KeyR'), sw });
       if (this.consumePressed('KeyF')) g.vm.inspect();
+      if (this.consumePressed('KeyH')) g.toggleHelp();
       // 丢弃 / 拾取（变异者的 E/G 由 WOZ 管理层处理）
       const wozHuman = !g.woz?.rules || !g.woz.rules.isMutantSide(this.id);
       if (wozHuman && this.consumePressed('KeyG')) g.dropGun(this);
