@@ -300,6 +300,42 @@ if (ver === 'v1') {
     await page.waitForTimeout(300);
     await shot('feed');
   }
+} else if (ver === 'v7') {
+  // 感染变身选择面板
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      rules.convertToMutant(p.id, 'nightrunner', false);
+      g.woz.convertNow(p, true);
+      g.woz.playerClassChosen = false;
+      g.fastForward(0.25, 1 / 30);
+      return {
+        visible: !document.getElementById('wozPick').classList.contains('hidden'),
+        cards: document.querySelectorAll('#wozPick .pcard').length,
+        sideBtnsHidden: document.getElementById('wozClasses').style.display === 'none',
+      };
+    });
+    check(r.visible && r.cards === 3, `变身: 选择面板弹出且 3 张职业卡 (${r.cards})`);
+    check(r.sideBtnsHidden, '变身: 面板打开时右下迷你按钮隐藏');
+    await page.waitForTimeout(200);
+    await shot('pick');
+    await page.click('#wozPick .pcard[data-c="devourer"]');
+    const after = await page.evaluate(() => {
+      const g = window.__game;
+      g.fastForward(0.2, 1 / 30);
+      return {
+        cls: g.woz.rules.state(g.player.id).cls,
+        chosen: g.woz.playerClassChosen,
+        hidden: document.getElementById('wozPick').classList.contains('hidden'),
+        sideBtns: document.getElementById('wozClasses').style.display === '',
+      };
+    });
+    check(after.cls === 'devourer' && after.chosen && after.hidden, `变身: 点击猎食者后面板关闭 (cls=${after.cls})`);
+    check(after.sideBtns, '变身: 关闭后右下切换按钮恢复');
+  }
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

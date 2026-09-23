@@ -1,6 +1,14 @@
 // WOZ HUD：身份牌 / 技能充能 / 吞噬提示 / 存活比 / 致盲遮罩 / 职业变身
 import { CLASS_LABEL, SKILL_LABEL, skillOf, WOZ } from './config.js';
 
+// 感染变身选择面板卡片（WOZ 特色：感染后自选形态）
+const CLASS_PICK = [
+  { c: 'nightrunner', key: '5', name: '夜行者', desc: '高机动刺客 · 疾冲突进', sp: 5, hp: 3, sk: 4 },
+  { c: 'souleater', key: '6', name: '噬魂者', desc: '致盲尖啸 · 瘫痪人类视野', sp: 3, hp: 3, sk: 5 },
+  { c: 'devourer', key: '7', name: '猎食者', desc: '硬化减伤 · 吞噬强化', sp: 2, hp: 4, sk: 4 },
+];
+const statRow = (label, v) => `<div class="stat"><span>${label}</span><i><b style="width:${v * 20}%"></b></i></div>`;
+
 const PANEL_CSS = `
 #wozPanel{position:absolute;left:18px;bottom:96px;width:210px;font:13px/1.5 "PingFang SC","Microsoft YaHei",sans-serif;color:#eee;text-shadow:0 1px 2px #000;pointer-events:none;user-select:none;transition:opacity .2s}
 #wozPanel .card{background:rgba(8,10,14,.62);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;margin-top:6px}
@@ -41,6 +49,22 @@ const PANEL_CSS = `
 #wozDirs .arw{position:absolute;left:0;top:0;will-change:transform;color:#fff}
 #wozDirs .tri{position:absolute;left:-9px;top:-10px;width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:18px solid currentColor;filter:drop-shadow(0 1px 3px rgba(0,0,0,.85))}
 #wozDirs .lab{position:absolute;font:700 13px "Microsoft YaHei",sans-serif;text-shadow:0 1px 3px #000;transform:translate(-50%,-50%)}
+#wozPick{position:absolute;left:50%;top:24%;transform:translateX(-50%);width:580px;padding:14px 18px 12px;background:rgba(8,10,14,.9);border:1px solid rgba(255,140,60,.55);border-radius:14px;box-shadow:0 8px 40px rgba(0,0,0,.65);text-align:center;pointer-events:auto;backdrop-filter:blur(4px)}
+#wozPick.hidden{display:none}
+#wozPick .ptitle{font:700 18px "Microsoft YaHei",sans-serif;color:#ffb488;text-shadow:0 1px 3px #000;margin-bottom:10px;letter-spacing:2px}
+#wozPick .pcards{display:flex;gap:10px}
+#wozPick .pcard{flex:1;padding:10px 8px;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:rgba(30,12,6,.55);cursor:pointer;transition:all .12s}
+#wozPick .pcard:hover{border-color:#ffb488;background:rgba(90,36,14,.7);transform:translateY(-2px)}
+#wozPick .pcard b{display:block;font:700 15px "Microsoft YaHei",sans-serif;color:#ffd9b8}
+#wozPick .pcard kbd{display:inline-block;margin-top:3px;padding:0 7px;border:1px solid rgba(255,140,60,.6);border-radius:4px;color:#ffb488;font:700 11px/16px Consolas,monospace}
+#wozPick .pcard .d{display:block;font:11px/1.5 "Microsoft YaHei",sans-serif;color:#c9b39a;margin:5px 0 6px}
+#wozPick .stat{display:flex;align-items:center;gap:5px;margin-top:3px}
+#wozPick .stat span{width:28px;text-align:left;font:10px "Microsoft YaHei",sans-serif;color:#9a8a7a}
+#wozPick .stat i{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;display:block;text-align:left}
+#wozPick .stat i b{display:inline-block;height:100%;background:linear-gradient(90deg,#ff8a50,#ffce70);border-radius:3px}
+#wozPick .pbar{height:4px;margin-top:10px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden}
+#wozPick .pbar i{display:block;height:100%;width:100%;background:#ff8a50;border-radius:2px}
+#wozPick .phint{margin-top:6px;font:11px "Microsoft YaHei",sans-serif;color:#9a8a7a}
 `;
 
 export class WozHud {
@@ -79,6 +103,19 @@ export class WozHud {
       </div>
       <div id="wozClasses"></div>
       <div id="wozBanner"></div>
+      <div id="wozPick" class="hidden">
+        <div class="ptitle">☠ 选择你的变异者形态</div>
+        <div class="pcards">
+          ${CLASS_PICK.map((k) => `
+            <div class="pcard" data-c="${k.c}">
+              <b>${k.name}</b><kbd>${k.key}</kbd>
+              <span class="d">${k.desc}</span>
+              ${statRow('速度', k.sp)}${statRow('血量', k.hp)}${statRow('技能', k.sk)}
+            </div>`).join('')}
+        </div>
+        <div class="pbar"><i id="wzPickBar"></i></div>
+        <div class="phint">按 5 / 6 / 7 或点击卡片选择 · 超时默认夜行者</div>
+      </div>
     `;
     ui.appendChild(wrap);
     this.el = {
@@ -105,12 +142,16 @@ export class WozHud {
       ringTxt: document.getElementById('wzRingTxt'),
       classes: document.getElementById('wozClasses'),
       banner: document.getElementById('wozBanner'),
+      pick: document.getElementById('wozPick'),
+      pickBar: document.getElementById('wzPickBar'),
     };
     this.bannerT = 0;
+    this.pickShownAt = -1;
+    this.pickBound = false;
   }
 
   unmount() {
-    for (const id of ['wozPanel', 'wozBig', 'wozBlind', 'wozTop', 'wozObj', 'wozDirs', 'wozClasses', 'wozBanner', 'wozStyle']) {
+    for (const id of ['wozPanel', 'wozBig', 'wozBlind', 'wozTop', 'wozObj', 'wozDirs', 'wozClasses', 'wozBanner', 'wozPick', 'wozStyle']) {
       document.getElementById(id)?.remove();
     }
     this.mounted = false;
@@ -175,6 +216,27 @@ export class WozHud {
     this.el.blind.style.opacity = player.alive ? Math.min(1, (player.blindT || 0) / WOZ.blindWailDuration * 1.2) : 0;
     // 子体变身按钮
     const showClasses = mutant && !st.isMother && rules.phase === 'battle';
+    // 感染变身选择面板（WOZ 特色）：尚未主动选择职业时弹出
+    const needPick = !avenger && mutant && !st.isMother && rules.phase === 'battle' && mgr.pickNeeded && mgr.pickNeeded();
+    if (needPick) {
+      if (!this.pickBound) {
+        this.pickBound = true;
+        for (const el of this.el.pick.querySelectorAll('.pcard')) {
+          el.addEventListener('click', () => {
+            if (mgr.rules.setMutantClass(mgr.g.player.id, el.dataset.c)) mgr.playerClassChosen = true;
+          });
+        }
+      }
+      if (this.el.pick.classList.contains('hidden')) this.pickShownAt = this.g.time;
+      this.el.pick.classList.remove('hidden');
+      const left = Math.max(0, 1 - (this.g.time - this.pickShownAt) / 10);
+      this.el.pickBar.style.width = `${left * 100}%`;
+      if (left <= 0) mgr.playerClassChosen = true; // 超时默认夜行者
+      this.el.classes.style.display = 'none';
+    } else {
+      this.el.pick.classList.add('hidden');
+      this.el.classes.style.display = '';
+    }
     if (showClasses && !this.classBtns) {
       this.classBtns = document.createElement('div');
       this.classBtns.innerHTML = `

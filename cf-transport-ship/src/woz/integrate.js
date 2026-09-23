@@ -34,6 +34,7 @@ export class WozManager {
     this.pickups = new Pickups(game);
     this.aiT = 0;
     this.heroGiven = false;
+    this.playerClassChosen = false; // 玩家是否已主动选择变异者职业
   }
 
   // 模式分类：infection 族（感染/复仇/生化）走规则层；对抗/爆破走目标物逻辑
@@ -147,6 +148,7 @@ export class WozManager {
   beginRound() {
     const g = this.g;
     this.round++;
+    this.playerClassChosen = false;
     this.seed = (this.seed * 1103515245 + 12345) >>> 0;
     // 清理尸潮
     for (const z of this.tide) g.renderer.scene.remove(z.soldier.root);
@@ -601,8 +603,16 @@ export class WozManager {
     }
     // 5/6/7 子体变身
     for (const [code, cls] of [['Digit5', MutantClass.Nightrunner], ['Digit6', MutantClass.Souleater], ['Digit7', MutantClass.Devourer]]) {
-      if (p.consumePressed(code)) rules.setMutantClass(p.id, cls);
+      if (p.consumePressed(code) && rules.setMutantClass(p.id, cls)) this.playerClassChosen = true;
     }
+  }
+
+  // 感染变身选择面板：玩家已转化但尚未主动选职业（WOZ 特色交互）
+  pickNeeded() {
+    const rules = this.rules, p = this.g.player;
+    if (!rules || rules.phase !== 'battle' || this.playerClassChosen) return false;
+    const st = rules.state(p.id);
+    return st.side === 'mutant' && !st.isMother;
   }
 
   // ================= 死亡 / 重生 =================
