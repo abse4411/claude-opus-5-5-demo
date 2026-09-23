@@ -441,6 +441,31 @@ export class WozManager {
     return ms;
   }
 
+  // 屏幕外目标方向（未占领据点 / 核弹），供屏幕边缘箭头使用
+  offscreenDirs(cam) {
+    const list = [];
+    const v = new THREE.Vector3();
+    const consider = (x, z, label, css) => {
+      v.set(x, 1.5, z).project(cam);
+      const behind = v.z > 1;
+      if (!behind && Math.abs(v.x) < 0.98 && Math.abs(v.y) < 0.95) return; // 已在屏内
+      let dx = v.x, dy = v.y;
+      if (behind) { dx = -dx; dy = -dy; }
+      if (Math.hypot(dx, dy) < 1e-4) return;
+      list.push({ ang: Math.atan2(dy, dx), label, css });
+    };
+    for (const p of this.points) {
+      if (p.owner === 'GR') continue;
+      consider(p.def.x, p.def.z, p.def.name, p.contested ? '#ffd24a' : '#cfd6dd');
+    }
+    if (this.bomb && this.bomb.state !== 'detonated' && this.bomb.state !== 'destroyed') {
+      const b = this.bomb;
+      const planted = b.state === 'planted' || b.state === 'destroying';
+      consider((planted ? b.pos.x : b.def.x), (planted ? b.pos.z : b.def.z), '☢', planted ? '#ff4030' : '#ffd24a');
+    }
+    return list;
+  }
+
   devourAndSkills(dt) {
     const g = this.g, rules = this.rules;
     void dt;

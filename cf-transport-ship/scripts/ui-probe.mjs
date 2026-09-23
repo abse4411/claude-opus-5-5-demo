@@ -68,14 +68,80 @@ if (ver === 'v1') {
       p.hp = 500; p.armor = 0; p.alive = true;
       p.pos.set(-30, 0.02, 0);
       p.keys.add('KeyE');
-      g.fastForward(4.5, 1 / 30);
+      g.fastForward(6, 1 / 30);
       p.keys.delete('KeyE');
       return { state: g.woz.bomb.state, markers: g.woz.radarMarkers() };
     });
-    check(st.state === 'planted', `爆破: 安放成功 (${st.state})`);
+    check(['planted', 'destroying'].includes(st.state), `爆破: 安放成功 (${st.state})`);
     check(st.markers.some((m) => m.kind === 'bomb'), '爆破: 已安放核弹红点标记');
     await shot('demol');
     await shot('demol-radar', { x: 0, y: 0, width: 240, height: 240 });
+  }
+} else if (ver === 'v2') {
+  // 对抗：悬浮标记 + 屏外方向箭头
+  await goto('&mode=confront');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game;
+      g.fastForward(1, 1 / 30);
+      return g.woz.points.map((p) => ({ n: p.def.name, has: !!p.marker, vis: p.marker.visible, y: +p.marker.position.y.toFixed(2), tex: !!p.marker.material.map }));
+    });
+    check(r.length === 3 && r.every((s) => s.has && s.vis && s.y > 2 && s.tex), `对抗: 3 个据点悬浮标记 (${r.map((s) => `${s.n}@${s.y}m`).join(',')})`);
+    const d = await page.evaluate(() => {
+      const g = window.__game, p = g.player;
+      p.pitch = -1.4; // 俯视 → 据点全部离屏
+      return g.woz.objData();
+    });
+    await page.waitForTimeout(450); // 真实帧驱动相机跟随并刷新 updateObj
+    {
+      const arws = await page.evaluate(() => {
+        const arws = [...document.querySelectorAll('#wozDirs .arw')].filter((e) => e.style.display !== 'none');
+        const ok = arws.every((e) => {
+          const m = /translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)/.exec(e.style.transform);
+          return m && +m[1] >= 0 && +m[1] <= innerWidth && +m[2] >= 0 && +m[2] <= innerHeight;
+        });
+        return { n: arws.length, ok, labels: arws.map((e) => e.textContent.trim()) };
+      });
+      check(arws.n >= 2 && arws.ok, `对抗: 俯视时 ${arws.n} 个屏外箭头均在屏内 (${arws.labels.join(',')})`);
+    }
+    await page.evaluate(() => {
+      const g = window.__game, p = g.player, A = g.woz.points[0].def;
+      p.alive = true; p.hp = Math.max(p.hp, 200); p.armor = 0;
+      p.pos.set(A.x, 0.02, A.z + 8);
+      p.yaw = Math.atan2(-(A.x - p.pos.x), -(A.z - p.pos.z));
+      p.pitch = 0.08;
+      g.fastForward(0.3, 1 / 30);
+    });
+    await page.waitForTimeout(300);
+    await shot('confront-marker');
+  }
+  // 爆破：站点金色标记 → 安放后红色跟随
+  await goto('&mode=demol');
+  {
+    const pre = await page.evaluate(() => {
+      const g = window.__game, b = g.woz.bomb;
+      return { vis: b.marker.visible, x: b.marker.position.x, z: b.marker.position.z };
+    });
+    check(pre.vis && Math.abs(pre.x + 30) < 0.1, `爆破: 站点 ☢ 标记于巢穴 (${pre.x | 0},${pre.z | 0})`);
+    const st = await page.evaluate(() => {
+      const g = window.__game, p = g.player;
+      g.fastForward(3.5, 1 / 30);
+      for (const a of g.actors) {
+        if (!a || a === p || !a.alive || a.protectT > 0) continue;
+        g.damage(a, null, 99999, 'chest', 'he', { x: 1, z: 0 }, false);
+      }
+      p.hp = 500; p.armor = 0; p.alive = true;
+      p.pos.set(-30, 0.02, 0);
+      p.keys.add('KeyE');
+      g.fastForward(6, 1 / 30);
+      p.keys.delete('KeyE');
+      const b = g.woz.bomb;
+      return { state: b.state, key: b.mkKey, mx: +b.marker.position.x.toFixed(1), mz: +b.marker.position.z.toFixed(1), bx: +b.pos.x.toFixed(1), bz: +b.pos.z.toFixed(1) };
+    });
+    check(['planted', 'destroying'].includes(st.state) && st.key === 'bomb' && Math.abs(st.mx - st.bx) < 0.15 && Math.abs(st.mz - st.bz) < 0.15,
+      `爆破: 安放后标记转红跟随核弹 (mk ${st.mx},${st.mz} vs ${st.bx},${st.bz})`);
+    await page.waitForTimeout(300);
+    await shot('demol-marker');
   }
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);

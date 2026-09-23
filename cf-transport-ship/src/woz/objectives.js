@@ -9,6 +9,57 @@ const COL = {
   BL: 0xd94a3a,
 };
 
+// 目标点悬浮标记（世界内精灵，穿墙可见；颜色随归属/状态刷新）
+const MKR = { GR: '#4fa0ff', BL: '#ff6a4a', none: '#cfd6dd', gold: '#ffd24a', red: '#ff4030' };
+
+function hexPath(x, cx, cy, r) {
+  x.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = Math.PI / 6 + i * Math.PI / 3;
+    const px = cx + Math.cos(a) * r, py = cy + Math.sin(a) * r;
+    i ? x.lineTo(px, py) : x.moveTo(px, py);
+  }
+  x.closePath();
+}
+
+function drawLetterMarker(x, col, label) {
+  x.clearRect(0, 0, 128, 128);
+  x.globalAlpha = 0.82; x.fillStyle = '#0a0e12'; hexPath(x, 64, 58, 42); x.fill(); x.globalAlpha = 1;
+  x.lineWidth = 7; x.strokeStyle = col; hexPath(x, 64, 58, 42); x.stroke();
+  x.fillStyle = col; x.font = '700 50px "Microsoft YaHei",sans-serif';
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(label, 64, 60);
+  x.beginPath(); x.moveTo(64, 104); x.lineTo(80, 124); x.lineTo(48, 124); x.closePath();
+  x.fillStyle = col; x.fill();
+}
+
+function drawNukeMarker(x, col) {
+  x.clearRect(0, 0, 128, 128);
+  x.globalAlpha = 0.82; x.beginPath(); x.arc(64, 58, 38, 0, 7); x.fillStyle = '#140e02'; x.fill(); x.globalAlpha = 1;
+  x.lineWidth = 7; x.strokeStyle = col; x.beginPath(); x.arc(64, 58, 38, 0, 7); x.stroke();
+  x.fillStyle = col; x.font = '700 46px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText('☢', 64, 60);
+  x.beginPath(); x.moveTo(64, 104); x.lineTo(80, 124); x.lineTo(48, 124); x.closePath(); x.fill();
+}
+
+function markerSprite() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d');
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false }));
+  spr.renderOrder = 999;
+  spr.scale.set(1.6, 1.6, 1);
+  spr.userData = { x, tex };
+  return spr;
+}
+
+function refreshMarker(spr, col, label) {
+  if (label !== undefined) drawLetterMarker(spr.userData.x, col, label);
+  else drawNukeMarker(spr.userData.x, col);
+  spr.userData.tex.needsUpdate = true;
+}
+
 function zoneRing(x, z, r, color) {
   const geo = new THREE.RingGeometry(r - 0.35, r, 40);
   geo.rotateX(-Math.PI / 2);
@@ -28,6 +79,11 @@ export class CapturePoint {
     this.contested = false;
     this.ring = zoneRing(def.x, def.z, def.r, COL.none);
     game.renderer.scene.add(this.ring);
+    this.marker = markerSprite();
+    this.marker.position.set(def.x, 2.6, def.z);
+    refreshMarker(this.marker, MKR.none, def.name);
+    this.mkKey = 'none';
+    game.renderer.scene.add(this.marker);
   }
 
   humansIn() {
@@ -60,11 +116,20 @@ export class CapturePoint {
     const c = this.contested ? 0xffd24a : COL[this.owner];
     this.ring.material.color.setHex(c);
     this.ring.material.opacity = 0.4 + Math.abs(Math.sin(this.game.time * 2)) * (this.contested ? 0.4 : 0.15);
+    // 悬浮标记：归属色 / 争夺金色脉冲 / 上下浮动
+    const key = this.contested ? 'c' : this.owner;
+    if (key !== this.mkKey) {
+      this.mkKey = key;
+      refreshMarker(this.marker, this.contested ? MKR.gold : MKR[this.owner] || MKR.none, this.def.name);
+    }
+    this.marker.position.y = 2.55 + Math.sin(this.game.time * 1.7 + this.def.x) * 0.1;
+    this.marker.material.opacity = this.contested ? 0.68 + 0.32 * Math.abs(Math.sin(this.game.time * 6)) : 0.96;
     return null;
   }
 
   dispose() {
     this.game.renderer.scene.remove(this.ring);
+    this.game.renderer.scene.remove(this.marker);
   }
 }
 
@@ -96,8 +161,13 @@ export class NuclearBomb {
     this.light = light;
     this.mesh = g;
     this.ring = zoneRing(def.x, def.z, def.r, 0xd9b13a);
+    this.marker = markerSprite();
+    this.marker.position.set(def.x, 2.6, def.z);
+    refreshMarker(this.marker, MKR.gold);
+    this.mkKey = 'idle';
     game.renderer.scene.add(this.mesh);
     game.renderer.scene.add(this.ring);
+    game.renderer.scene.add(this.marker);
   }
 
   inSite(a) {
@@ -174,11 +244,30 @@ export class NuclearBomb {
       }
     }
     void g;
+    // 悬浮标记：站点金色呼吸 / 已安放红色快闪跟随 / 结束隐藏
+    const st = this.state;
+    if (st === 'detonated' || st === 'destroyed') {
+      this.marker.visible = false;
+    } else {
+      this.marker.visible = true;
+      const planted = st === 'planted' || st === 'destroying';
+      const key = planted ? 'bomb' : 'site';
+      if (key !== this.mkKey) {
+        this.mkKey = key;
+        refreshMarker(this.marker, planted ? MKR.red : MKR.gold);
+      }
+      const px = planted ? this.pos.x : this.def.x, pz = planted ? this.pos.z : this.def.z;
+      this.marker.position.set(px, 2.55 + Math.sin(g.time * 1.7) * 0.1, pz);
+      this.marker.material.opacity = planted
+        ? 0.45 + 0.55 * Math.abs(Math.sin(g.time * 9))
+        : 0.65 + 0.3 * Math.abs(Math.sin(g.time * 2.5));
+    }
     return ev;
   }
 
   dispose() {
     this.game.renderer.scene.remove(this.mesh);
     this.game.renderer.scene.remove(this.ring);
+    this.game.renderer.scene.remove(this.marker);
   }
 }

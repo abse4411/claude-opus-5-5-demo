@@ -22,6 +22,10 @@ const PANEL_CSS = `
 #wozObj .oBL{color:#ff9b70;border-color:rgba(230,90,60,.6)}
 #wozObj .oNone{color:#cfd6dd}
 #wozObj .bomb{color:#ffd24a;border-color:rgba(255,210,74,.7);font-size:17px}
+#wozDirs{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+#wozDirs .arw{position:absolute;left:0;top:0;will-change:transform;color:#fff}
+#wozDirs .tri{position:absolute;left:-9px;top:-10px;width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:18px solid currentColor;filter:drop-shadow(0 1px 3px rgba(0,0,0,.85))}
+#wozDirs .lab{position:absolute;font:700 13px "Microsoft YaHei",sans-serif;text-shadow:0 1px 3px #000;transform:translate(-50%,-50%)}
 `;
 
 export class WozHud {
@@ -43,6 +47,7 @@ export class WozHud {
       <div id="wozBlind"></div>
       <div id="wozTop"></div>
       <div id="wozObj"></div>
+      <div id="wozDirs"></div>
       <div id="wozPanel">
         <div class="card">
           <div class="role" id="wzRole">人类保卫军</div>
@@ -61,6 +66,7 @@ export class WozHud {
       blind: document.getElementById('wozBlind'),
       top: document.getElementById('wozTop'),
       obj: document.getElementById('wozObj'),
+      dirs: document.getElementById('wozDirs'),
       panel: document.getElementById('wozPanel'),
       role: document.getElementById('wzRole'),
       hp: document.getElementById('wzHp'),
@@ -78,7 +84,7 @@ export class WozHud {
   }
 
   unmount() {
-    for (const id of ['wozPanel', 'wozBlind', 'wozTop', 'wozClasses', 'wozBanner', 'wozStyle']) {
+    for (const id of ['wozPanel', 'wozBlind', 'wozTop', 'wozObj', 'wozDirs', 'wozClasses', 'wozBanner', 'wozStyle']) {
       document.getElementById(id)?.remove();
     }
     this.mounted = false;
@@ -158,9 +164,10 @@ export class WozHud {
     }
   }
 
-  // 目标物模式顶栏：据点归属/进度 + 核弹状态
+  // 目标物模式顶栏：据点归属/进度 + 核弹状态（每帧由 tickConfront/tickDemol 调用）
   updateObj(data) {
     if (!this.mounted) return;
+    this.updateDirs(this.g.woz);
     let html = '';
     for (const p of data.points) {
       const cls = p.owner === 'GR' ? 'oGR' : p.owner === 'BL' ? 'oBL' : 'oNone';
@@ -187,6 +194,39 @@ export class WozHud {
       html += `<div class="pt oGR">增益<small>${b.join(' · ')}</small></div>`;
     }
     this.el.obj.innerHTML = html;
+  }
+
+  // 屏幕外目标方向箭头（未占领据点 / 核弹），贴屏幕边缘指向
+  updateDirs(mgr) {
+    if (!mgr.offscreenDirs) return;
+    const dirs = mgr.offscreenDirs(this.g.renderer.camera);
+    const pool = this.dirPool || (this.dirPool = []);
+    while (pool.length < dirs.length) {
+      const root = document.createElement('div');
+      root.className = 'arw';
+      root.innerHTML = '<i class="tri"></i><b class="lab"></b>';
+      this.el.dirs.appendChild(root);
+      pool.push({ root, tri: root.querySelector('.tri'), lab: root.querySelector('.lab') });
+    }
+    const cx = innerWidth / 2, cy = innerHeight / 2, inset = 70;
+    for (let i = 0; i < pool.length; i++) {
+      const el = pool[i];
+      if (i >= dirs.length) { el.root.style.display = 'none'; continue; }
+      el.root.style.display = '';
+      const d = dirs[i];
+      const ang = -d.ang; // NDC(y 上正) → CSS(y 下正)
+      const c = Math.cos(ang), s = Math.sin(ang);
+      const t = Math.min(
+        Math.abs(c) > 1e-4 ? (cx - inset) / Math.abs(c) : 1e9,
+        Math.abs(s) > 1e-4 ? (cy - inset) / Math.abs(s) : 1e9,
+      );
+      el.root.style.color = d.css;
+      el.root.style.transform = `translate(${(cx + c * t).toFixed(1)}px,${(cy + s * t).toFixed(1)}px)`;
+      el.tri.style.transform = `rotate(${ang}rad)`;
+      el.lab.style.left = `${(-c * 36).toFixed(1)}px`;
+      el.lab.style.top = `${(-s * 36).toFixed(1)}px`;
+      el.lab.textContent = d.label;
+    }
   }
 
   avengerBanner(name) {

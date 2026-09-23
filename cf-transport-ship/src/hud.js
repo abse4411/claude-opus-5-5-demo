@@ -121,7 +121,8 @@ export class HUD {
     e.sBL.textContent = s.score.BL; e.sGR.textContent = s.score.GR;
     const tl = Math.max(0, s.timeLeft), mm = (tl / 60) | 0, ss = (tl % 60) | 0;
     e.sTime.textContent = `${mm}:${ss < 10 ? '0' : ''}${ss}`;
-    e.sGoal.textContent = `团队竞技 · 目标 ${s.goal}`;
+    const WOZ_MODE_CN = { infection: '生化感染', revenge: '生化复仇', bio: '生化模式', confront: '生化对抗', demol: '生化爆破' };
+    e.sGoal.textContent = this.g.woz ? (WOZ_MODE_CN[this.g.opts.mode] || '') : `团队竞技 · 目标 ${s.goal}`;
     e.tBL.classList.toggle('mine', s.myTeam === 'BL'); e.tGR.classList.toggle('mine', s.myTeam === 'GR');
     // 生命护甲
     e.hpVal.textContent = Math.max(0, Math.ceil(s.hp));
