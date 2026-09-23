@@ -843,6 +843,13 @@ export class Game {
       yaw: p.yaw, respawnIn: p.respawnT, killedBy: this.killedBy, protect: p.protectT, aimName, aimTeam,
     });
     this.hud.drawRadar(p, this.actors, this.time, this.woz ? this.woz.radarMarkers() : null);
+    // 底部中央情境提示条：目标区域 > 武器拾取
+    let prompt = this.woz ? this.woz.promptFor(p) : null;
+    if (!prompt && p.alive && !(this.woz?.rules?.isMutantSide(p.id))) {
+      const gg = this.nearGroundGun(p);
+      if (gg) prompt = { kind: 'gold', title: `按 <kbd>E</kbd> 拾取 ${WEAPONS[gg.id].name}`, sub: `弹匣 ${gg.mag} / 备弹 ${gg.reserve}` };
+    }
+    this.hud.setPrompt(prompt);
     const tab = p.keys.has('Tab') && this.playing && !this.paused;
     if (tab !== this.boardShown || (tab && this.frame % 20 === 0)) { this.boardShown = tab; this.hud.scoreboard(tab, this.actors, p.id, this.score); }
   }

@@ -143,6 +143,66 @@ if (ver === 'v1') {
     await page.waitForTimeout(300);
     await shot('demol-marker');
   }
+} else if (ver === 'v3') {
+  const clearAround = () => page.evaluate(() => {
+    const g = window.__game, p = g.player;
+    g.fastForward(3.5, 1 / 30);
+    for (const a of g.actors) {
+      if (!a || a === p || !a.alive || a.protectT > 0) continue;
+      g.damage(a, null, 99999, 'chest', 'he', { x: 1, z: 0 }, false);
+    }
+    p.hp = 500; p.armor = 0; p.alive = true;
+  });
+  // 爆破：站点内安放提示 → 按住 E 安放进度
+  await goto('&mode=demol');
+  {
+    await clearAround();
+    await page.evaluate(() => { window.__game.player.pos.set(-30, 0.02, 0); });
+    await page.waitForTimeout(400);
+    const pr = await page.evaluate(() => {
+      const e = document.getElementById('prompt');
+      return { on: e.classList.contains('on'), cls: e.className, text: e.textContent, hasKbd: !!e.querySelector('kbd') };
+    });
+    check(pr.on && pr.cls.includes('gold') && pr.hasKbd && pr.text.includes('安放核弹'), `爆破: 站点内提示 [${pr.text.trim()}]`);
+    await shot('demol-prompt');
+    await page.evaluate(() => { const g = window.__game, p = g.player; p.keys.add('KeyE'); g.fastForward(1.6, 1 / 30); });
+    await page.waitForTimeout(250); // 真实帧刷新提示条
+    const pr2 = await page.evaluate(() => {
+      const e = document.getElementById('prompt');
+      const w = e.querySelector('.bar i');
+      return { text: e.textContent, width: w ? w.style.width : '' };
+    });
+    await page.evaluate(() => window.__game.player.keys.delete('KeyE'));
+    check(pr2.text.includes('正在安放') && parseFloat(pr2.width) > 0, `爆破: 安放中进度条 (${pr2.text.trim()} / ${pr2.width})`);
+  }
+  // 对抗：驻留占领提示 + 进度增长
+  await goto('&mode=confront');
+  {
+    await clearAround();
+    await page.evaluate(() => {
+      const g = window.__game, p = g.player, A = g.woz.points[0].def;
+      p.pos.set(A.x, 0.02, A.z);
+    });
+    await page.waitForTimeout(600);
+    const pr = await page.evaluate(() => {
+      const e = document.getElementById('prompt');
+      const w = e.querySelector('.bar i');
+      return { cls: e.className, text: e.textContent, width: w ? parseFloat(w.style.width) : -1 };
+    });
+    check(pr.cls.includes('blue') && pr.text.includes('占领') && pr.width > 0, `对抗: 占领提示条 (${pr.text.trim()} / ${pr.width}%)`);
+    await shot('confront-prompt');
+  }
+  // TDM：地面武器拾取提示
+  await goto('');
+  {
+    await page.evaluate(() => { const g = window.__game; g.fastForward(3.5, 1 / 30); g.dropGun(g.player); });
+    await page.waitForTimeout(300);
+    const pr = await page.evaluate(() => {
+      const e = document.getElementById('prompt');
+      return { on: e.classList.contains('on'), text: e.textContent };
+    });
+    check(pr.on && pr.text.includes('拾取'), `TDM: 武器拾取提示 (${pr.text.trim()})`);
+  }
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

@@ -15,7 +15,7 @@ const PANEL_CSS = `
 #wozClasses button{width:112px;padding:8px 0;border:1px solid rgba(255,140,60,.55);border-radius:8px;background:rgba(30,12,6,.72);color:#ffb488;font:600 13px "PingFang SC","Microsoft YaHei",sans-serif;cursor:pointer}
 #wozClasses button:hover{background:rgba(80,30,12,.85);color:#ffd9b8}
 #wozBanner{position:absolute;top:20%;left:50%;transform:translateX(-50%);font:700 34px "PingFang SC","Microsoft YaHei",sans-serif;color:#60e0ff;text-shadow:0 0 18px rgba(60,180,255,.8),0 2px 4px #000;opacity:0;transition:opacity .4s;pointer-events:none;white-space:nowrap}
-#wozObj{position:absolute;top:46px;left:50%;transform:translateX(-50%);display:flex;gap:10px;pointer-events:none}
+#wozObj{position:absolute;top:78px;left:50%;transform:translateX(-50%);display:flex;gap:10px;pointer-events:none}
 #wozObj .pt{min-width:64px;padding:4px 10px;border-radius:6px;background:rgba(8,10,14,.66);border:1px solid rgba(255,255,255,.16);font:700 15px "PingFang SC","Microsoft YaHei",sans-serif;text-align:center;text-shadow:0 1px 2px #000}
 #wozObj .pt small{display:block;font-size:10px;font-weight:400;opacity:.85}
 #wozObj .oGR{color:#8cc8ff;border-color:rgba(90,160,230,.6)}

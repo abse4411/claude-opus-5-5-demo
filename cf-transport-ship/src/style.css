@@ -95,6 +95,19 @@ body.lk #clinks{opacity:.22}
 #center .big{font-size:26px;font-weight:700;letter-spacing:2px}
 #center .small{font-size:15px;color:var(--hudDim);margin-top:6px}
 #toast{position:absolute;left:50%;top:18%;transform:translateX(-50%);font-size:18px;text-shadow:0 2px 3px #000;transition:opacity .4s;white-space:nowrap}
+#prompt{position:absolute;left:50%;bottom:168px;transform:translateX(-50%);opacity:0;transition:opacity .15s;pointer-events:none;text-align:center;white-space:nowrap}
+#prompt.on{opacity:1}
+#prompt .pcard{display:inline-block;min-width:250px;max-width:440px;padding:9px 18px;border-radius:10px;background:rgba(8,10,14,.78);border:1px solid rgba(255,255,255,.22);box-shadow:0 4px 18px rgba(0,0,0,.5)}
+#prompt .ttl{font:700 15px "PingFang SC","Microsoft YaHei",sans-serif;color:#f2f5f8;text-shadow:0 1px 2px #000}
+#prompt kbd{display:inline-block;min-width:18px;padding:0 6px;margin:0 3px;border:1px solid #ffd24a;border-radius:5px;color:#ffd24a;font:700 13px/18px Consolas,monospace;text-align:center}
+#prompt .bar{height:8px;margin-top:7px;background:rgba(255,255,255,.16);border-radius:4px;overflow:hidden}
+#prompt .bar i{display:block;height:100%;width:0;background:#ffd24a;border-radius:4px;transition:width .1s}
+#prompt .sub{margin-top:4px;font:12px "PingFang SC","Microsoft YaHei",sans-serif;color:#c3ccd4}
+#prompt.gold .pcard{border-color:rgba(255,210,74,.7)}
+#prompt.blue .pcard{border-color:rgba(90,160,230,.7)}
+#prompt.blue .bar i{background:#4fa0ff}
+#prompt.red .pcard{border-color:rgba(255,90,60,.75)}
+#prompt.red .bar i{background:#ff5038}
 #protect{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);color:#8fd0ff;font-size:14px;letter-spacing:2px;text-shadow:0 1px 2px #000}
 #nameTip{position:absolute;left:50%;top:calc(50% + 26px);transform:translateX(-50%);font-size:14px;font-weight:700;text-shadow:0 1px 2px #000}
 #nameTip.BL{color:var(--bl2)} #nameTip.GR{color:var(--gr2)}

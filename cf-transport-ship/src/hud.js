@@ -215,6 +215,26 @@ export class HUD {
     b.classList.add('show');
   }
   toast(text, dur = 2.5) { const t = this.el.toast; t.innerHTML = text; t.style.opacity = 1; this.toastT = dur; }
+  // 底部中央情境交互提示条（目标区域 / 拾取），每帧由 game.updateHud 驱动
+  setPrompt(p) {
+    const e = this.el.prompt;
+    if (!p) {
+      if (this.promptOn) { e.classList.remove('on'); this.promptOn = false; this.promptSig = ''; }
+      return;
+    }
+    const sig = p.kind + '|' + p.title + '|' + (p.sub || '');
+    if (sig !== this.promptSig) {
+      this.promptSig = sig;
+      e.className = p.kind;
+      e.innerHTML = `<div class="pcard"><div class="ttl">${p.title}</div>${p.prog !== undefined ? '<div class="bar"><i></i></div>' : ''}${p.sub ? `<div class="sub">${p.sub}</div>` : ''}</div>`;
+      e.classList.add('on');
+      this.promptOn = true;
+    }
+    if (p.prog !== undefined) {
+      const bar = e.querySelector('.bar i');
+      if (bar) bar.style.width = `${Math.max(0, Math.min(1, p.prog)) * 100}%`;
+    }
+  }
   scoreboard(show, actors, myId, score) {
     this.el.board.classList.toggle('hidden', !show);
     if (!show) return;
@@ -418,6 +438,7 @@ const TEMPLATE = `
   <div id="badge"><div class="ico"></div><div class="txt"></div><div class="sub"></div></div>
   <div id="center" class="hidden"><div class="big" id="cBig"></div><div class="small" id="cSmall"></div></div>
   <div id="toast"></div>
+  <div id="prompt"></div>
   <div id="protect"></div>
   <div id="nameTip"></div>
   <div id="board" class="hidden tbl"><h3><span>运输船 · 团队竞技</span><span>Tab</span></h3><div id="boardBody"></div></div>

@@ -466,6 +466,56 @@ export class WozManager {
     return list;
   }
 
+  // 玩家所处目标区域的情境交互提示（null = 无提示）
+  promptFor(p) {
+    if (!p || !p.alive) return null;
+    const human = p.team === 'GR';
+    for (const pt of this.points) {
+      const d = Math.hypot(p.pos.x - pt.def.x, p.pos.z - pt.def.z);
+      if (d > pt.def.r) continue;
+      if (human) {
+        if (pt.contested) return { kind: 'gold', title: '据点争夺冻结！', sub: '击退区域内变异者即可推进占领', prog: pt.progress / 100 };
+        if (pt.owner === 'GR') {
+          const buffs = { A: '攻击 +10%', B: '弹药持续补给', C: '移动速度 +8%' }[pt.def.name];
+          return { kind: 'blue', title: `${pt.def.name} 点已占领`, sub: buffs ? `增益生效：${buffs}` : '守住据点' };
+        }
+        return { kind: 'blue', title: `正在占领 ${pt.def.name} 点`, sub: '保持驻留直到进度走满', prog: pt.progress / 100 };
+      }
+      if (pt.contested) return { kind: 'red', title: '人类正在抢占据点！', sub: '冲入据点击退他们', prog: pt.progress / 100 };
+      if (pt.owner !== 'BL') return { kind: 'red', title: `人类占领 ${pt.def.name} 点中`, sub: '进入据点阻止占领', prog: pt.progress / 100 };
+      return { kind: 'red', title: `${pt.def.name} 点已控制`, sub: '继续守住据点' };
+    }
+    if (this.bomb) {
+      const b = this.bomb;
+      const siteD = Math.hypot(p.pos.x - b.def.x, p.pos.z - b.def.z);
+      const bombD = Math.hypot(p.pos.x - b.pos.x, p.pos.z - b.pos.z);
+      if (human) {
+        if (b.state === 'idle' && siteD <= b.def.r) {
+          return { kind: 'gold', title: '按住 <kbd>E</kbd> 安放核弹', sub: `安放需 ${DEMOL.plantTime} 秒 · 率先安放者进化为英雄`, prog: 0 };
+        }
+        if (b.state === 'planting' && siteD <= b.def.r) return { kind: 'gold', title: '正在安放核弹…', sub: '松开 E 将中断安放', prog: b.progress };
+        if (b.state === 'planted' || b.state === 'destroying') {
+          return {
+            kind: 'red',
+            title: `核弹已安放 · ${Math.max(0, Math.ceil(b.timer))}s 后引爆`,
+            sub: bombD <= b.def.r + 4 ? '警报：变异者正在摧毁核弹！' : '撤离或防守核弹',
+            prog: 1 - Math.max(0, b.timer) / DEMOL.bombTime,
+          };
+        }
+      } else {
+        if ((b.state === 'idle' || b.state === 'planting') && siteD <= b.def.r + 4) {
+          return b.state === 'idle'
+            ? { kind: 'red', title: '巢穴防线', sub: '阻止人类在此安放核弹！' }
+            : { kind: 'red', title: '人类正在安放核弹！', sub: '冲进站点打断他们！' };
+        }
+        if (b.state === 'planted' && bombD <= 3.5) return { kind: 'red', title: '正在摧毁核弹…', sub: '停留在核弹旁保持摧毁进度', prog: b.progress };
+        if (b.state === 'planted') return { kind: 'red', title: `核弹已安放 · ${Math.max(0, Math.ceil(b.timer))}s`, sub: '靠近核弹将其摧毁！' };
+        if (b.state === 'destroying' && bombD <= 3.5) return { kind: 'red', title: '正在摧毁核弹…', sub: '停留直到摧毁完成', prog: b.progress };
+      }
+    }
+    return null;
+  }
+
   devourAndSkills(dt) {
     const g = this.g, rules = this.rules;
     void dt;
