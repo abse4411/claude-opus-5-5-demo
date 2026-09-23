@@ -15,12 +15,14 @@ import { buildGunMerged } from './guns.js';
 import { Player } from './player.js';
 import { Bot, BOT_NAMES } from './bots.js';
 import { TouchControls } from './touch.js';
+import { Zones } from './woz/zones.js';
 import { WozManager } from './woz/integrate.js';
 
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
 const MULTI = ['', '', 'DOUBLE KILL', 'TRIPLE KILL', 'MULTI KILL', 'ULTRA KILL', 'RAMPAGE', 'UNSTOPPABLE', 'GODLIKE'];
 const MULTI_CN = ['', '', '双杀', '三杀', '四杀', '五杀', '六杀！', '无人能挡', '超神'];
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _d = new THREE.Vector3();
+const dir0 = { x: 0, z: 1 };
 
 export class Game {
   constructor() {
@@ -30,6 +32,7 @@ export class Game {
     this.score = { BL: 0, GR: 0 };
     this.audio = audio;
     this.woz = null;
+    this.zones = new Zones(this);
     this.qs = new URLSearchParams(location.search);
   }
   async init() {
@@ -66,6 +69,7 @@ export class Game {
     this.hud.loading(0.88, '武器图标 / 预编译着色器');
     await nextFrame();
     this.hud.setIcons(this.makeIcons());
+    // 投掷卡片图标随武器图标一并生成（makeIcons 遍历 WEAPONS 全部键）
     this.lampLights();
     this.renderer.camera.position.set(-20, 12, 30); this.renderer.camera.lookAt(0, 2, 0);
     try { this.renderer.renderer.compile(this.renderer.scene, this.renderer.camera); } catch (e) { /* 忽略 */ }
@@ -256,6 +260,18 @@ export class Game {
   closeLoadout() {
     this.inLoadout = false; this.hud.show(null); this.lock();
   }
+  chooseGrenade(id) {
+    const p = this.player;
+    p.nextGrenade = id; this.opts.grenade = id; this.hud.saveOpts();
+    const inSpawn = p.alive && (p.team === 'BL' ? p.pos.x < -28.3 : p.pos.x > 28.3);
+    if (inSpawn) {
+      p.inv[3] = new (p.inv[3].constructor)(id);
+      p.slot = 3; p.readyAt = this.time + WEAPONS[id].draw; p.soldier.setWeapon(id);
+      this.vm.equip(id, WEAPONS[id].draw); this.hud.slots(p.inv, 3);
+      this.hud.toast(`已换用 ${WEAPONS[id].name}`, 1.5);
+    } else this.hud.toast(`复活后使用 ${WEAPONS[id].name}`, 1.5);
+    audio.playUI('buy');
+  }
   chooseLoadout(id) {
     const p = this.player;
     p.nextPrimary = id; this.opts.primary = id; this.hud.saveOpts();
@@ -430,7 +446,7 @@ export class Game {
     const vel = dir.clone().multiplyScalar(16).add(new THREE.Vector3(0, 2.8, 0)).addScaledVector(a.vel, 0.6);
     const mesh = buildGunMerged('he'); mesh.scale.setScalar(1.3);
     mesh.position.copy(pos); this.renderer.scene.add(mesh);
-    this.nades.push({ mesh, pos, vel, fuse: WEAPONS.he.fuse, owner: a, spin: new THREE.Vector3(Math.random() * 10, Math.random() * 10, 0) });
+    this.nades.push({ id: a.weapon.id, mesh, pos, vel, fuse: WEAPONS[a.weapon.id]?.fuse ?? WEAPONS.he.fuse, owner: a, spin: new THREE.Vector3(Math.random() * 10, Math.random() * 10, 0) });
     audio.playGrenadeThrow();
     if (a.isPlayer) audio.announce('Fire in the hole!');
     for (const b of this.actors) if (b.hear && b.team !== a.team && b.pos.distanceTo(pos) < 20) b.hear(pos, false);
@@ -459,12 +475,25 @@ export class Game {
       }
       n.mesh.position.copy(n.pos);
       n.mesh.rotation.x += n.spin.x * dt; n.mesh.rotation.y += n.spin.y * dt;
-      if (n.fuse <= 0) { this.explode(n.pos.clone(), n.owner); this.renderer.scene.remove(n.mesh); return false; }
+      if (n.fuse <= 0) { this.explode(n.pos.clone(), n.owner, n.id); this.renderer.scene.remove(n.mesh); return false; }
       return true;
     });
   }
-  explode(p, owner) {
-    const d = WEAPONS.he;
+  explode(p, owner, wid = 'he') {
+    void 0;
+    if (wid === 'molotov' || wid === 'frost' || wid === 'gas') {
+      this.zones.spawn(wid === 'molotov' ? 'fire' : wid, p.clone());
+      this.fx.explosion(p);
+      audio.playExplosion(p);
+      // 投掷型区域武器：燃烧/毒雾小量即时伤害 + 持续区域
+      for (const a of this.actors) {
+        if (!a.alive) continue;
+        const c = a.soldier.chestWorld(new THREE.Vector3());
+        if (c.distanceTo(p) <= 2.2) this.damage(a, owner, wid === 'frost' ? 6 : 14, 'chest', wid, dir0, false);
+      }
+      return;
+    }
+    const d = WEAPONS[wid] || WEAPONS.he;
     this.fx.explosion(p);
     audio.playExplosion(p);
     const camD = this.renderer.camera.position.distanceTo(p);
@@ -638,6 +667,7 @@ export class Game {
         }
       }
       this.updateNades(dt);
+      this.zones.update(dt);
       if (this.woz) this.woz.tick(dt);
       if (this.timeLeft <= 0 && !this.ended && !this.woz) this.endMatch();
       // 队友名字

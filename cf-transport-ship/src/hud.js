@@ -84,6 +84,12 @@ export class HUD {
         for (const x of this.root.querySelectorAll('#loadCards .card')) x.classList.toggle('on', x === c);
       });
     }
+    for (const c of this.root.querySelectorAll('#nadeCards .card')) {
+      c.addEventListener('click', () => {
+        this.g.chooseGrenade?.(c.dataset.g);
+        for (const x of this.root.querySelectorAll('#nadeCards .card')) x.classList.toggle('on', x === c);
+      });
+    }
     $('#btnLoadClose').addEventListener('click', () => this.g.closeLoadout());
     if (matchMedia('(pointer:coarse)').matches) $('#touchNote').classList.remove('hidden');
     for (const a of this.root.querySelectorAll('#clinks a, .mlinks a'))
@@ -92,6 +98,7 @@ export class HUD {
   setIcons(icons) {
     this.icons = icons;
     for (const c of this.root.querySelectorAll('#loadCards .card')) c.querySelector('img').src = icons[c.dataset.w] || '';
+    for (const c of this.root.querySelectorAll('#nadeCards .card')) c.querySelector('img').src = icons[c.dataset.g] || '';
   }
   syncControls() {
     const o = this.opts;
@@ -311,6 +318,12 @@ const PRIM_CARDS = PRIMARIES.map((id) => {
   return `<div class="card" data-w="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
 }).join('');
 
+const NADE_CARDS = ['he', 'molotov', 'frost', 'gas'].map((id) => {
+  const d = WEAPONS[id];
+  const sub = { he: '高爆 · 范围杀伤', molotov: '火海 · 持续灼烧', frost: '寒爆 · 大幅冻缓', gas: '毒雾 · 持续毒伤' }[id];
+  return `<div class="card" data-g="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
+}).join('');
+
 const TEMPLATE = `
 <div id="hud" class="hidden">
   <div id="score">
@@ -395,6 +408,8 @@ const TEMPLATE = `
 
 <div id="loadout" class="screen hidden"><div class="loadBox"><h2>更换主武器</h2><div class="sub">复活时生效；在出生点内立即生效。副武器沙漠之鹰、军刀、手雷自动配备。</div>
   <div class="cards" id="loadCards">${PRIM_CARDS}</div>
+    <div class="opt"><div class="lab">投掷武器</div></div>
+    <div class="cards" id="nadeCards">${NADE_CARDS}</div>
   <button class="go sec" id="btnLoadClose" style="margin-top:14px">确 定（B）</button>
 </div></div>
 

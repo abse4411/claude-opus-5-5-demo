@@ -122,6 +122,18 @@ export const WEAPONS = {
     recoil: { up: 0.04, upMax: 0.09, side: 0.008, sideStart: 1, recover: 5 },
     sound: 'deagle', hudName: 'R8 REVOLVER',
   },
+  molotov: {
+    id: 'molotov', name: '燃烧瓶', slot: 3, type: 'grenade', auto: false,
+    dmg: 14, radius: 3.2, fuse: 1.8, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'MOLOTOV', mag: 1, reserve: 0,
+  },
+  frost: {
+    id: 'frost', name: '冻结弹', slot: 3, type: 'grenade', auto: false,
+    dmg: 6, radius: 4.6, fuse: 2.0, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'FROST GRENADE', mag: 1, reserve: 0,
+  },
+  gas: {
+    id: 'gas', name: '毒气弹', slot: 3, type: 'grenade', auto: false,
+    dmg: 9, radius: 3.6, fuse: 2.2, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'GAS GRENADE', mag: 1, reserve: 0,
+  },
   he: {
     id: 'he', name: '手雷', slot: 3, type: 'grenade', auto: false,
     dmg: 115, radius: 7.5, fuse: 2.6, knock: 9, stagger: 0.5, count: 1, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'HE GRENADE', mag: 1, reserve: 0,

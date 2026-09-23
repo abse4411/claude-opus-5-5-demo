@@ -35,7 +35,7 @@ export class Actor {
   }
   giveLoadout(primary) {
     this.primary = primary || this.primary;
-    this.inv = [new WeaponState(this.primary), new WeaponState('deagle'), new WeaponState('knife'), new WeaponState('he')];
+    this.inv = [new WeaponState(this.primary), new WeaponState('deagle'), new WeaponState('knife'), new WeaponState(this.nextGrenade || 'he')];
     for (const w of this.inv) w.patternSeed = Math.random() * 6;
     this.slot = 0; this.lastSlot = 1;
     this.readyAt = this.game.time + 0.3;

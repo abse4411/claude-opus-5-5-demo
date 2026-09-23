@@ -172,6 +172,26 @@ await page.evaluate(() => window.__game.fastForward(40, 1 / 30));
   check(r.ok && r.hp > 30, `生化: 拾取医疗补给回血 (hp=${r.hp})`);
 }
 
+// V3 区域效果：燃烧火海 / 冻结寒爆
+{
+  const r = await page.evaluate(() => {
+    const g = window.__game;
+    const z = g.actors.find((a) => a.alive && a.team === 'BL');
+    if (!z) return { ok: false };
+    const hp0 = z.hp;
+    g.zones.spawn('fire', z.pos.clone());
+    g.fastForward(1, 1 / 30);
+    const burned = z.hp < hp0 || !z.alive;
+    g.zones.spawn('frost', g.player.pos.clone());
+    g.fastForward(0.3, 1 / 30);
+    const frozen = (g.player.staggerT || 0) > 0;
+    return { ok: true, burned, frozen, zones: g.zones.list.length };
+  });
+  check(r.ok && r.burned, `V3: 燃烧瓶火海持续灼烧 (zones=${r.zones})`);
+  check(r.ok && r.frozen, 'V3: 冻结弹冻缓生效');
+  check(await page.evaluate(() => ['molotov', 'frost', 'gas'].every((id) => !!document.querySelector(`#nadeCards .card[data-g=${id}]`))), 'V3: 投掷武器选择卡片齐全');
+}
+
 console.log('ERRORS', errors.length ? JSON.stringify(errors.slice(0, 6), null, 1) : 'none');
 const realErrors = errors.filter((e) => !/favicon|WebGL warning/i.test(e));
 check(realErrors.length === 0, '全程无 console 错误');
