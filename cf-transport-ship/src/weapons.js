@@ -140,6 +140,14 @@ export const WEAPONS = {
     recoil: { up: 0.004, upMax: 0.05, side: 0.0035, sideStart: 4, recover: 9 },
     sound: 'mp5', hudName: 'P90',
   },
+  m60: {
+    id: 'm60', name: 'M60', slot: 0, type: 'rifle', auto: true,
+    dmg: 38, headMul: 3.2, limbMul: 0.9, rpm: 550, mag: 100, reserve: 200, reload: 5.0, draw: 1.3,
+    speed: 0.78, range: 180, falloff: 0.98, pen: 1.2, armorPen: 0.8, knock: 3.0, stagger: 0.22,
+    spread: { base: 0.009, move: 0.032, air: 0.2, crouch: 0.7, perShot: 0.0018, max: 0.05, recover: 7 },
+    recoil: { up: 0.006, upMax: 0.08, side: 0.007, sideStart: 6, recover: 7 },
+    sound: 'ak47', hudName: 'M60',
+  },
   molotov: {
     id: 'molotov', name: '燃烧瓶', slot: 3, type: 'grenade', auto: false,
     dmg: 14, radius: 3.2, fuse: 1.8, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'MOLOTOV', mag: 1, reserve: 0,
@@ -158,7 +166,9 @@ export const WEAPONS = {
   },
 };
 
-export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90'];
+export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90', 'm60'];
+// V19：副武器三选（沙鹰默认；R8 左轮为原作风格高伤手炮）
+export const SECONDARIES = ['deagle', 'usp', 'r8'];
 
 export class WeaponState {
   constructor(id) {

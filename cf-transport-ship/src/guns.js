@@ -320,6 +320,18 @@ const builders = {
     anchor(g, 'grip', 0, -0.06, 0.12); anchor(g, 'muzzle', 0, 0, -0.46);
     return g;
   },
+  m60(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.05, 0.085, 0.46, 0.012), m.black, 0, 0, -0.04);            // 机匣
+    part(g, BX(0.026, 0.3, 0.05), m.steel, 0, 0.005, -0.34);                // 枪管
+    part(g, RB(0.036, 0.05, 0.14, 0.01), m.dark, 0, 0.028, -0.3);           // 导气箍
+    part(g, RB(0.032, 0.11, 0.05, 0.01), m.rubber, 0, -0.075, 0.08);        // 握把
+    part(g, BX(0.05, 0.016, 0.16), m.metal, 0.045, -0.03, -0.05);           // 弹链盒
+    part(g, RB(0.03, 0.07, 0.22, 0.012), m.rubber, 0, -0.02, 0.2);          // 枪托
+    part(g, BX(0.018, 0.05, 0.02), m.metal, 0, -0.02, -0.18);               // 两脚架（折叠）
+    anchor(g, 'grip', 0, -0.06, 0.08); anchor(g, 'muzzle', 0, 0.005, -0.5);
+    return g;
+  },
   spas(m) {
     const g = new THREE.Group();
     part(g, RB(0.05, 0.07, 0.5, 0.012), m.black, 0, 0, -0.05);

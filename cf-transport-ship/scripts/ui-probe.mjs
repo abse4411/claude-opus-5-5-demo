@@ -415,6 +415,35 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v19') {
+  // M60 + 副武器三选（沙鹰/USP/R8 左轮）
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => ({
+      sec: document.querySelectorAll('#secCards .card').length,
+      r8: !!document.querySelector('#secCards .card[data-s="r8"]'),
+      m60: !!document.querySelector('#loadCards .card[data-w="m60"]'),
+      prim: document.querySelectorAll('#loadCards .card').length,
+    }));
+    check(r.prim === 13 && r.m60, `武器: 商店 13 张主武器卡含 M60 (${r.prim})`);
+    check(r.sec === 3 && r.r8, `副武器: 三张副武器卡含 R8 左轮 (${r.sec})`);
+    await page.evaluate(() => {
+      const g = window.__game, p = g.player;
+      g.chooseSecondary('r8');
+      g.fastForward(0.2, 1 / 30);
+      const w = p.inv[1];
+      return { id: w.id, dmg: w.def.dmg };
+    });
+    const w = await page.evaluate(() => {
+      const g = window.__game, p = g.player;
+      p.pos.set(5, 0.1, 0); p.protectT = 0;
+      p.inv[1] = new (p.inv[1].constructor)('r8');
+      p.slot = 1; p.readyAt = 0;
+      g.fastForward(0.3, 1 / 30);
+      return { id: p.inv[1].id, hp: p.hp, opts: g.opts.secondary };
+    });
+    check(w.id === 'r8', `副武器: R8 左轮可装备 (${w.id})`);
+  }
 } else if (ver === 'v18') {
   // 新武器 AUG A3 / P90：商店卡片 + 装备实装（构建器无错误即通过）
   await goto('&mode=infection');

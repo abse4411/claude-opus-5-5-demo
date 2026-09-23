@@ -78,6 +78,7 @@ export class WozManager {
     for (let i = 0; i < 9; i++) {
       const b = new Bot(g, { id: id++, name: names.pop() || 'Bot' + id, team: 'GR', diff: o.diff });
       b.primary = prim(i);
+      b.secondary = ['deagle', 'usp', 'r8'][i % 3];
       g.actors.push(b);
     }
     this.rules = new WozRules(this.mode, g.actors.length, this);
@@ -120,6 +121,7 @@ export class WozManager {
     for (let i = 0; i < cfg.humans - 1; i++) {
       const b = new Bot(g, { id: id++, name: names.pop() || 'Bot' + id, team: 'GR', diff: o.diff });
       b.primary = ['ak47', 'awm', 'famas', 'thompson', 'm4a1', 'spas', 'aug', 'p90'][i % 8];
+      b.secondary = ['deagle', 'usp', 'r8'][i % 3];
       g.actors.push(b);
     }
     for (let i = 0; i < cfg.mutants; i++) {

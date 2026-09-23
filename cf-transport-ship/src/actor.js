@@ -33,9 +33,10 @@ export class Actor {
     const p = this.pitch + this.punchP, y = this.yaw + this.punchY;
     return out.set(-Math.sin(y) * Math.cos(p), Math.sin(p), -Math.cos(y) * Math.cos(p));
   }
-  giveLoadout(primary) {
+  giveLoadout(primary, secondary) {
     this.primary = primary || this.primary;
-    this.inv = [new WeaponState(this.primary), new WeaponState('deagle'), new WeaponState('knife'), new WeaponState(this.nextGrenade || 'he')];
+    this.secondary = secondary || this.secondary || 'deagle';
+    this.inv = [new WeaponState(this.primary), new WeaponState(this.secondary), new WeaponState('knife'), new WeaponState(this.nextGrenade || 'he')];
     for (const w of this.inv) w.patternSeed = Math.random() * 6;
     this.slot = 0; this.lastSlot = 1;
     this.readyAt = this.game.time + 0.3;

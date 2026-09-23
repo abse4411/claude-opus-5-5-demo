@@ -1,5 +1,5 @@
 // HUD 与菜单（DOM）
-import { WEAPONS, PRIMARIES } from './weapons.js';
+import { WEAPONS, PRIMARIES, SECONDARIES } from './weapons.js';
 
 const TEAM_CN = { BL: '潜伏者', GR: '保卫者' };
 // WOZ 原作两大阵营（搜狗百科）：GR=保卫军，BL=原罪军；TDM 保留 CF 命名
@@ -26,7 +26,7 @@ export class HUD {
     this.slotsT = 0;
     this.radarCtx = this.el.radar.getContext('2d');
     const touch = matchMedia('(pointer:coarse)').matches;
-    this.opts = { mode: 'tdm', map: 'ship', team: 'BL', primary: 'ak47', size: 6, diff: 'normal', goal: 50, tod: 'day', quality: touch ? 'low' : 'high', sens: 1.0, fov: 78, vol: 0.8 };
+    this.opts = { mode: 'tdm', map: 'ship', team: 'BL', primary: 'ak47', secondary: 'deagle', size: 6, diff: 'normal', goal: 50, tod: 'day', quality: touch ? 'low' : 'high', sens: 1.0, fov: 78, vol: 0.8 };
     try { Object.assign(this.opts, JSON.parse(localStorage.getItem('cf_ship_opts') || '{}')); } catch (e) { /* 忽略 */ }
     this.buildMenu();
     this.showModeInfo(this.opts.mode);
@@ -125,6 +125,12 @@ export class HUD {
         for (const x of this.root.querySelectorAll('#nadeCards .card')) x.classList.toggle('on', x === c);
       });
     }
+    for (const c of this.root.querySelectorAll('#secCards .card')) {
+      c.addEventListener('click', () => {
+        this.g.chooseSecondary?.(c.dataset.s);
+        for (const x of this.root.querySelectorAll('#secCards .card')) x.classList.toggle('on', x === c);
+      });
+    }
     $('#btnLoadClose').addEventListener('click', () => this.g.closeLoadout());
     $('#btnHelpClose').addEventListener('click', () => this.g.toggleHelp());
     if (matchMedia('(pointer:coarse)').matches) $('#touchNote').classList.remove('hidden');
@@ -134,11 +140,14 @@ export class HUD {
   setIcons(icons) {
     this.icons = icons;
     for (const c of this.root.querySelectorAll('#loadCards .card')) c.querySelector('img').src = icons[c.dataset.w] || '';
+    for (const c of this.root.querySelectorAll('#secCards .card')) c.querySelector('img').src = icons[c.dataset.s] || '';
     for (const c of this.root.querySelectorAll('#nadeCards .card')) c.querySelector('img').src = icons[c.dataset.g] || '';
   }
   syncControls() {
     const o = this.opts;
     for (const s of this.root.querySelectorAll('.seg[data-k]')) for (const b of s.querySelectorAll('button')) b.classList.toggle('on', String(o[s.dataset.k]) === b.dataset.v);
+    for (const c of this.root.querySelectorAll('#loadCards .card')) c.classList.toggle('on', String(o.primary) === c.dataset.w);
+    for (const c of this.root.querySelectorAll('#secCards .card')) c.classList.toggle('on', String(o.secondary) === c.dataset.s);
     for (const c of this.root.querySelectorAll('#modeCards .mcard')) c.classList.toggle('on', String(o.mode) === c.dataset.v);
     for (const sl of this.root.querySelectorAll('.slider[data-k]')) {
       const k = sl.dataset.k; sl.querySelector('input').value = o[k]; sl.querySelector('span').textContent = (+o[k]).toFixed(k === 'fov' ? 0 : 2);
@@ -489,8 +498,13 @@ const PRIM_CARDS = PRIMARIES.map((id) => {
   </div>`;
 }).join('');
 
-const NADE_CARDS = ['he', 'molotov', 'frost', 'gas'].map((id) => {
+const SEC_CARDS = SECONDARIES.map((id) => {
   const d = WEAPONS[id];
+  const sub = { deagle: '高伤手炮 · 默认', usp: '稳健精准 · 消音', r8: '左轮重炮 · 一击致命' }[id] || '';
+  return `<div class="card" data-s="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
+}).join('');
+
+const NADE_CARDS = ['he', 'molotov', 'frost', 'gas'].map((id) => {  const d = WEAPONS[id];
   const sub = { he: '高爆 · 范围杀伤', molotov: '火海 · 持续灼烧', frost: '寒爆 · 大幅冻缓', gas: '毒雾 · 持续毒伤' }[id];
   return `<div class="card" data-g="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
 }).join('');
@@ -558,7 +572,8 @@ const TEMPLATE = `
       <div class="opt"><div class="lab">地图</div><div class="seg" data-k="map"><button data-v="ship">运输船</button><button data-v="city">死亡城市</button><button data-v="lab">生化实验室</button><button data-v="plaza">都会广场</button><button data-v="harbor">雾港</button></div></div>
       <div class="mapMeta" id="mapMeta"></div>
       <div class="opt"><div class="lab">阵营</div><div class="seg team" data-k="team"><button data-v="BL">潜伏者<small>Black List</small></button><button data-v="GR">保卫者<small>Global Risk</small></button></div></div>
-      <div class="opt"><div class="lab">主武器</div><div class="seg" data-k="primary"><button data-v="ak47">AK-47</button><button data-v="m4a1">M4A1</button><button data-v="awm">AWM</button><button data-v="mp5">MP5</button></div></div>
+      <div class="opt"><div class="lab">主武器</div><div class="seg" data-k="primary"><button data-v="ak47">AK-47</button><button data-v="m4a1">M4A1</button><button data-v="awm">AWM</button><button data-v="mp5">MP5</button><button data-v="m60">M60</button></div></div>
+      <div class="opt"><div class="lab">副武器</div><div class="seg" data-k="secondary"><button data-v="deagle">沙漠之鹰</button><button data-v="usp">USP</button><button data-v="r8">R8 左轮</button></div></div>
       <div class="row2">
         <div class="opt"><div class="lab">对战规模</div><div class="seg" data-k="size"><button data-v="4">4v4</button><button data-v="6">6v6</button><button data-v="8">8v8</button></div></div>
         <div class="opt"><div class="lab">目标击杀</div><div class="seg" data-k="goal"><button data-v="30">30</button><button data-v="50">50</button><button data-v="100">100</button></div></div>
@@ -588,8 +603,10 @@ const TEMPLATE = `
   <button class="go" id="btnResume">继 续</button><button class="go sec" id="btnQuit" style="margin-top:10px">退出到主菜单</button>
 </div></div>
 
-<div id="loadout" class="screen hidden"><div class="loadBox"><h2>武器商店 · 装备配置</h2><div class="sub">复活时生效；在出生点内立即生效。副武器沙漠之鹰、军刀、手雷自动配备。<span id="loadTimer"></span></div>
+<div id="loadout" class="screen hidden"><div class="loadBox"><h2>武器商店 · 装备配置</h2><div class="sub">复活时生效；在出生点内立即生效。军刀、手雷自动配备。<span id="loadTimer"></span></div>
   <div class="cards" id="loadCards">${PRIM_CARDS}</div>
+    <div class="opt"><div class="lab">副武器</div></div>
+    <div class="cards" id="secCards">${SEC_CARDS}</div>
     <div class="opt"><div class="lab">投掷武器</div></div>
     <div class="cards" id="nadeCards">${NADE_CARDS}</div>
   <button class="go sec" id="btnLoadClose" style="margin-top:14px">确 定（B）</button>

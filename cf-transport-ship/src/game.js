@@ -168,6 +168,7 @@ export class Game {
     let id = 0;
     this.player = new Player(this, { id: id++, name: '我', team: my });
     this.player.primary = o.primary;
+    this.player.secondary = o.secondary;
     this.player.bind(document.getElementById('c'));
     this.actors.push(this.player);
     const N = o.size;
@@ -347,6 +348,18 @@ export class Game {
       p.slot = 3; p.readyAt = this.time + WEAPONS[id].draw; p.soldier.setWeapon(id);
       this.vm.equip(id, WEAPONS[id].draw); this.hud.slots(p.inv, 3);
       this.hud.toast(`已换用 ${WEAPONS[id].name}`, 1.5);
+    } else this.hud.toast(`复活后使用 ${WEAPONS[id].name}`, 1.5);
+    audio.playUI('buy');
+  }
+  chooseSecondary(id) {
+    const p = this.player;
+    p.secondary = id; this.opts.secondary = id; this.hud.saveOpts();
+    const inSpawn = p.alive && (p.team === 'BL' ? p.pos.x < -28.3 : p.pos.x > 28.3);
+    if (inSpawn) {
+      p.inv[1] = new (p.inv[1].constructor)(id);
+      if (p.slot === 1) { p.readyAt = this.time + WEAPONS[id].draw; p.soldier.setWeapon(id); this.vm.equip(id, WEAPONS[id].draw); }
+      this.hud.slots(p.inv, p.slot);
+      this.hud.toast(`副武器换用 ${WEAPONS[id].name}`, 1.5);
     } else this.hud.toast(`复活后使用 ${WEAPONS[id].name}`, 1.5);
     audio.playUI('buy');
   }
