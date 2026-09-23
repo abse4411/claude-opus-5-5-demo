@@ -233,6 +233,43 @@ if (ver === 'v1') {
     check(started === 'demol/harbor', `菜单: 开始游戏应用选择 (${started})`);
   }
   await page.evaluate(() => localStorage.removeItem('cf_ship_opts'));
+} else if (ver === 'v5') {
+  // 感染模式：人类面板 → 变异者底部大血条 + 技能环
+  await goto('&mode=infection');
+  {
+    const human = await page.evaluate(() => {
+      window.__game.fastForward(1, 1 / 30);
+      return {
+        bigOff: document.getElementById('wozBig').classList.contains('off'),
+        role: document.getElementById('wzRole').textContent,
+      };
+    });
+    check(human.bigOff && human.role === '人类保卫军', `感染: 人类默认左侧面板 (${human.role})`);
+    const mut = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      rules.convertToMutant(p.id, 'nightrunner', false); // 规则层先转化
+      g.woz.convertNow(p, true);                          // 引擎层落成变异者形态
+      const st = rules.state(p.id);
+      st.skillCharge = 1;
+      g.fastForward(0.25, 1 / 30);
+      return {
+        side: st.side,
+        bigOn: !document.getElementById('wozBig').classList.contains('off'),
+        panelHidden: document.getElementById('wozPanel').style.opacity === '0',
+        role: document.getElementById('wzBigRole').textContent,
+        hpNum: document.getElementById('wzBigNum').textContent,
+        ringReady: document.getElementById('wzRing').classList.contains('ready'),
+        ringTxt: document.getElementById('wzRingTxt').textContent,
+      };
+    });
+    check(mut.side === 'mutant' && mut.bigOn && mut.panelHidden, `感染: 转化后切换底部大血条 (side=${mut.side})`);
+    check(/变异者|夜行者|母体/.test(mut.role), `感染: 大血条身份 [${mut.role}]`);
+    check(parseInt(mut.hpNum) > 500, `感染: 大血条数值 ${mut.hpNum}`);
+    check(mut.ringReady && /就绪/.test(mut.ringTxt), `感染: 技能充能环就绪 (${mut.ringTxt})`);
+    await page.waitForTimeout(300);
+    await shot('mutant-bigbar');
+  }
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

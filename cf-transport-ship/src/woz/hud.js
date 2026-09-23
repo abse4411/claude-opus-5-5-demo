@@ -2,14 +2,14 @@
 import { CLASS_LABEL, SKILL_LABEL, skillOf, WOZ } from './config.js';
 
 const PANEL_CSS = `
-#wozPanel{position:absolute;left:18px;bottom:96px;width:236px;font:13px/1.5 "PingFang SC","Microsoft YaHei",sans-serif;color:#eee;text-shadow:0 1px 2px #000;pointer-events:none;user-select:none}
-#wozPanel .card{background:rgba(8,10,14,.62);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:9px 12px;margin-top:6px}
-#wozPanel .role{font-size:16px;font-weight:700}
-#wozPanel .bar{height:9px;background:rgba(255,255,255,.14);border-radius:5px;overflow:hidden;margin-top:4px}
+#wozPanel{position:absolute;left:18px;bottom:96px;width:210px;font:13px/1.5 "PingFang SC","Microsoft YaHei",sans-serif;color:#eee;text-shadow:0 1px 2px #000;pointer-events:none;user-select:none;transition:opacity .2s}
+#wozPanel .card{background:rgba(8,10,14,.62);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;margin-top:6px}
+#wozPanel .role{font-size:15px;font-weight:700}
+#wozPanel .bar{height:8px;background:rgba(255,255,255,.14);border-radius:5px;overflow:hidden;margin-top:4px}
 #wozPanel .bar i{display:block;height:100%;border-radius:5px;transition:width .12s}
 #wozPanel .row{display:flex;justify-content:space-between;align-items:center;margin-top:5px;font-size:12px;color:#cfd6dd}
 #wozPanel .skillReady{color:#ffd24a;font-weight:700}
-#wozTop{position:absolute;top:46px;left:50%;transform:translateX(-50%);font:600 14px "PingFang SC","Microsoft YaHei",sans-serif;color:#dfe6ec;text-shadow:0 1px 3px #000;pointer-events:none;white-space:nowrap}
+#wozTop{position:absolute;top:110px;left:50%;transform:translateX(-50%);font:600 13px "PingFang SC","Microsoft YaHei",sans-serif;color:#dfe6ec;text-shadow:0 1px 3px #000;pointer-events:none;white-space:nowrap;background:rgba(8,10,14,.55);padding:3px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.14)}
 #wozBlind{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .15s}
 #wozClasses{position:absolute;right:14px;bottom:120px;display:flex;flex-direction:column;gap:8px;pointer-events:auto}
 #wozClasses button{width:112px;padding:8px 0;border:1px solid rgba(255,140,60,.55);border-radius:8px;background:rgba(30,12,6,.72);color:#ffb488;font:600 13px "PingFang SC","Microsoft YaHei",sans-serif;cursor:pointer}
@@ -22,6 +22,21 @@ const PANEL_CSS = `
 #wozObj .oBL{color:#ff9b70;border-color:rgba(230,90,60,.6)}
 #wozObj .oNone{color:#cfd6dd}
 #wozObj .bomb{color:#ffd24a;border-color:rgba(255,210,74,.7);font-size:17px}
+#wozBig{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);width:480px;pointer-events:none;user-select:none;text-align:center;transition:opacity .2s}
+#wozBig.off{opacity:0}
+#wozBig .role{font:700 15px "PingFang SC","Microsoft YaHei",sans-serif;color:#ff8a5c;text-shadow:0 1px 3px #000;margin-bottom:5px}
+#wozBig .hpwrap{position:relative;height:24px;border:2px solid rgba(255,255,255,.28);border-radius:7px;background:rgba(10,6,4,.78);overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.55)}
+#wozBig .hpwrap i{display:block;height:100%;background:linear-gradient(180deg,#ff7850,#c23618);transition:width .12s}
+#wozBig .hpnum{position:absolute;inset:0;font:700 14px/20px "Microsoft YaHei",sans-serif;color:#fff;text-shadow:0 1px 2px #000;letter-spacing:1px}
+#wozBig .sub{display:flex;justify-content:space-between;align-items:center;margin-top:5px;font:12px "PingFang SC","Microsoft YaHei",sans-serif;color:#cfd6dd;text-shadow:0 1px 2px #000}
+#wozBig .sub .devour{color:#ffd24a}
+#wozBig.avg .role{color:#60e0ff}
+#wozBig.avg .hpwrap i{background:linear-gradient(180deg,#7ce4ff,#1f7fd0)}
+#wozBig .ringwrap{position:absolute;right:-76px;top:-6px;width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+#wozBig .ring{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:conic-gradient(#ffd24a 0deg,rgba(255,255,255,.16) 0deg);box-shadow:0 2px 8px rgba(0,0,0,.5)}
+#wozBig .ring .in{width:50px;height:50px;border-radius:50%;background:#151009;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 17px/1 "Microsoft YaHei",sans-serif;color:#ffd24a}
+#wozBig .ring .in small{font:400 9px/1.4 "Microsoft YaHei",sans-serif;color:#9aa4ae}
+#wozBig .ring.ready{box-shadow:0 0 16px rgba(255,210,74,.85)}
 #wozDirs{position:absolute;inset:0;pointer-events:none;overflow:hidden}
 #wozDirs .arw{position:absolute;left:0;top:0;will-change:transform;color:#fff}
 #wozDirs .tri{position:absolute;left:-9px;top:-10px;width:0;height:0;border-top:10px solid transparent;border-bottom:10px solid transparent;border-left:18px solid currentColor;filter:drop-shadow(0 1px 3px rgba(0,0,0,.85))}
@@ -51,12 +66,16 @@ export class WozHud {
       <div id="wozPanel">
         <div class="card">
           <div class="role" id="wzRole">人类保卫军</div>
-          <div id="wzHpWrap"><div class="bar"><i id="wzHp" style="width:100%;background:#ff5040"></i></div></div>
+          <div id="wzHpWrap"><div class="bar"><i id="wzHp" style="width:100%;background:#8cc8ff"></i></div></div>
           <div class="row"><span id="wzHpTxt">100 HP</span><span id="wzTier"></span></div>
-          <div class="row"><span>技能</span><span id="wzSkill" class="skillReady">—</span></div>
-          <div class="bar"><i id="wzCharge" style="width:0%;background:#ffd24a"></i></div>
-          <div class="row"><span id="wzEvo">进化 0 点</span><span id="wzDevour" style="color:#ffd24a"></span></div>
+          <div class="row"><span id="wzEvo"></span><span id="wzDevour" style="color:#ffd24a"></span></div>
         </div>
+      </div>
+      <div id="wozBig" class="off">
+        <div class="role" id="wzBigRole">变异者</div>
+        <div class="hpwrap"><i id="wzBigHp"></i><div class="hpnum" id="wzBigNum"></div></div>
+        <div class="sub"><span class="devour" id="wzBigDevour"></span><span id="wzBigEvo"></span></div>
+        <div class="ringwrap"><div class="ring" id="wzRing"><div class="in"><span id="wzRingChar">?</span><small id="wzRingTxt">0%</small></div></div></div>
       </div>
       <div id="wozClasses"></div>
       <div id="wozBanner"></div>
@@ -73,10 +92,17 @@ export class WozHud {
       hpWrap: document.getElementById('wzHpWrap'),
       hpTxt: document.getElementById('wzHpTxt'),
       tier: document.getElementById('wzTier'),
-      skill: document.getElementById('wzSkill'),
-      charge: document.getElementById('wzCharge'),
       evo: document.getElementById('wzEvo'),
       devour: document.getElementById('wzDevour'),
+      big: document.getElementById('wozBig'),
+      bigRole: document.getElementById('wzBigRole'),
+      bigHp: document.getElementById('wzBigHp'),
+      bigNum: document.getElementById('wzBigNum'),
+      bigDevour: document.getElementById('wzBigDevour'),
+      bigEvo: document.getElementById('wzBigEvo'),
+      ring: document.getElementById('wzRing'),
+      ringChar: document.getElementById('wzRingChar'),
+      ringTxt: document.getElementById('wzRingTxt'),
       classes: document.getElementById('wozClasses'),
       banner: document.getElementById('wozBanner'),
     };
@@ -84,7 +110,7 @@ export class WozHud {
   }
 
   unmount() {
-    for (const id of ['wozPanel', 'wozBlind', 'wozTop', 'wozObj', 'wozDirs', 'wozClasses', 'wozBanner', 'wozStyle']) {
+    for (const id of ['wozPanel', 'wozBig', 'wozBlind', 'wozTop', 'wozObj', 'wozDirs', 'wozClasses', 'wozBanner', 'wozStyle']) {
       document.getElementById(id)?.remove();
     }
     this.mounted = false;
@@ -101,42 +127,50 @@ export class WozHud {
     this.el.top.textContent = rules.phase === 'battle' || rules.phase === 'roundend'
       ? `${phase} ${Math.max(0, rules.phaseTimeLeft) | 0}s ｜ 人类 ${rules.humansAlive()} · 变异者 ${rules.mutantsAlive()}`
       : `${phase} ${Math.max(0, rules.phaseTimeLeft) | 0}s`;
-    // 身份牌
+    // 身份牌：变异者/复仇者 → 底部中央大血条；人类 → 左侧紧凑面板
     const mutant = st.side === 'mutant';
     const avenger = st.isAvenger;
-    this.el.role.textContent = avenger ? '⚡ 生化复仇者' : mutant ? (CLASS_LABEL[st.cls] || '变异者') : '人类保卫军';
-    this.el.role.style.color = avenger ? '#60e0ff' : mutant ? '#ff7040' : '#8cc8ff';
     if (mutant || avenger) {
-      this.el.hpWrap.style.display = '';
+      this.el.big.classList.remove('off');
+      this.el.big.classList.toggle('avg', !!avenger);
+      this.el.panel.style.opacity = 0;
+      this.g.hud.el.vitals.style.opacity = 0; // 基础生命框与大血条重复，隐藏
       const cap = rules.effectiveMaxHp(st);
-      this.el.hp.style.width = `${Math.max(0, Math.min(1, st.hp / cap)) * 100}%`;
-      this.el.hpTxt.textContent = `${Math.max(0, st.hp) | 0} / ${cap | 0} HP`;
-      this.el.tier.textContent = st.evoPoints > 0 ? `进化 ${st.evoPoints} 点` : '';
-      const sk = skillOf(st.cls);
-      this.el.skill.textContent = st.skillActive ? `${SKILL_LABEL[sk]} 生效中`
-        : st.skillCharge >= 1 ? `${SKILL_LABEL[sk]} 就绪 [G]` : `${SKILL_LABEL[sk]} ${(st.skillCharge * 100) | 0}%`;
-      this.el.skill.className = st.skillCharge >= 1 && !st.skillActive ? 'skillReady' : '';
-      this.el.charge.style.width = `${(st.skillCharge * 100) | 0}%`;
-      this.el.evo.textContent = `吞噬 ${st.devourCount} 次`;
-      this.el.evo.style.display = '';
-      // 吞噬提示
+      this.el.bigRole.textContent = avenger ? '⚡ 生化复仇者' : `☣ ${CLASS_LABEL[st.cls] || '变异者'}${st.isMother ? ' · 母体' : ''}`;
+      this.el.bigHp.style.width = `${Math.max(0, Math.min(1, st.hp / cap)) * 100}%`;
+      this.el.bigNum.textContent = `${Math.max(0, st.hp) | 0} / ${cap | 0}`;
       const corpse = mgr.findCorpse(player);
-      this.el.devour.textContent = st.devourCooldown > 0 ? '吞噬冷却中…'
+      this.el.bigDevour.textContent = st.devourCooldown > 0 ? '吞噬冷却中…'
         : corpse >= 0 ? '[E] 吞噬尸体' : '';
+      this.el.bigEvo.textContent = avenger ? '被复仇者击杀的变异者无法复活'
+        : `进化 ${st.evoPoints} 点 · 吞噬 ${st.devourCount} 次`;
+      if (avenger) {
+        this.el.ringChar.textContent = '⚡';
+        this.el.ringTxt.textContent = '电锯';
+        this.el.ring.style.background = 'conic-gradient(#60e0ff 360deg, rgba(255,255,255,.16) 0deg)';
+        this.el.ring.classList.add('ready');
+      } else {
+        const sk = skillOf(st.cls);
+        const pct = Math.max(0, Math.min(1, st.skillCharge));
+        this.el.ringChar.textContent = (SKILL_LABEL[sk] || '?').slice(0, 1);
+        this.el.ringTxt.textContent = st.skillActive ? '生效中' : st.skillCharge >= 1 ? '就绪 [G]' : `${(pct * 100) | 0}%`;
+        this.el.ring.style.background = `conic-gradient(${st.skillCharge >= 1 ? '#ffd24a' : '#ff8a5c'} ${pct * 360}deg, rgba(255,255,255,.16) 0deg)`;
+        this.el.ring.classList.toggle('ready', st.skillCharge >= 1 && !st.skillActive);
+      }
     } else {
-      this.el.hpWrap.style.display = '';
+      this.el.big.classList.add('off');
+      this.el.panel.style.opacity = '';
+      this.g.hud.el.vitals.style.opacity = '';
+      this.el.role.textContent = '人类保卫军';
+      this.el.role.style.color = '#8cc8ff';
       this.el.hp.style.width = `${Math.max(0, player.hp)}%`;
       this.el.hp.style.background = '#8cc8ff';
       this.el.hpTxt.textContent = `${Math.max(0, player.hp) | 0} HP · 护甲 ${player.armor | 0}`;
       const tier = rules.humanTier(player.id);
       this.el.tier.textContent = tier > 0 ? `进化 Lv.${tier}` : '';
-      this.el.skill.textContent = this.g.opts.mode === 'revenge' ? '濒败时觉醒复仇者' : '撑到回合结束';
-      this.el.skill.className = '';
-      this.el.charge.style.width = `${Math.min(100, (st.humanSurviveTime / WOZ.humanTierSeconds) * 100)}%`;
-      this.el.evo.textContent = `击杀 ${player.stats.k}`;
+      this.el.evo.textContent = this.g.opts.mode === 'revenge' ? '濒败时觉醒复仇者' : `击杀 ${player.stats.k}`;
       this.el.devour.textContent = '';
     }
-    this.el.hp.style.background = mutant || avenger ? '#ff5040' : '#8cc8ff';
     // 致盲遮罩
     this.el.blind.style.opacity = player.alive ? Math.min(1, (player.blindT || 0) / WOZ.blindWailDuration * 1.2) : 0;
     // 子体变身按钮
