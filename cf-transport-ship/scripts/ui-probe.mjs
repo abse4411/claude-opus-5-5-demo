@@ -318,7 +318,7 @@ if (ver === 'v1') {
         sideBtnsHidden: document.getElementById('wozClasses').style.display === 'none',
       };
     });
-    check(r.visible && r.cards === 4, `变身: 选择面板弹出且 4 张职业卡 (${r.cards})`);
+    check(r.visible && r.cards === 5, `变身: 选择面板弹出且 5 张职业卡 (${r.cards})`);
     check(r.sideBtnsHidden, '变身: 面板打开时右下迷你按钮隐藏');
     await page.waitForTimeout(200);
     await shot('pick');
@@ -414,6 +414,40 @@ if (ver === 'v1') {
     await page.evaluate(() => window.__game.toggleHelp());
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
+  }
+} else if (ver === 'v13') {
+  // 爆破者：自爆 —— 引信后感染爆炸，近亡远安，自身阵亡
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      rules.convertToMutant(p.id, 'bomber', false);
+      g.woz.convertNow(p, true);
+      const st = rules.state(p.id);
+      st.skillCharge = 1;
+      p.pos.set(5, 0.1, 0); p.yaw = 0; p.pitch = 0; p.protectT = 0; p.vel = { x: 0, y: 0, z: 0 };
+      const hums = g.actors.filter((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (hums.length < 2) return { ok: false };
+      const near = hums[0], far = hums[1];
+      near.pos.set(5, 0.1, -3); near.protectT = 0; near.armor = 0;   // 3m 内
+      far.pos.set(-2, 0.1, -12); far.protectT = 0; far.armor = 0;    // 13m 外
+      p.updateCamera(0.016);
+      const fired = rules.tryUseSkill(p.id);
+      const armed = g.woz.fuses.length;
+      for (let i = 0; i < 80; i++) g.woz.tickFuses(1 / 60); // 走完 1.2s 引信 + 爆炸
+      return {
+        ok: true, fired, armed,
+        nearDead: !near.alive, nearSide: rules.state(near.id).side,
+        farAlive: far.alive, farHp: far.hp,
+        bomberDead: !p.alive || rules.state(p.id).alive === false,
+      };
+    });
+    check(r.ok && r.fired && r.armed === 1, `自爆: 技能触发点燃引信 (fired=${r.fired} n=${r.armed})`);
+    check(r.nearDead || r.nearSide === 'mutant', `自爆: 3m 内人类被炸死并感染 (dead=${r.nearDead} side=${r.nearSide})`);
+    check(r.farAlive && r.farHp === 100, `自爆: 13m 外人类无伤 (alive=${r.farAlive} hp=${r.farHp})`);
+    check(r.bomberDead, '自爆: 爆破者自身阵亡');
   }
 } else if (ver === 'v12') {
   // 缠绕者：触须抓拽 —— 定身 + 拖近 + 触须伤害

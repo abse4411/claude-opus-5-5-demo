@@ -71,6 +71,11 @@ export const WOZ = {
   entangleDamage: 60,
   entangleRootTime: 1.2,
   entangleDragSpeed: 9,
+  bomberHp: 2200,           // 爆破者：自爆冲锋
+  selfDestructDamage: 700,
+  selfDestructRadius: 7,
+  selfDestructFuse: 1.2,
+  selfDestructSpeed: 1.3,   // 引爆冲锋期间移速加成
 };
 
 // ---- 生化对抗：人类攻方占领战术据点，变异者守方 ----
@@ -120,6 +125,7 @@ export const MutantClass = {
   Souleater: 'souleater',
   Devourer: 'devourer',
   Tangler: 'tangler',
+  Bomber: 'bomber',
 };
 
 export const MutantSkill = {
@@ -130,6 +136,7 @@ export const MutantSkill = {
   Harden: 'harden',
   AxeThrow: 'axeThrow',
   Entangle: 'entangle',
+  SelfDestruct: 'selfDestruct',
 };
 
 export const CLASS_LABEL = {
@@ -138,6 +145,7 @@ export const CLASS_LABEL = {
   [MutantClass.Souleater]: '噬魂者',
   [MutantClass.Devourer]: '猎食者',
   [MutantClass.Tangler]: '缠绕者',
+  [MutantClass.Bomber]: '爆破者',
 };
 
 export const SKILL_LABEL = {
@@ -147,6 +155,7 @@ export const SKILL_LABEL = {
   [MutantSkill.Harden]: '硬化',
   [MutantSkill.AxeThrow]: '投掷斧头',
   [MutantSkill.Entangle]: '缠绕',
+  [MutantSkill.SelfDestruct]: '自爆',
 };
 
 export function skillOf(cls) {
@@ -155,6 +164,7 @@ export function skillOf(cls) {
   if (cls === MutantClass.Souleater) return MutantSkill.BlindWail;
   if (cls === MutantClass.Devourer) return MutantSkill.AxeThrow;
   if (cls === MutantClass.Tangler) return MutantSkill.Entangle;
+  if (cls === MutantClass.Bomber) return MutantSkill.SelfDestruct;
   return MutantSkill.None;
 }
 
@@ -162,6 +172,6 @@ export function skillDuration(cls) {
   if (cls === MutantClass.Mother) return 5;
   if (cls === MutantClass.Nightrunner) return WOZ.dashDuration;
   if (cls === MutantClass.Souleater) return WOZ.blindWailDuration;
-  if (cls === MutantClass.Devourer || cls === MutantClass.Tangler) return 0.3; // 瞬时技能，短窗口防连发
+  if (cls === MutantClass.Devourer || cls === MutantClass.Tangler || cls === MutantClass.Bomber) return 0.3; // 瞬时技能，短窗口防连发
   return 0;
 }

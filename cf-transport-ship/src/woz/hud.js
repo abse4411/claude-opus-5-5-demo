@@ -7,6 +7,7 @@ const CLASS_PICK = [
   { c: 'souleater', key: '6', name: '噬魂者', desc: '致盲尖啸 · 瘫痪人类视野', sp: 3, hp: 3, sk: 5 },
   { c: 'devourer', key: '7', name: '猎食者', desc: '投掷斧头 · 远程斩杀', sp: 2, hp: 4, sk: 4 },
   { c: 'tangler', key: '8', name: '缠绕者', desc: '触须缠绕 · 拖拽撕碎防线', sp: 3, hp: 4, sk: 5 },
+  { c: 'bomber', key: '9', name: '爆破者', desc: '自爆冲锋 · 感染爆炸清场', sp: 3, hp: 5, sk: 5 },
 ];
 const statRow = (label, v) => `<div class="stat"><span>${label}</span><i><b style="width:${v * 20}%"></b></i></div>`;
 
@@ -247,6 +248,7 @@ export class WozHud {
         <button data-c="souleater">[6] 噬魂者</button>
         <button data-c="devourer">[7] 猎食者</button>
         <button data-c="tangler">[8] 缠绕者</button>
+        <button data-c="bomber">[9] 爆破者</button>
       `;
       this.classBtns.addEventListener('click', (e) => {
         const c = e.target?.dataset?.c;

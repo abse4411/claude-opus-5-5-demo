@@ -37,6 +37,7 @@ export class WozManager {
     this.playerClassChosen = false; // 玩家是否已主动选择变异者职业
     this.axes = [];                   // 猎食者投掷斧头抛射物
     this.grabs = [];                  // 缠绕者触须拖拽
+    this.fuses = [];                  // 爆破者自爆引信
   }
 
   // 模式分类：infection 族（感染/复仇/生化）走规则层；对抗/爆破走目标物逻辑
@@ -157,6 +158,7 @@ export class WozManager {
     this.tide = [];
     this.clearAxes();
     this.clearGrabs();
+    this.clearFuses();
     // 全员复活为人类，回 GR 出生点
     this.pendingConvert.clear();
     for (const a of g.actors) {
@@ -197,6 +199,7 @@ export class WozManager {
     if (!g.playing || g.ended) return;
     this.tickAxes(dt);
     this.tickGrabs(dt);
+    this.tickFuses(dt);
     // 购买期结束自动关闭武器商店
     if (this.rules) {
       if (this.rules.phase === 'buy') this._buyOpen = true;
@@ -348,6 +351,57 @@ export class WozManager {
   clearGrabs() {
     for (const gr of this.grabs) this.g.renderer.scene.remove(gr.tent);
     this.grabs = [];
+  }
+
+  // ---- 爆破者自爆（原作技能）：1.2s 引信冲锋 → 感染爆炸 ----
+  armSelfDestruct(a) {
+    const g = this.g;
+    const core = new THREE.Mesh(
+      new THREE.SphereGeometry(0.55, 12, 10),
+      new THREE.MeshBasicMaterial({ color: 0xff3020, transparent: true, opacity: 0.55, depthWrite: false }),
+    );
+    g.renderer.scene.add(core);
+    this.fuses.push({ live: true, a, t: WOZ.selfDestructFuse, core });
+    if (a.isPlayer) g.hud.toast('<b style="color:#ff5040">自爆引信已点燃！</b>冲进人堆！', 1.5);
+    else g.hud.eventFeed(`${a.name} 点燃了自爆引信！`, 'avg');
+  }
+
+  tickFuses(dt) {
+    const g = this.g;
+    for (const f of this.fuses) {
+      if (!f.live) continue;
+      f.t -= dt;
+      if (!f.a.alive) { f.live = false; continue; }
+      // 冲锋加速 + 红色脉冲预警
+      f.a.speedMul = (f.a.speedMul || 1) * WOZ.selfDestructSpeed;
+      f.core.position.copy(f.a.pos); f.core.position.y += 1.2;
+      const pulse = 0.35 + 0.45 * Math.abs(Math.sin(f.t * 18));
+      f.core.material.opacity = pulse;
+      f.core.scale.setScalar(1 + (WOZ.selfDestructFuse - f.t) * 0.8);
+      if (f.t <= 0) {
+        f.live = false;
+        const c = f.a.pos.clone(); c.y += 1;
+        g.fx.explosion(c);
+        g.fx.shake = 2.2;
+        const owner = f.a;
+        for (const v of g.actors) {
+          if (!v.alive || v === owner || v.team === owner.team || v.wozOut) continue;
+          const d = owner.pos.distanceTo(v.pos);
+          if (d > WOZ.selfDestructRadius) continue;
+          const dmg = WOZ.selfDestructDamage * (1 - (d / WOZ.selfDestructRadius) * 0.6);
+          const dir = new THREE.Vector3(v.pos.x - owner.pos.x, 0, v.pos.z - owner.pos.z).normalize();
+          g.damage(v, owner, dmg, 'chest', 'claw', dir, false); // claw 标签 → 击杀感染链
+        }
+        g.damage(owner, null, 99999, 'chest', 'claw', new THREE.Vector3(0, 1, 0), false); // 自爆阵亡
+      }
+    }
+    for (const f of this.fuses) if (!f.live) g.renderer.scene.remove(f.core);
+    this.fuses = this.fuses.filter((f) => f.live);
+  }
+
+  clearFuses() {
+    for (const f of this.fuses) this.g.renderer.scene.remove(f.core);
+    this.fuses = [];
   }
 
   tickInfection(dt) {
@@ -756,8 +810,8 @@ export class WozManager {
     if (p.consumePressed('KeyG')) {
       if (!rules.tryUseSkill(p.id)) g.hud.toast(`技能充能 ${(st.skillCharge * 100) | 0}%`, 1);
     }
-    // 5/6/7/8 子体变身
-    for (const [code, cls] of [['Digit5', MutantClass.Nightrunner], ['Digit6', MutantClass.Souleater], ['Digit7', MutantClass.Devourer], ['Digit8', MutantClass.Tangler]]) {
+    // 5/6/7/8/9 子体变身
+    for (const [code, cls] of [['Digit5', MutantClass.Nightrunner], ['Digit6', MutantClass.Souleater], ['Digit7', MutantClass.Devourer], ['Digit8', MutantClass.Tangler], ['Digit9', MutantClass.Bomber]]) {
       if (p.consumePressed(code) && rules.setMutantClass(p.id, cls)) this.playerClassChosen = true;
     }
   }
@@ -969,7 +1023,7 @@ export class WozManager {
     if (!a || a.isPlayer || this.rules.state(victimId).isMother) return;
     this._autoCls = victimId;
     const r = Math.random();
-    const changed = this.rules.setMutantClass(victimId, r < 0.4 ? MutantClass.Nightrunner : r < 0.65 ? MutantClass.Souleater : r < 0.85 ? MutantClass.Devourer : MutantClass.Tangler);
+    const changed = this.rules.setMutantClass(victimId, r < 0.35 ? MutantClass.Nightrunner : r < 0.55 ? MutantClass.Souleater : r < 0.72 ? MutantClass.Devourer : r < 0.87 ? MutantClass.Tangler : MutantClass.Bomber);
     if (!changed) this._autoCls = -1; // 职业未变（默认夜行者）时清除抑制标记，避免吃掉后续手动播报
   }
 
@@ -1000,6 +1054,8 @@ export class WozManager {
       this.throwAxe(a);
     } else if (skill === 'entangle') {
       this.fireEntangle(a);
+    } else if (skill === 'selfDestruct') {
+      this.armSelfDestruct(a);
     }
   }
 
