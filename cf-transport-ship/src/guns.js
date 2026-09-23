@@ -344,6 +344,31 @@ const builders = {
     anchor(g, 'grip', 0, -0.055, 0.04); anchor(g, 'muzzle', 0, 0, -0.28);
     return g;
   },
+  molotov(m) {
+    const g = new THREE.Group();
+    const b = new THREE.SphereGeometry(0.036, 12, 10); b.scale(1, 1.5, 1);
+    part(g, b, new THREE.MeshStandardMaterial({ color: 0xb46a1e, emissive: 0x502800, roughness: 0.35 }));
+    part(g, new THREE.CylinderGeometry(0.012, 0.012, 0.05, 8), m.metal, 0, 0.062, 0);
+    part(g, BX(0.008, 0.09, 0.008), m.rubber, 0.012, 0.09, 0);
+    anchor(g, 'grip', 0, 0, 0); anchor(g, 'muzzle', 0, 0, -0.05);
+    return g;
+  },
+  frost(m) {
+    const g = new THREE.Group();
+    const b = new THREE.SphereGeometry(0.04, 14, 12);
+    part(g, b, new THREE.MeshStandardMaterial({ color: 0x9adfff, emissive: 0x1a5a80, roughness: 0.25, metalness: 0.3 }));
+    part(g, new THREE.CylinderGeometry(0.012, 0.012, 0.05, 8), m.metal, 0, 0.055, 0);
+    anchor(g, 'grip', 0, 0, 0); anchor(g, 'muzzle', 0, 0, -0.05);
+    return g;
+  },
+  gas(m) {
+    const g = new THREE.Group();
+    part(g, new THREE.CylinderGeometry(0.032, 0.032, 0.1, 12), new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 0.5, metalness: 0.3 }), 0, 0, 0);
+    part(g, new THREE.CylinderGeometry(0.014, 0.014, 0.03, 8), m.metal, 0, 0.06, 0);
+    for (let i = 0; i < 4; i++) part(g, BX(0.004, 0.02, 0.004), m.dark, 0, 0.052, 0.02, 0, i * 1.57);
+    anchor(g, 'grip', 0, 0, 0); anchor(g, 'muzzle', 0, 0, -0.06);
+    return g;
+  },
   he(m) {
     const g = new THREE.Group();
     const body = new THREE.SphereGeometry(0.034, 16, 12); body.scale(1, 1.25, 1);
