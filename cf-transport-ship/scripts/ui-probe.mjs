@@ -415,6 +415,37 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v15') {
+  // 人类必杀技：满档解锁 → HUD 就绪 → V 释放狂暴（满弹+播报）
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st = rules.state(p.id);
+      st.humanSurviveTime = WOZ_H(); // 45s × 4 档
+      function WOZ_H() { return 45 * 4; }
+      g.fastForward(0.25, 1 / 30);
+      const tier = rules.humanTier(p.id);
+      const readyTxt = document.getElementById('wzTier').innerHTML;
+      const main = p.inv.find((w) => w && w.def.type !== 'melee' && w.def.type !== 'grenade');
+      main.mag = 1; // 掏空弹匣验证狂暴满弹
+      const fired = g.woz.tryHumanUltimate(p);
+      g.fastForward(0.25, 1 / 30);
+      return {
+        ok: true, tier, readyTxt, fired,
+        active: st.ultActiveT > 0,
+        magRefilled: main.mag === main.def.mag,
+        activeTxt: document.getElementById('wzTier').innerHTML,
+        feed: [...document.querySelectorAll('#feed .kf.avg')].map((e) => e.textContent).join('|'),
+      };
+    });
+    check(r.tier === 4 && r.readyTxt.includes('必杀技就绪'), `必杀: 满档解锁 + HUD 就绪 (Lv.${r.tier})`);
+    check(r.fired && r.active, '必杀: V 键释放进入狂暴');
+    check(r.magRefilled, '必杀: 狂暴瞬间满弹');
+    check(r.activeTxt.includes('生效中') && r.feed.includes('必杀技'), `必杀: HUD 生效标识 + 播报 [${r.feed.slice(-24)}]`);
+  }
 } else if (ver === 'v14') {
   // 变异者进化阶段：二阶减伤数值 + 三阶 HUD 播报
   await goto('&mode=infection');

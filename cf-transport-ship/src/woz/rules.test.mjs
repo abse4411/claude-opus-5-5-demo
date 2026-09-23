@@ -20,6 +20,7 @@ class RecordingHost {
   onDevoured(m, c) { this.events.push(`devour:${m}:of:${c}`); }
   onMutantKilledByHuman(v, k) { this.events.push(`mkilled:${v}:by:${k}`); }
   onHumanTierUp(id, tier) { this.events.push(`tier:${id}:${tier}`); }
+  onHumanUltimate(id) { this.events.push(`ult:${id}`); }
   onCorpseTide(count) { this.tideCount += count; this.events.push(`tide:${count}`); }
   onResult(result) { this.result = result; this.events.push(`result:${result}`); }
   has(prefix) { return this.events.some((e) => e.startsWith(prefix)); }
@@ -328,6 +329,29 @@ console.log('== WOZ 规则层断言 ==');
   check(spd > WOZ.mutantSpeed * 1.07, `V14: 三阶移速加成 (${spd.toFixed(2)})`);
   st.devourCount = 2;
   check(Math.abs(sim.rules.evoDamageReduction(st)) < 1e-6, 'V14: 阶段判定严格按吞噬数');
+}
+
+// 13. V15 人类必杀技（进化满档解锁，V 键）
+{
+  const sim = new ArenaSim('infection', 77);
+  sim.rules.beginRound(5); skipBuy(sim);
+  const hid = sim.rules.players.findIndex((p) => !p.isMother && p.side === 'human');
+  const h = sim.rules.state(hid);
+  check(!sim.rules.humanUltimateReady(hid), 'V15: 未满档不可用');
+  check(sim.rules.tryHumanUltimate(hid) === false, 'V15: 未满档释放拒绝');
+  // 快进生存时间到满档（45s × 4）
+  sim.rules.tickHuman(h, WOZ.humanTierSeconds * 4);
+  check(sim.rules.humanTier(hid) === WOZ.humanMaxTier, 'V15: 生存时间叠满 4 档');
+  check(sim.rules.humanUltimateReady(hid), 'V15: 满档后必杀技就绪');
+  check(Math.abs(sim.rules.humanDamageBoost(hid) - WOZ.humanTier3Damage) < 1e-6, 'V15: 三档威力 +10%');
+  check(sim.rules.tryHumanUltimate(hid), 'V15: 满档释放成功');
+  check(sim.host.has(`ult:${hid}`), 'V15: 宿主收到必杀技回调');
+  check(Math.abs(sim.rules.humanDamageBoost(hid) - WOZ.humanUltDamage) < 1e-6, 'V15: 必杀技期间伤害 ×1.5');
+  check(!sim.rules.tryHumanUltimate(hid), 'V15: 生效期间不可重复释放');
+  sim.rules.tickHuman(h, 6);
+  check(Math.abs(sim.rules.humanDamageBoost(hid) - WOZ.humanTier3Damage) < 1e-6, 'V15: 5 秒后狂暴结束回落三档威力');
+  check(!sim.rules.humanUltimateReady(hid), 'V15: 冷却中不可再释放');
+  check(Math.abs(h.ultCooldown - (WOZ.humanUltCooldown - 6)) < 1e-6, 'V15: 冷却 60s 正确递减');
 }
 
 console.log(`\n结果: ${passed} 通过, ${failed} 失败`);

@@ -56,6 +56,11 @@ export const WOZ = {
   humanSpeedPerTier: 0.04,
   humanReserveMagPerTier: 1,
   humanDamageReductionPerTier: 0.05,
+  // 人类进化进阶（原作：速度/弹药/威力/必杀技）
+  humanTier3Damage: 1.1,      // 三档：威力 +10%
+  humanUltDamage: 1.5,        // 必杀技期间威力
+  humanUltDuration: 5,
+  humanUltCooldown: 60,
 
   // 复仇模式
   avengerHp: 1500,

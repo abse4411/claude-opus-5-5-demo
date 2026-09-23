@@ -798,6 +798,8 @@ export class WozManager {
   onPlayerInput(p) {
     const g = this.g, rules = this.rules;
     if (!rules || rules.phase !== 'battle' || !p.alive) return;
+    // V 人类必杀技（进化满档解锁）
+    if (!rules.isMutantSide(p.id) && p.consumePressed('KeyV')) this.tryHumanUltimate(p);
     if (!rules.isMutantSide(p.id)) return;
     const st = rules.state(p.id);
     if (!st.alive) return;
@@ -818,6 +820,26 @@ export class WozManager {
     for (const [code, cls] of [['Digit5', MutantClass.Nightrunner], ['Digit6', MutantClass.Souleater], ['Digit7', MutantClass.Devourer], ['Digit8', MutantClass.Tangler], ['Digit9', MutantClass.Bomber]]) {
       if (p.consumePressed(code) && rules.setMutantClass(p.id, cls)) this.playerClassChosen = true;
     }
+  }
+
+  tryHumanUltimate(p) {
+    const g = this.g, rules = this.rules;
+    if (rules.tryHumanUltimate(p.id)) {
+      for (const w of p.inv) if (w && w.def.type !== 'melee' && w.def.type !== 'grenade') w.mag = w.def.mag; // 狂暴：瞬间满弹
+      g.hud.toast('<b style="color:#ffd24a">必杀技：狂暴！</b>5 秒伤害 ×1.5', 2);
+      g.hud.eventFeed(`${p.name} 释放了<b>必杀技·狂暴</b>！`, 'avg');
+      return true;
+    }
+    if (rules.humanTier(p.id) >= WOZ.humanMaxTier) {
+      g.hud.toast(`必杀技冷却 ${Math.ceil(rules.state(p.id).ultCooldown)}s`, 1);
+    } else {
+      g.hud.toast(`达到 ${WOZ.humanMaxTier} 档进化后解锁必杀技`, 1);
+    }
+    return false;
+  }
+
+  onHumanUltimate(id) {
+    void id; // 表现已在 tryHumanUltimate 处理；规则层回调占位
   }
 
   // 感染变身选择面板：玩家已转化但尚未主动选职业（WOZ 特色交互）
@@ -985,6 +1007,7 @@ export class WozManager {
     if (att && att.id < rules.playerCount) {
       const st = rules.state(att.id);
       if (st.side === 'mutant') mul *= rules.damageMultiplier(st);
+      else mul *= rules.humanDamageBoost(att.id); // 三档威力 / 必杀技狂暴
     }
     if (v.id < rules.playerCount) {
       const vs = rules.state(v.id);

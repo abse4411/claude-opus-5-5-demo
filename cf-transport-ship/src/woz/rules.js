@@ -58,6 +58,8 @@ export class WozRules {
         kills: 0,
         humanSurviveTime: 0,
         tierNotified: 0,
+        ultActiveT: 0,          // 人类必杀技剩余时间（V15）
+        ultCooldown: 0,
         revivesLeft: mode === 'revenge' ? WOZ.mutantRevives : 0,
         canRevive: true,
         reviveTimer: 0,
@@ -168,11 +170,37 @@ export class WozRules {
 
   tickHuman(p, dt) {
     p.humanSurviveTime += dt;
+    p.ultActiveT = Math.max(0, p.ultActiveT - dt);
+    p.ultCooldown = Math.max(0, p.ultCooldown - dt);
     const tier = this.humanTier(p.id);
     if (tier > p.tierNotified) {
       p.tierNotified = tier;
       this.host.onHumanTierUp(p.id, tier);
     }
+  }
+
+  // 人类必杀技（原作：进化满档解锁）
+  humanUltimateReady(id) {
+    const p = this.players[id];
+    return !!p && p.side === 'human' && p.alive && this.humanTier(id) >= WOZ.humanMaxTier
+      && p.ultCooldown <= 0 && !p.isAvenger;
+  }
+
+  tryHumanUltimate(id) {
+    const p = this.players[id];
+    if (this.phase !== 'battle' || !this.humanUltimateReady(id)) return false;
+    p.ultActiveT = WOZ.humanUltDuration;
+    p.ultCooldown = WOZ.humanUltCooldown;
+    this.host.onHumanUltimate(id);
+    return true;
+  }
+
+  // 人类伤害倍率：三档威力 + 必杀技期间狂暴
+  humanDamageBoost(id) {
+    const p = this.players[id];
+    if (!p || p.side !== 'human') return 1;
+    if (p.ultActiveT > 0) return WOZ.humanUltDamage;
+    return this.humanTier(id) >= 3 ? WOZ.humanTier3Damage : 1;
   }
 
   tickRevive(p, dt) {

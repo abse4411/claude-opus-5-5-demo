@@ -212,7 +212,11 @@ export class WozHud {
       this.el.hp.style.background = '#8cc8ff';
       this.el.hpTxt.textContent = `${Math.max(0, player.hp) | 0} HP · 护甲 ${player.armor | 0}`;
       const tier = rules.humanTier(player.id);
-      this.el.tier.textContent = tier > 0 ? `进化 Lv.${tier}` : '';
+      const ultSt = rules.state(player.id);
+      this.el.tier.innerHTML = (tier > 0 ? `进化 Lv.${tier}` : '')
+        + (ultSt.ultActiveT > 0 ? ' · <b style="color:#ffd24a">必杀技生效中！</b>'
+          : tier >= WOZ.humanMaxTier ? (ultSt.ultCooldown > 0 ? ` · 必杀技冷却 ${Math.ceil(ultSt.ultCooldown)}s` : ' · <b style="color:#ffd24a">[V] 必杀技就绪</b>')
+          : '');
       this.el.evo.textContent = this.g.opts.mode === 'revenge' ? '濒败时觉醒复仇者' : `击杀 ${player.stats.k}`;
       this.el.devour.textContent = '';
     }
