@@ -81,7 +81,7 @@ await page.evaluate(() => window.__game.fastForward(260, 1 / 30));
       const i = rules.players.findIndex((p) => p.id !== g.player.id);
       const st = rules.state(i), a = g.actors[i];
       st.side = 'mutant'; st.alive = true; st.cls = 'nightrunner'; st.maxHp = 1500; st.hp = 1500;
-      a.team = 'BL'; a.alive = true; a.wozHeavy = true; a.hp = 1500;
+      a.team = 'BL'; a.alive = true; a.wozHeavy = true; a.hp = 1500; a.protectT = 0;
       z = a;
     }
     z.vel.set(0, 0, 0);
