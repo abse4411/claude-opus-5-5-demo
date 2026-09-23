@@ -355,13 +355,19 @@ export class WozRules {
     return id >= 0 && id < this.playerCount && this.players[id].skillActive;
   }
 
-  // 变异者移速倍率（职业 + 疾冲）
+  // 变异者移速倍率（职业 + 疾冲 + 母体狂暴咆哮）
+  motherRageActive() {
+    return this.players.some((p) => p.isMother && p.alive && p.skillActive);
+  }
+
   mutantSpeedMultiplier(id) {
     const p = this.players[id];
     if (!p) return WOZ.mutantSpeed; // 尸潮 AI 等非规则层角色
     let m = WOZ.mutantSpeed;
     if (p.cls === MutantClass.Nightrunner) m += WOZ.nightrunnerSpeed;
     if (p.skillActive && p.cls === MutantClass.Nightrunner) m *= WOZ.dashSpeed * 0.55;
+    if (this.motherRageActive() && p.cls !== MutantClass.Mother) m *= 1.25;
+    if (p.skillActive && p.cls === MutantClass.Mother) m *= 1.35;
     return m;
   }
 

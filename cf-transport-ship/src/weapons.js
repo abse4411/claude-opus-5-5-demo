@@ -76,7 +76,7 @@ export const WEAPONS = {
   },
   minigun: {
     id: 'minigun', name: '加特林', slot: 0, type: 'rifle', auto: true,
-    dmg: 21, headMul: 3.0, limbMul: 0.85, rpm: 1400, mag: 120, reserve: 240, reload: 5.5, draw: 1.4,
+    dmg: 21, headMul: 3.0, limbMul: 0.85, rpm: 1200, mag: 100, reserve: 200, reload: 5.5, draw: 1.4,
     speed: 0.72, range: 150, falloff: 0.97, pen: 0.9, armorPen: 0.62, knock: 1.3, stagger: 0.06,
     spread: { base: 0.011, move: 0.03, air: 0.2, crouch: 0.8, perShot: 0.0016, max: 0.06, recover: 6 },
     recoil: { up: 0.0035, upMax: 0.03, side: 0.0035, sideStart: 4, recover: 7 },
@@ -136,7 +136,7 @@ export const WEAPONS = {
   },
   he: {
     id: 'he', name: '手雷', slot: 3, type: 'grenade', auto: false,
-    dmg: 115, radius: 7.5, fuse: 2.6, knock: 9, stagger: 0.5, count: 1, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'HE GRENADE', mag: 1, reserve: 0,
+    dmg: 108, radius: 7.2, fuse: 2.6, knock: 9, stagger: 0.5, count: 1, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'HE GRENADE', mag: 1, reserve: 0,
   },
 };
 

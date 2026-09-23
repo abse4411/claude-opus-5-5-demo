@@ -59,7 +59,7 @@ export class WozManager {
     this.round = 0;
     this.mode = o.mode;
     g.goal = ROUND_WINS;
-    g.env.apply(o.tod);
+    g.env.apply(o.tod); g.applyFogOverride();
 
     // 10 人局：玩家 + 9 BOT，全员人类
     const names = [...BOT_NAMES].sort(() => Math.random() - 0.5);
@@ -102,7 +102,7 @@ export class WozManager {
     this.round = 1;
     this.rules = null;
     this.heroGiven = false;
-    g.env.apply(o.tod);
+    g.env.apply(o.tod); g.applyFogOverride();
     const isConfront = this.mode === 'confront';
     const cfg = isConfront ? CONFRONT : DEMOL;
     const names = [...BOT_NAMES].sort(() => Math.random() - 0.5);
@@ -705,6 +705,9 @@ export class WozManager {
         if (h.pos.distanceTo(a.pos) <= WOZ.blindWailRange) h.blindT = WOZ.blindWailDuration;
       }
       if (a.isPlayer) g.hud.toast('致盲尖啸！', 1);
+    } else if (skill === 'rage') {
+      wozAudio.wail(a.isPlayer ? null : a.pos.clone());
+      if (a.isPlayer) g.hud.toast('狂暴咆哮！附近变异者加速', 1.5);
     } else if (skill === 'harden') {
       wozAudio.harden(a.isPlayer ? null : a.pos.clone());
       if (a.isPlayer) g.hud.toast('硬化！减伤 70%', 1);

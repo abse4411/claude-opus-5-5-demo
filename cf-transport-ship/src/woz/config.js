@@ -114,6 +114,7 @@ export const MutantClass = {
 
 export const MutantSkill = {
   None: 'none',
+  Rage: 'rage',
   Dash: 'dash',
   BlindWail: 'blindWail',
   Harden: 'harden',
@@ -127,12 +128,14 @@ export const CLASS_LABEL = {
 };
 
 export const SKILL_LABEL = {
+  [MutantSkill.Rage]: '狂暴咆哮',
   [MutantSkill.Dash]: '疾冲',
   [MutantSkill.BlindWail]: '致盲尖啸',
   [MutantSkill.Harden]: '硬化',
 };
 
 export function skillOf(cls) {
+  if (cls === MutantClass.Mother) return MutantSkill.Rage;
   if (cls === MutantClass.Nightrunner) return MutantSkill.Dash;
   if (cls === MutantClass.Souleater) return MutantSkill.BlindWail;
   if (cls === MutantClass.Devourer) return MutantSkill.Harden;
@@ -140,6 +143,7 @@ export function skillOf(cls) {
 }
 
 export function skillDuration(cls) {
+  if (cls === MutantClass.Mother) return 5;
   if (cls === MutantClass.Nightrunner) return WOZ.dashDuration;
   if (cls === MutantClass.Souleater) return WOZ.blindWailDuration;
   if (cls === MutantClass.Devourer) return WOZ.hardenDuration;

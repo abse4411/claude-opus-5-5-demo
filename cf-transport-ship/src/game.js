@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { Renderer } from './render.js';
 import { buildTextures } from './textures.js';
 import { buildMap } from './map.js';
-import { buildCityMap, buildPlazaMap } from './woz/map-city.js';
+import { buildCityMap, buildPlazaMap, buildHarborMap } from './woz/map-city.js';
 import { buildLabMap } from './woz/map-lab.js';
 import { Environment } from './env.js';
 import { World, NavGrid } from './physics.js';
@@ -58,10 +58,12 @@ export class Game {
       city: { name: '死亡城市', build: buildCityMap },
       lab: { name: '生化实验室', build: buildLabMap },
       plaza: { name: '都会广场', build: buildPlazaMap },
+      harbor: { name: '雾港', build: buildHarborMap },
     };
     const mapDef = MAPS[this.opts.map] || MAPS.ship;
     this.mapName = mapDef.name;
     this.map = mapDef.build(this.renderer.scene, this.T, this.world);
+    this.applyFogOverride();
     this.hud.loading(0.68, '天空与海洋');
     await nextFrame();
     this.env = new Environment(this.renderer.renderer, this.renderer.scene, this.opts.quality);
@@ -92,6 +94,9 @@ export class Game {
     requestAnimationFrame(this.loop);
     if (this.qs.has('autostart')) setTimeout(() => this.startMatch(), 300);
     window.__game = this;
+  }
+  applyFogOverride() {
+    if (this.map?.fogDensity && this.renderer.scene.fog) this.renderer.scene.fog.density = this.map.fogDensity;
   }
   lampLights() {
     // 管道内的少量真实点光源
@@ -153,7 +158,7 @@ export class Game {
     this.actors = []; this.nades = []; this.tags = []; this.timers = [];
     this.score = { BL: 0, GR: 0 };
     this.goal = o.goal; this.timeLeft = 600;
-    this.env.apply(o.tod);
+    this.env.apply(o.tod); this.applyFogOverride();
     const my = o.team, other = my === 'BL' ? 'GR' : 'BL';
     const names = [...BOT_NAMES].sort(() => Math.random() - 0.5);
     let id = 0;
@@ -295,7 +300,7 @@ export class Game {
   onOption(k, v) {
     if (k === 'vol') audio.setVolumes({ master: v });
     if (k === 'fov' && this.renderer) { this.renderer.camera.fov = v; this.renderer.camera.updateProjectionMatrix(); }
-    if (k === 'tod' && this.env) this.env.apply(v);
+    if (k === 'tod' && this.env) { this.env.apply(v); this.applyFogOverride(); }
     if (k === 'quality') { this.hud.saveOpts(); location.reload(); }
     if (k === 'team' && this.vm) this.vm.setTeam(v);
   }

@@ -26,6 +26,7 @@ function noiseFill(x, base, vary, size) {
 
 export function buildCityMap(scene, T, world, variant = 'street') {
   if (variant === 'plaza') return buildPlaza(scene, T, world);
+  if (variant === 'harbor') return buildHarbor(scene, T, world);
   const meshes = [];
   const lampSpots = [];
   const anim = [];
@@ -302,4 +303,24 @@ export function buildPlazaMap(scene, T, world) {
     spawns, lampSpots, funnelTop: new THREE.Vector3(0, 8, 0), meshes, materials: {},
     update() {},
   };
+}
+
+
+// ---- 雾港变体：浓雾集装箱堆场（视线极受限，近战凶险）----
+export function buildHarborMap(scene, T, world) {
+  const city = buildCityMap(scene, T, world, 'street');
+  // 集装箱堆场补充掩体（三线之间增加横向遮挡）
+  const stack = new THREE.BoxGeometry(6, 2.6, 2.5);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x35502e, roughness: 0.7, metalness: 0.3 });
+  const positions = [[-22, 0], [-6, 5], [-6, -5], [8, 6.5], [8, -6.5], [24, 0]];
+  for (const [px, pz] of positions) {
+    const m = new THREE.Mesh(stack, mat);
+    m.position.set(px, 1.3, pz); m.rotation.y = 0.2;
+    m.castShadow = m.receiveShadow = true;
+    scene.add(m);
+    city.meshes.push(m);
+    world.add({ x: px, y: 1.3, z: pz, sx: 6, sz: 2.5, sy: 2.6, yaw: 0.2, mat: 'metal', bullet: 'block', sight: true, surface: 'metal' });
+  }
+  city.fogDensity = 0.0085; // 浓雾：游戏侧在 env.apply 后覆盖
+  return city;
 }

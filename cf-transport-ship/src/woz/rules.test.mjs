@@ -292,5 +292,20 @@ console.log('== WOZ 规则层断言 ==');
   check(sim.rules.clawDamage(id, false) > WOZ.clawLight * 1.05, '爪击: 进化点提升伤害');
 }
 
+// 11. 母体狂暴咆哮
+{
+  const sim = new ArenaSim('infection', 77);
+  sim.rules.beginRound(3); skipBuy(sim);
+  const mid = sim.rules.players.findIndex((p) => p.isMother);
+  const m = sim.rules.state(mid);
+  m.skillCharge = 1;
+  check(sim.rules.tryUseSkill(mid), 'V8: 母体充满后可释放咆哮');
+  check(sim.rules.motherRageActive(), 'V8: 狂暴咆哮激活');
+  const other = sim.rules.players.findIndex((p) => !p.isMother && p.side === 'human');
+  sim.rules.state(other).side = 'mutant';
+  const base = sim.rules.mutantSpeedMultiplier(other);
+  check(base > WOZ.mutantSpeed, `V8: 咆哮期间变异者加速 (${base.toFixed(2)})`);
+}
+
 console.log(`\n结果: ${passed} 通过, ${failed} 失败`);
 process.exit(failed === 0 ? 0 : 1);
