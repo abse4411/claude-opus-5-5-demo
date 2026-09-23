@@ -24,11 +24,27 @@ export class HUD {
     this.slotsT = 0;
     this.radarCtx = this.el.radar.getContext('2d');
     const touch = matchMedia('(pointer:coarse)').matches;
-    this.opts = { team: 'BL', primary: 'ak47', size: 6, diff: 'normal', goal: 50, tod: 'day', quality: touch ? 'low' : 'high', sens: 1.0, fov: 78, vol: 0.8 };
+    this.opts = { mode: 'tdm', map: 'ship', team: 'BL', primary: 'ak47', size: 6, diff: 'normal', goal: 50, tod: 'day', quality: touch ? 'low' : 'high', sens: 1.0, fov: 78, vol: 0.8 };
     try { Object.assign(this.opts, JSON.parse(localStorage.getItem('cf_ship_opts') || '{}')); } catch (e) { /* 忽略 */ }
     this.buildMenu();
+    this.showModeInfo(this.opts.mode);
   }
   saveOpts() { try { localStorage.setItem('cf_ship_opts', JSON.stringify(this.opts)); } catch (e) { /* 忽略 */ } }
+
+  // ---------- 模式机制说明 ----------
+  static MODE_INFO = {
+    tdm: { name: '团队竞技', desc: '经典 PVP 对战。<b>人类内战</b>：潜伏者 vs 保卫者，用枪械一决高下。率先达到目标击杀数或时间结束时比分领先的队伍获胜。阵亡 4 秒后在后方出生点复活。' },
+    infection: { name: '生化感染', desc: '购买期结束后随机 <b>2 名玩家变为母体变异者</b>（3000HP）。变异者用利爪攻击人类，人类<b>阵亡即被感染</b>并转化为变异者。任意人类存活到 180 秒战斗期结束或全歼变异者=人类胜；全员感染=变异者胜。变异者按 <b>5/6/7</b> 变身夜行者/噬魂者/暴食者，<b>E</b> 吞噬尸体回血进化，<b>G</b> 释放技能。' },
+    revenge: { name: '生化复仇', desc: '感染规则 + 双向进化：变异者可<b>复活并再变异</b>（HP×1.25/伤害×1.2）；人类濒败（存活≤2 人或剩余≤45 秒）时伤害最高者觉醒为<b>生化复仇者</b>——1500HP 电锯，轻击 500/重击必杀，被其击杀的变异者无法复活。最后 60 秒降临尸潮。' },
+    bio: { name: '生化模式', desc: '经典感染变体：地图上持续刷新 <b>AI 变异爬行者</b>（300HP），击杀它们会掉落<b>医疗包/弹药箱/生化能量</b>（拾取后技能充满）三种补给。其余规则与生化感染一致。' },
+    confront: { name: '生化对抗', desc: '人类攻方 vs 变异者守方。地图上有 <b>A/B/C 三个战术据点</b>：站入据点内人数占优即可推进占领进度（双方在场则争夺冻结）。<b>占领全部据点=人类胜</b>；守到时间耗尽=变异者胜。守卫变异者会分区驻守。双方阵亡后可复活。' },
+    demol: { name: '生化爆破', desc: '人类攻入地图西侧的<b>变异者巢穴</b>，站入红色区域 4 秒<b>安放核弹</b>（倒计时 45 秒）。<b>率先完成安放的人类进化为英雄</b>（200HP/伤害×1.25/加速）。核弹引爆=人类胜；变异者站上核弹 8 秒将其摧毁，或安放前团灭人类=变异者胜。变异者限量复活。' },
+  };
+  showModeInfo(mode) {
+    const info = HUD.MODE_INFO[mode];
+    const el = document.getElementById('modeInfo');
+    if (el && info) el.innerHTML = `<b style="color:#f5b321">${info.name}</b>｜${info.desc}`;
+  }
 
   // ---------- 菜单 ----------
   buildMenu() {
@@ -43,6 +59,7 @@ export class HUD {
           b.classList.add('on');
           o[k] = isNaN(+b.dataset.v) ? b.dataset.v : +b.dataset.v;
           this.saveOpts();
+          if (k === 'mode') this.showModeInfo(o[k]);
           this.g.onOption?.(k, o[k]);
           this.g.audio?.playUI('click');
         });
@@ -144,7 +161,7 @@ export class HUD {
     if (!s.alive && s.respawnIn > 0) {
       e.center.classList.remove('hidden');
       e.cBig.innerHTML = s.killedBy || '你阵亡了';
-      e.cSmall.textContent = `${s.respawnIn.toFixed(1)} 秒后复活 · 按 B 更换武器`;
+      e.cSmall.textContent = s.respawnIn > 30 ? '你已出局 · 等待回合结束' : `${s.respawnIn.toFixed(1)} 秒后复活 · 按 B 更换武器`;
     } else e.center.classList.add('hidden');
     e.protect.textContent = s.protect > 0 && s.alive ? `出生保护 ${s.protect.toFixed(1)}s（开火即解除）` : '';
     e.nameTip.textContent = s.aimName || ''; e.nameTip.className = s.aimTeam || '';
@@ -342,6 +359,9 @@ const TEMPLATE = `
       <div class="note hidden" id="touchNote">检测到触屏设备：已启用虚拟摇杆（左侧移动、右侧滑动视角）。电脑 + 鼠标体验最佳。</div>
     </div>
     <div class="opts">
+      <div class="opt"><div class="lab">模式</div><div class="seg" data-k="mode"><button data-v="tdm">团队竞技</button><button data-v="infection">生化感染</button><button data-v="revenge">生化复仇</button><button data-v="bio">生化模式</button><button data-v="confront">生化对抗</button><button data-v="demol">生化爆破</button></div></div>
+      <div id="modeInfo" style="grid-column:1/-1;margin:6px 0 2px;padding:8px 12px;border:1px solid rgba(245,179,33,.35);border-radius:8px;background:rgba(20,16,6,.5);font:12px/1.7 "PingFang SC","Microsoft YaHei",sans-serif;color:#d8cdb0;text-align:left"></div>
+      <div class="opt"><div class="lab">地图</div><div class="seg" data-k="map"><button data-v="ship">运输船</button><button data-v="city">死亡城市</button></div></div>
       <div class="opt"><div class="lab">阵营</div><div class="seg team" data-k="team"><button data-v="BL">潜伏者<small>Black List</small></button><button data-v="GR">保卫者<small>Global Risk</small></button></div></div>
       <div class="opt"><div class="lab">主武器</div><div class="seg" data-k="primary"><button data-v="ak47">AK-47</button><button data-v="m4a1">M4A1</button><button data-v="awm">AWM</button><button data-v="mp5">MP5</button></div></div>
       <div class="row2">
@@ -350,7 +370,7 @@ const TEMPLATE = `
       </div>
       <div class="opt"><div class="lab">电脑难度</div><div class="seg" data-k="diff"><button data-v="easy">简单</button><button data-v="normal">普通</button><button data-v="hard">困难</button><button data-v="hell">地狱</button></div></div>
       <div class="row2">
-        <div class="opt"><div class="lab">时间</div><div class="seg" data-k="tod"><button data-v="day">白天</button><button data-v="dusk">黄昏</button></div></div>
+        <div class="opt"><div class="lab">时间</div><div class="seg" data-k="tod"><button data-v="day">白天</button><button data-v="dusk">黄昏</button><button data-v="night">夜晚</button></div></div>
         <div class="opt"><div class="lab">画质</div><div class="seg" data-k="quality"><button data-v="low">流畅</button><button data-v="medium">均衡</button><button data-v="high">极致</button></div></div>
       </div>
       <div class="row3">
@@ -369,7 +389,7 @@ const TEMPLATE = `
   <div class="opt"><div class="lab">鼠标灵敏度</div><div class="slider" data-k="sens"><input type="range" min="0.2" max="3" step="0.05"><span></span></div></div>
   <div class="opt"><div class="lab">视野 FOV</div><div class="slider" data-k="fov"><input type="range" min="65" max="100" step="1"><span></span></div></div>
   <div class="opt"><div class="lab">音量</div><div class="slider" data-k="vol"><input type="range" min="0" max="1" step="0.05"><span></span></div></div>
-  <div class="opt"><div class="lab">时间</div><div class="seg" data-k="tod"><button data-v="day">白天</button><button data-v="dusk">黄昏</button></div></div>
+  <div class="opt"><div class="lab">时间</div><div class="seg" data-k="tod"><button data-v="day">白天</button><button data-v="dusk">黄昏</button><button data-v="night">夜晚</button></div></div>
   <button class="go" id="btnResume">继 续</button><button class="go sec" id="btnQuit" style="margin-top:10px">退出到主菜单</button>
 </div></div>
 

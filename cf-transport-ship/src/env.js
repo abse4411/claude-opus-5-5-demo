@@ -16,6 +16,13 @@ export const PRESETS = {
     exposure: 0.7, fog: 0xd49a78, fogDensity: 0.0013,
     deep: 0x0a1c2c, shallow: 0x2a4a58, skyZen: 0x3a4f78, skyHor: 0xf2a070, cloudLit: 0xffc08a, cloudShade: 0x5a4a58, cloudCover: 0.5,
   },
+  // 死亡城市夜景：低月光 + 浓雾
+  night: {
+    elev: 22, azim: 200, turbidity: 1.2, rayleigh: 0.35, mie: 0.0012, mieG: 0.8,
+    sunColor: 0x9ab0d8, sunInt: 0.55, hemiSky: 0x1c2a44, hemiGround: 0x0a0d14, hemiInt: 0.22, envInt: 0.18,
+    exposure: 0.78, fog: 0x0b1018, fogDensity: 0.0031,
+    deep: 0x02060c, shallow: 0x081820, skyZen: 0x060a14, skyHor: 0x101a2a, cloudLit: 0x2a3a52, cloudShade: 0x0c1220, cloudCover: 0.65,
+  },
 };
 
 const NOISE_GLSL = /* glsl */`

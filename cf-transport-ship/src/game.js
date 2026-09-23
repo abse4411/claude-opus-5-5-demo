@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { Renderer } from './render.js';
 import { buildTextures } from './textures.js';
 import { buildMap } from './map.js';
+import { buildCityMap } from './woz/map-city.js';
 import { Environment } from './env.js';
 import { World, NavGrid } from './physics.js';
 import { Effects } from './effects.js';
@@ -14,6 +15,7 @@ import { buildGunMerged } from './guns.js';
 import { Player } from './player.js';
 import { Bot, BOT_NAMES } from './bots.js';
 import { TouchControls } from './touch.js';
+import { WozManager } from './woz/integrate.js';
 
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
 const MULTI = ['', '', 'DOUBLE KILL', 'TRIPLE KILL', 'MULTI KILL', 'ULTRA KILL', 'RAMPAGE', 'UNSTOPPABLE', 'GODLIKE'];
@@ -27,12 +29,15 @@ export class Game {
     this.actors = []; this.nades = []; this.timers = []; this.tags = [];
     this.score = { BL: 0, GR: 0 };
     this.audio = audio;
+    this.woz = null;
     this.qs = new URLSearchParams(location.search);
   }
   async init() {
     this.hud = new HUD(this);
     this.opts = this.hud.opts;
     if (this.qs.get('q')) this.opts.quality = this.qs.get('q');
+    if (this.qs.get('mode')) this.opts.mode = this.qs.get('mode');
+    if (this.qs.get('map')) this.opts.map = this.qs.get('map');
     this.hud.show('loading');
     this.hud.loading(0.05, '初始化渲染器');
     await nextFrame();
@@ -44,7 +49,8 @@ export class Game {
     this.hud.loading(0.55, '搭建运输船');
     await nextFrame();
     this.world = new World();
-    this.map = buildMap(this.renderer.scene, this.T, this.world);
+    this.mapName = this.opts.map === 'city' ? '死亡城市' : '运输船';
+    this.map = (this.opts.map === 'city' ? buildCityMap : buildMap)(this.renderer.scene, this.T, this.world);
     this.hud.loading(0.68, '天空与海洋');
     await nextFrame();
     this.env = new Environment(this.renderer.renderer, this.renderer.scene, this.opts.quality);
@@ -123,6 +129,11 @@ export class Game {
   // ================= 流程 =================
   startMatch() {
     const o = this.opts;
+    if (o.mode && o.mode !== 'tdm') {
+      if (!this.woz) this.woz = new WozManager(this);
+      this.woz.startMatch();
+      return;
+    }
     audio.init(); audio.setVolumes({ master: o.vol }); audio.startAmbient(); audio.playUI('start');
     for (const a of this.actors) this.renderer.scene.remove(a.soldier.root);
     for (const t of this.tags) this.renderer.scene.remove(t.sprite);
@@ -225,6 +236,7 @@ export class Game {
   }
   quitToMenu() {
     this.playing = false; this.paused = false; this.ended = true;
+    if (this.woz) this.woz.onQuit();
     audio.stopAmbient(); audio.setLowHealth(false);
     for (const a of this.actors) this.renderer.scene.remove(a.soldier.root);
     for (const t of this.tags) this.renderer.scene.remove(t.sprite);
@@ -359,7 +371,7 @@ export class Game {
     return o.clone().addScaledVector(dir, range);
   }
   melee(a, heavy) {
-    const d = WEAPONS.knife;
+    const d = WEAPONS[a.weapon?.id] || WEAPONS.knife;
     const range = heavy ? d.rangeHeavy : d.rangeLight;
     const eye = a.eye(new THREE.Vector3());
     const base = a.forward(new THREE.Vector3());
@@ -375,11 +387,14 @@ export class Game {
       }
       if (hit) break;
     }
+    // 隔墙不可命中（变异者爪击/军刀均受视线遮挡约束）
+    if (hit && this.world.raycast(eye.x, eye.y, eye.z, hit.dir.x, hit.dir.y, hit.dir.z, hit.t - 0.05, 'sight')) hit = null;
     const delay = heavy ? 0.33 : 0.1;
     this.timers.push({
       t: this.time + delay, fn: () => {
         if (!a.alive) return;
         if (hit && hit.a.alive) {
+          a.protectT = 0; // 出手即解除出生保护
           const vf = hit.a.forward(new THREE.Vector3()); vf.y = 0; vf.normalize();
           const back = vf.dot(_v.copy(hit.dir).setY(0).normalize()) > 0.5;
           let dmg = heavy ? d.dmgHeavy : d.dmgLight;
@@ -388,7 +403,7 @@ export class Game {
           const pt = eye.clone().addScaledVector(hit.dir, hit.t);
           this.fx.impact(pt, hit.dir.clone().negate(), 'flesh', hit.dir);
           audio.playKnife(heavy ? 'heavy' : 'light', 'flesh', a.isPlayer ? null : eye);
-          this.damage(hit.a, a, dmg, hit.part, 'knife', hit.dir, false, true);
+          this.damage(hit.a, a, dmg, hit.part, a.weapon?.id || 'knife', hit.dir, false, true);
         } else {
           const w = this.world.raycast(eye.x, eye.y, eye.z, base.x, base.y, base.z, range, 'bullet');
           if (w) {
@@ -466,12 +481,20 @@ export class Game {
     if (att && att !== v && att.team === v.team) return;
     const def = WEAPONS[wid];
     let hpD = amt;
+    if (this.woz) hpD *= this.woz.adjustDamage(v, att);
     if (v.armor > 0 && part !== 'leg') {
       const ap = def?.armorPen ?? 0.75;
       hpD = amt * ap;
       v.armor = Math.max(0, v.armor - amt * (1 - ap) * 1.4);
     }
     v.hp -= hpD;
+    // WOZ 打击反馈：击退冲量 + 命中暂缓（变异者躯体重，击退衰减但暂缓吃满）
+    if (dir && v.alive) {
+      const kdef = WEAPONS[wid] || {};
+      const heavy = v.wozHeavy ? 0.35 : 1;
+      if (kdef.knock) { v.vel.x += dir.x * kdef.knock * heavy; v.vel.z += dir.z * kdef.knock * heavy; }
+      if (kdef.stagger) v.staggerT = Math.max(v.staggerT || 0, kdef.stagger);
+    }
     v.lastAttacker = att; v.lastHurt = this.time;
     const killed = v.hp <= 0;
     if (att && att !== v) att.stats.hits++;
@@ -496,7 +519,7 @@ export class Game {
     const p = this.player;
     if (att && att !== v) {
       att.stats.k++; if (hs) att.stats.hs++;
-      this.score[att.team]++;
+      if (!this.woz) this.score[att.team]++;
       att.multi = this.time - att.lastKillT < 5 ? att.multi + 1 : 1;
       att.lastKillT = this.time; att.streak++;
     }
@@ -521,6 +544,7 @@ export class Game {
       this.killedBy = att && att !== v ? `被 <span style="color:${att.team === 'BL' ? '#ff9b70' : '#8cc8ff'}">${att.name}</span> 用 ${wn}${hs ? ' <span style="color:#ff5040">爆头</span>' : ''}击杀` : '你阵亡了';
     }
     this.fx.bloodSplat(v.pos);
+    if (this.woz) { this.woz.onKill(v, att); return; }
     if (this.score.BL >= this.goal || this.score.GR >= this.goal) setTimeout(() => { if (this.playing) this.endMatch(); }, 1200);
   }
 
@@ -601,12 +625,14 @@ export class Game {
         } else {
           a.deadT += dt;
           a.soldier.update(dt, {});
+          if (a.blindT > 0) a.blindT = Math.max(0, a.blindT - dt);
           a.respawnT -= dt;
-          if (a.respawnT <= 0 && !this.ended) this.spawnActor(a);
+          if (a.respawnT <= 0 && !this.ended) this.woz ? this.woz.onRespawnDue(a) : this.spawnActor(a);
         }
       }
       this.updateNades(dt);
-      if (this.timeLeft <= 0 && !this.ended) this.endMatch();
+      if (this.woz) this.woz.tick(dt);
+      if (this.timeLeft <= 0 && !this.ended && !this.woz) this.endMatch();
       // 队友名字
       for (const t of this.tags) {
         const a = t.actor;
@@ -635,7 +661,7 @@ export class Game {
     if (this.fpsAcc > 1) {
       this.fps = Math.round(this.fpsN / this.fpsAcc); this.fpsAcc = 0; this.fpsN = 0;
       const lbl = document.querySelector('#radarWrap .lbl');
-      if (lbl) lbl.textContent = `运输船 · ${this.fps} FPS`;
+        if (lbl) lbl.textContent = `${this.mapName} · ${this.fps} FPS`;
       if (this.playing && !this.paused && this.time > 8 && !this.fpsHinted && this.fps < 32 && this.opts.quality !== 'low') {
         this.fpsHinted = true;
         this.hud.toast('帧率较低：可按 Esc 在主菜单把画质调到「均衡」或「流畅」', 5);

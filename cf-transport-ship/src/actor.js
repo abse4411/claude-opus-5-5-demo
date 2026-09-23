@@ -23,6 +23,7 @@ export class Actor {
     game.renderer.scene.add(this.soldier.root);
     this.stepDist = 0; this.scoped = 0; this.scopeReady = false; this.scopeT = 0;
     this.lastHurt = -99; this.lastAttacker = null;
+    this.staggerT = 0; // WOZ 命中暂缓
     this.walk = false;
     this.pendingThrow = 0;
   }
@@ -57,7 +58,7 @@ export class Actor {
   move(dt, wishX, wishZ, jump, crouch, walk) {
     const g = this.game;
     const w = this.weapon;
-    const spMul = w ? w.def.speed : 1;
+    const spMul = (w ? w.def.speed : 1) * (this.speedMul || 1);
     // 下蹲 / 起身
     if (crouch && !this.crouch) {
       this.crouch = true; this.height = CROUCH_H;

@@ -233,6 +233,38 @@ const builders = {
     anchor(g, 'muzzle', 0, 0, -0.23);
     return g;
   },
+  claw(m) {
+    // 变异者利爪：掌板 + 三片扇形骨刺
+    const g = new THREE.Group();
+    part(g, RB(0.09, 0.03, 0.11, 0.01), m.rubber, 0, 0, 0.03);
+    for (let i = 0; i < 3; i++) {
+      const fan = (i - 1) * 0.026;
+      const sh = new THREE.Shape();
+      sh.moveTo(0, 0.008 + fan * 0.4); sh.lineTo(0.13, 0.004 + fan);
+      sh.quadraticCurveTo(0.19, 0.002 + fan * 1.2, 0.24, fan * 1.6);
+      sh.lineTo(0.12, -0.006 + fan * 0.6); sh.lineTo(0, -0.008);
+      sh.closePath();
+      const bg = new THREE.ExtrudeGeometry(sh, { depth: 0.007, bevelEnabled: true, bevelThickness: 0.001, bevelSize: 0.0012, bevelSegments: 1 });
+      bg.translate(0, 0, -0.0035); bg.rotateY(Math.PI / 2);
+      part(g, bg, m.blade, 0, 0.004, -0.05);
+    }
+    anchor(g, 'grip', 0, 0, 0.04);
+    anchor(g, 'muzzle', 0, 0, -0.2);
+    return g;
+  },
+  chainsaw(m) {
+    // 复仇者电锯：机身 + 导板 + 锯齿
+    const g = new THREE.Group();
+    part(g, RB(0.075, 0.11, 0.24, 0.012), m.olive, 0, 0, 0.06);
+    part(g, RB(0.08, 0.03, 0.06, 0.008), m.rubber, 0, -0.055, 0.13);
+    part(g, CY(0.02, 0.016), m.black, 0.045, 0.02, 0.06, 0, 0, Math.PI / 2);
+    part(g, RB(0.014, 0.055, 0.4, 0.004), m.metal, 0, 0.005, -0.24);
+    part(g, RB(0.03, 0.026, 0.36, 0.003), m.blade, 0, 0.005, -0.26);
+    for (let i = 0; i < 10; i++) part(g, BX(0.034, 0.008, 0.018), m.steel, 0, -0.006, -0.1 - i * 0.036);
+    anchor(g, 'grip', 0, -0.02, 0.1);
+    anchor(g, 'muzzle', 0, 0, -0.44);
+    return g;
+  },
   he(m) {
     const g = new THREE.Group();
     const body = new THREE.SphereGeometry(0.034, 16, 12); body.scale(1, 1.25, 1);

@@ -49,6 +49,16 @@ export class Bot extends Actor {
   L(x, z) { return [x * this.side, z * this.side]; } // 己方坐标 -> 世界
   pickGoal() {
     const g = this.game, nav = g.nav, rnd = Math.random;
+    // WOZ 目标物模式：BOT 优先执行占点/安放战术
+    if (g.woz && g.woz.botObjective) {
+      const t = g.woz.botObjective(this);
+      if (t) {
+        this.goal = t;
+        this.path = nav.findPath(this.pos.x, this.pos.z, t[0], t[1]);
+        this.pi = 1;
+        return;
+      }
+    }
     let gx, gz;
     if (this.role === 'hold') {
       const h = HOLDS[(rnd() * HOLDS.length) | 0];
@@ -85,6 +95,7 @@ export class Bot extends Actor {
   }
   canSee(t) {
     const g = this.game;
+    if (this.blindT > 0) return false; // 被致盲尖啸命中
     const e = this.eye(_v);
     const dist = e.distanceTo(t.pos);
     if (dist > this.diff.see) return false;

@@ -1,9 +1,10 @@
 // 武器数据（参考穿越火线手感：步枪首发精准，连射上跳后左右摆动；狙击枪开镜才准）
+// knock: 命中击退冲量(m/s)；stagger: 命中暂缓时长(s)——WOZ 打击反馈
 export const WEAPONS = {
   ak47: {
     id: 'ak47', name: 'AK-47', slot: 0, type: 'rifle', auto: true,
     dmg: 36, headMul: 4.0, limbMul: 0.78, rpm: 600, mag: 30, reserve: 90, reload: 2.45, draw: 0.85,
-    speed: 0.93, range: 220, falloff: 0.985, pen: 1.2, armorPen: 0.78,
+    speed: 0.93, range: 220, falloff: 0.985, pen: 1.2, armorPen: 0.78, knock: 2.2, stagger: 0.12,
     spread: { base: 0.0028, move: 0.045, air: 0.16, crouch: 0.6, perShot: 0.0055, max: 0.05, recover: 7 },
     recoil: { up: 0.0105, upMax: 0.11, side: 0.0062, sideStart: 5, recover: 6.5 },
     sound: 'ak47', hudName: 'AK-47',
@@ -11,7 +12,7 @@ export const WEAPONS = {
   m4a1: {
     id: 'm4a1', name: 'M4A1', slot: 0, type: 'rifle', auto: true,
     dmg: 32, headMul: 4.0, limbMul: 0.8, rpm: 700, mag: 30, reserve: 90, reload: 2.3, draw: 0.8,
-    speed: 0.95, range: 220, falloff: 0.985, pen: 1.0, armorPen: 0.72,
+    speed: 0.95, range: 220, falloff: 0.985, pen: 1.0, armorPen: 0.72, knock: 2.0, stagger: 0.1,
     spread: { base: 0.0024, move: 0.04, air: 0.15, crouch: 0.6, perShot: 0.0044, max: 0.042, recover: 8 },
     recoil: { up: 0.0082, upMax: 0.085, side: 0.0048, sideStart: 6, recover: 7 },
     sound: 'm4a1', hudName: 'M4A1',
@@ -19,7 +20,7 @@ export const WEAPONS = {
   awm: {
     id: 'awm', name: 'AWM', slot: 0, type: 'sniper', auto: false,
     dmg: 118, headMul: 2.2, limbMul: 0.82, rpm: 41, mag: 5, reserve: 20, reload: 3.5, draw: 1.1,
-    speed: 0.82, range: 400, falloff: 0.998, pen: 2.6, armorPen: 0.95, bolt: 1.35,
+    speed: 0.82, range: 400, falloff: 0.998, pen: 2.6, armorPen: 0.95, bolt: 1.35, knock: 7.5, stagger: 0.45,
     spread: { base: 0.06, scoped: 0.0004, move: 0.09, air: 0.22, crouch: 0.85, perShot: 0, max: 0.2, recover: 3 },
     recoil: { up: 0.035, upMax: 0.035, side: 0.004, sideStart: 0, recover: 4 },
     zoom: [30, 11], sound: 'awm', hudName: 'AWM',
@@ -27,7 +28,7 @@ export const WEAPONS = {
   mp5: {
     id: 'mp5', name: 'MP5', slot: 0, type: 'smg', auto: true,
     dmg: 25, headMul: 3.6, limbMul: 0.85, rpm: 800, mag: 30, reserve: 120, reload: 2.1, draw: 0.6,
-    speed: 1.0, range: 120, falloff: 0.97, pen: 0.6, armorPen: 0.6,
+    speed: 1.0, range: 120, falloff: 0.97, pen: 0.6, armorPen: 0.6, knock: 1.6, stagger: 0.08,
     spread: { base: 0.004, move: 0.022, air: 0.12, crouch: 0.7, perShot: 0.0035, max: 0.04, recover: 9 },
     recoil: { up: 0.0058, upMax: 0.06, side: 0.004, sideStart: 5, recover: 8 },
     sound: 'mp5', hudName: 'MP5',
@@ -35,7 +36,7 @@ export const WEAPONS = {
   deagle: {
     id: 'deagle', name: '沙漠之鹰', slot: 1, type: 'pistol', auto: false,
     dmg: 54, headMul: 3.8, limbMul: 0.75, rpm: 260, mag: 7, reserve: 35, reload: 2.0, draw: 0.55,
-    speed: 1.0, range: 150, falloff: 0.98, pen: 1.0, armorPen: 0.8,
+    speed: 1.0, range: 150, falloff: 0.98, pen: 1.0, armorPen: 0.8, knock: 3.2, stagger: 0.2,
     spread: { base: 0.004, move: 0.05, air: 0.18, crouch: 0.7, perShot: 0.028, max: 0.07, recover: 5 },
     recoil: { up: 0.03, upMax: 0.09, side: 0.008, sideStart: 1, recover: 5 },
     sound: 'deagle', hudName: 'DESERT EAGLE',
@@ -43,11 +44,21 @@ export const WEAPONS = {
   knife: {
     id: 'knife', name: '军刀', slot: 2, type: 'melee', auto: true,
     dmgLight: 52, dmgHeavy: 100, rangeLight: 1.9, rangeHeavy: 1.6, rateLight: 0.42, rateHeavy: 1.05, draw: 0.4,
-    speed: 1.08, sound: 'knife', hudName: 'KNIFE', mag: 0, reserve: 0,
+    speed: 1.08, sound: 'knife', hudName: 'KNIFE', knock: 3.5, stagger: 0.18, mag: 0, reserve: 0,
+  },
+  claw: {
+    id: 'claw', name: '利爪', slot: 2, type: 'melee', auto: true,
+    dmgLight: 40, dmgHeavy: 75, rangeLight: 2.0, rangeHeavy: 1.7, rateLight: 0.55, rateHeavy: 1.0, draw: 0.3,
+    speed: 1.0, sound: 'knife', hudName: 'CLAW', knock: 4.0, stagger: 0.2, mag: 0, reserve: 0,
+  },
+  chainsaw: {
+    id: 'chainsaw', name: '电锯', slot: 2, type: 'melee', auto: true,
+    dmgLight: 500, dmgHeavy: 9999, rangeLight: 2.2, rangeHeavy: 1.9, rateLight: 0.9, rateHeavy: 1.2, draw: 0.6,
+    speed: 1.02, sound: 'knife', hudName: 'CHAINSAW', knock: 5.0, stagger: 0.3, mag: 0, reserve: 0,
   },
   he: {
     id: 'he', name: '手雷', slot: 3, type: 'grenade', auto: false,
-    dmg: 115, radius: 7.5, fuse: 2.6, count: 1, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'HE GRENADE', mag: 1, reserve: 0,
+    dmg: 115, radius: 7.5, fuse: 2.6, knock: 9, stagger: 0.5, count: 1, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'HE GRENADE', mag: 1, reserve: 0,
   },
 };
 

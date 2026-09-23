@@ -47,6 +47,20 @@ const OUTFIT = {
     head: [0x33404f, 'plain'], band: [0x1a1a1a, 'plain'], armband: [0x1f62c8, 'plain'], goggles: [0x151515, 'plain'], lens: [0xe0c040, 'plain'],
     pads: [0x2a3340, 'plain'],
   },
+  // WOZ 变异者：暗红腐坏皮肤 + 亮橙发光眼
+  MUT: {
+    pants: [0x3a1512, 'fab'], jacket: [0x4a1a12, 'fab'], vest: [0x2b0d0a, 'fab'], pouch: [0x571f14, 'fab'],
+    boots: [0x1a0c0a, 'plain'], gloves: [0x571f14, 'plain'], skin: [0x8a4a3a, 'plain'], mask: [0x300f0b, 'fab'],
+    head: [0x3a120d, 'fab'], band: [0xd8351a, 'plain'], armband: [0xd8351a, 'plain'], goggles: [0x1a0a08, 'plain'], lens: [0xffa020, 'plain'],
+    pads: [0x24100c, 'plain'],
+  },
+  // WOZ 生化复仇者：电光蓝动力装甲
+  AVG: {
+    pants: [0x16283e, 'fab'], jacket: [0x1a3450, 'fab'], vest: [0x0e2036, 'fab'], pouch: [0x22456a, 'fab'],
+    boots: [0x0c0f16, 'plain'], gloves: [0x1c3a5a, 'plain'], skin: [0xc49a7a, 'plain'], mask: [0x12243a, 'fab'],
+    head: [0x1a3450, 'fab'], band: [0x35c8ff, 'plain'], armband: [0x35c8ff, 'plain'], goggles: [0x0c1220, 'plain'], lens: [0x60e0ff, 'plain'],
+    pads: [0x182c44, 'plain'],
+  },
 };
 
 const BONES = [
