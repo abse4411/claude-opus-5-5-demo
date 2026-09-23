@@ -493,6 +493,8 @@ export class Game {
     const eye = a.eye(new THREE.Vector3());
     const base = a.forward(new THREE.Vector3());
     if (a.isPlayer) this.vm.melee(heavy);
+    // 复仇者重击 = 旋转清场（原作：原地旋转一周清除所有近身敌人）
+    if (heavy && a.wozOutfit === 'AVG' && this.woz?.rules?.isAvenger?.(a.id)) { this.woz.spinAttack(a); return; }
     this.frame++;
     let hit = null;
     for (const off of [0, 0.12, -0.12, 0.24, -0.24]) {

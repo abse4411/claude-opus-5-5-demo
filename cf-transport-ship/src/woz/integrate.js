@@ -12,6 +12,7 @@ import { wozAudio } from './audio.js';
 import { CapturePoint, NuclearBomb } from './objectives.js';
 import { Pickups } from './pickups.js';
 import { WOZ, MutantClass, CLASS_LABEL, CONFRONT, DEMOL, BIO } from './config.js';
+import { audio } from '../audio.js';
 
 const ROUND_WINS = 3;
 const _fwd = new THREE.Vector3();
@@ -842,6 +843,32 @@ export class WozManager {
     void id; // 表现已在 tryHumanUltimate 处理；规则层回调占位
   }
 
+  // 复仇者旋转清场（原作：被包围时原地旋转一周清除所有近身敌人）——重击的 360° 版本
+  spinAttack(a) {
+    const g = this.g;
+    const eye = a.eye(new THREE.Vector3());
+    let hits = 0;
+    for (const b of g.actors) {
+      if (!b.alive || b === a || b.team === a.team || b.wozOut) continue;
+      const dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > WOZ.avengerSpinRadius) continue;
+      const dir = new THREE.Vector3(dx, (b.pos.y + 1.2) - eye.y, dz).normalize();
+      if (g.world.raycast(eye.x, eye.y, eye.z, dir.x, dir.y, dir.z, Math.min(dist + 0.4, WOZ.avengerSpinRadius), 'sight')) continue;
+      g.damage(b, a, 9999, 'chest', 'chainsaw', dir, false, true);
+      g.fx.bloodSplat(b.pos);
+      hits++;
+    }
+    g.fx.shake = Math.max(g.fx.shake || 0, 1.2);
+    if (hits) {
+      audio.playKnife('heavy', 'flesh', a.isPlayer ? null : eye);
+      if (a.isPlayer) g.hud.toast(`<b style="color:#60e0ff">旋转清场！</b>绞碎 ${hits} 名近身敌人`, 1.5);
+      g.hud.eventFeed(`${a.name} 旋转清场绞碎了 ${hits} 名敌人！`, 'avg');
+    } else {
+      audio.playKnife('heavy', 'wall', a.isPlayer ? null : eye);
+    }
+  }
+
   // 感染变身选择面板：玩家已转化但尚未主动选职业（WOZ 特色交互）
   pickNeeded() {
     const rules = this.rules, p = this.g.player;
@@ -1015,6 +1042,7 @@ export class WozManager {
         mul *= 1 - rules.evoDamageReduction(vs); // 二阶防御进化
       } else {
         mul *= 1 - rules.humanDamageReduction(v.id);
+        if (vs.isAvenger) mul *= 1 - WOZ.avengerDef; // 复仇者防御被动
       }
     }
     return mul;
@@ -1114,7 +1142,7 @@ export class WozManager {
       g.vm.equip('chainsaw', 0.5);
       g.vm.setVisible(true);
       g.hud.slots(a.inv, 0);
-      g.hud.toast('<b style="color:#60e0ff">生化复仇者觉醒！</b> 电锯轻击 500 · 重击必杀', 4);
+      g.hud.toast('<b style="color:#60e0ff">生化复仇者觉醒！</b> 电锯轻击 500 · 重击 360°旋转清场', 4);
     }
     g.audio.announce('Avenger online!');
     wozAudio.avenger(a.isPlayer ? null : a.pos.clone());

@@ -415,6 +415,61 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v16') {
+  // 复仇者：重击 360°旋转清场 + 防御被动
+  await goto('&mode=revenge');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(16, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999; g.woz.endMatch = () => {};
+      // 强制玩家（0 号，伤害最高者）变身为复仇者
+      rules.avengerUsed = false;
+      rules.state(0).humanDamage = 999999;
+      for (let i = 1; i < rules.playerCount; i++) {
+        const st = rules.state(i), a = g.actors[i];
+        if (st.side === 'human' && st.alive && a.alive) g.damage(a, null, 9999, 'chest', 'he', { x: 0.6, z: 0.8 }, false);
+      }
+      const p0 = rules.state(0);
+      p0.side = 'human'; p0.alive = true; p0.reviveTimer = 0; p0.humanDamage = 999999;
+      if (g.actors[0]) { g.actors[0].team = 'GR'; g.actors[0].alive = true; }
+      g.fastForward(0.1, 1 / 30);
+      if (rules.avengerId() < 0) rules.tryTriggerAvenger();
+      if (rules.avengerId() !== 0) return { ok: false, av: rules.avengerId() };
+      p.protectT = 0; p.armor = 0;
+      // 三名变异者围到身边（≤2.8m）
+      const victims = [];
+      const spots = [[1.5, 0], [0, 1.5], [-1.2, 0]];
+      for (let k = 0; k < 3; k++) {
+        const b = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount);
+        if (!b) break;
+        rules.convertToMutant(b.id, 'nightrunner', false);
+        g.woz.convertNow(b, true);
+        b.pos.set(p.pos.x + spots[k][0], p.pos.y, p.pos.z + spots[k][1]);
+        b.protectT = 0; b.armor = 0;
+        victims.push(b);
+      }
+      const far = g.actors.find((a) => a.alive && a !== p && !victims.includes(a) && a.id < rules.playerCount);
+      if (far) {
+        rules.convertToMutant(far.id, 'nightrunner', false);
+        g.woz.convertNow(far, true);
+        far.pos.set(p.pos.x + 12, p.pos.y, p.pos.z);
+        far.protectT = 0; far.armor = 0;
+      }
+      g.melee(p, true); // 重击 → 旋转清场
+      const spinKills = victims.filter((b) => !b.alive || !rules.state(b.id).alive).length;
+      const farAlive = far ? far.alive : null;
+      // 防御被动：100 点伤害只掉 70
+      const hp0 = p.hp;
+      g.damage(p, null, 100, 'chest', 'ak', { x: 1, z: 0 }, false);
+      const defDrop = hp0 - p.hp;
+      return { ok: true, spinKills, farAlive, defDrop: +defDrop.toFixed(0), outfit: p.wozOutfit };
+    });
+    check(r.ok && r.outfit === 'AVG', `复仇: 玩家变身复仇者 (${r.outfit || r.av})`);
+    check(r.spinKills === 3, `复仇: 旋转清场绞杀 3 名近身敌人 (${r.spinKills})`);
+    check(r.farAlive === true || r.farAlive === null, `复仇: 12m 外敌人无伤 (alive=${r.farAlive})`);
+    check(Math.abs(r.defDrop - 70) < 8, `复仇: 防御被动减免 30% (100 → ${r.defDrop})`);
+  }
 } else if (ver === 'v15') {
   // 人类必杀技：满档解锁 → HUD 就绪 → V 释放狂暴（满弹+播报）
   await goto('&mode=infection');
