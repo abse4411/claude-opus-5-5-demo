@@ -75,19 +75,30 @@ await page.evaluate(() => window.__game.fastForward(260, 1 / 30));
 {
   const r = await page.evaluate(() => {
     const g = window.__game, rules = g.woz.rules;
-    const z = g.actors.find((a) => a.alive && rules.isMutantSide(a.id) && a.id < rules.playerCount);
-    if (!z) return { ok: false };
+    let z = g.actors.find((a) => a.alive && rules.isMutantSide(a.id) && a.id < rules.playerCount);
+    if (!z) {
+      // 回合重置后全员人类：合成一名变异体做打击反馈验证
+      const i = rules.players.findIndex((p) => p.id !== g.player.id);
+      const st = rules.state(i), a = g.actors[i];
+      st.side = 'mutant'; st.alive = true; st.cls = 'nightrunner'; st.maxHp = 1500; st.hp = 1500;
+      a.team = 'BL'; a.alive = true; a.wozHeavy = true; a.hp = 1500;
+      z = a;
+    }
     z.vel.set(0, 0, 0);
+    const hpBefore = z.hp;
     g.damage(z, g.player, 20, 'chest', 'awm', { x: 0, z: -1 }, false);
     return {
       ok: true,
       knockApplied: Math.abs(z.vel.z + 7.5 * 0.35) < 0.8, // AWM 击退 7.5 × 重躯体 0.35
       stagger: z.staggerT > 0,
+      damaged: z.hp < hpBefore,
       infoLen: (document.getElementById('modeInfo')?.innerHTML || '').length,
     };
   });
-  check(r.ok && r.knockApplied, 'V1: 狙击命中击退冲量已施加');
-  check(r.ok && r.stagger, 'V1: 命中暂缓生效');
+  check(r.ok, 'V1: 测试目标就绪');
+  check(r.damaged, 'V1: 目标受到伤害');
+  check(r.knockApplied, 'V1: 狙击命中击退冲量已施加');
+  check(r.stagger, 'V1: 命中暂缓生效');
   check(r.infoLen > 50, 'V1: 模式说明面板已渲染');
 }
 
