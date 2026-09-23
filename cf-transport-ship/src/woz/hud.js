@@ -173,6 +173,8 @@ export class WozHud {
         html += `<div class="pt bomb">☢ ${b.timer}s<small>${b.state === 'destroying' ? `摧毁中 ${(b.prog * 100) | 0}%` : '倒计时'}</small></div>`;
       } else if (b.state === 'planting') {
         html += `<div class="pt bomb">☢ 安放中<small>${(b.prog * 100) | 0}%</small></div>`;
+      } else if (b.canPlant || b.state === 'planting') {
+        html += `<div class="pt bomb">☢ ${b.state === 'planting' ? `安放中 ${(b.prog * 100) | 0}%` : '<b>按住 E 安放核弹</b>'}<small>站点内</small></div>`;
       } else {
         html += `<div class="pt oNone">☢ 核弹<small>待安放 · 冲入巢穴</small></div>`;
       }

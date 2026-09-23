@@ -288,7 +288,18 @@ export class WozManager {
     if (ev === 'planted') {
       const hero = g.actors[this.bomb.planter];
       if (hero && !this.heroGiven) this.evolveHero(hero);
-      g.hud.toast('<b style="color:#ffd24a">核弹已安放！</b>变异者摧毁它，人类守住倒计时！', 3.5);
+      // 守卫增援波次：安放后立刻空降 2 名守卫
+      for (let i = 0; i < 2; i++) {
+        const z = new Zombie(g, { id: 90 + i, name: '增援守卫', team: 'BL' });
+        g.actors.push(z);
+        this.tide.push(z);
+        const sp = this.pickSpawn('BL');
+        z.spawn(sp);
+        this.formZombie(z, DEMOL.guardHp);
+        z.wozRevives = 1;
+        z.protectT = 0.5;
+      }
+      g.hud.toast('<b style="color:#ffd24a">核弹已安放！</b>变异者增援已抵达，守住 45 秒！', 3.5);
       wozAudio.tide();
     } else if (ev === 'detonated') {
       g.fx.explosion(this.bomb.pos.clone());
@@ -392,7 +403,7 @@ export class WozManager {
     return {
       mode: this.mode,
       points: this.points.map((p) => ({ name: p.def.name, owner: p.owner, progress: Math.round(p.progress), contested: p.contested })),
-      bomb: this.bomb ? { state: this.bomb.state, timer: Math.max(0, Math.ceil(this.bomb.timer)), prog: this.bomb.progress } : null,
+      bomb: this.bomb ? { state: this.bomb.state, timer: Math.max(0, Math.ceil(this.bomb.timer)), prog: this.bomb.progress, canPlant: this.bomb.canPlant } : null,
     };
   }
 
@@ -694,6 +705,9 @@ export class WozManager {
     a.wozOutfit = 'AVG';
     a.hp = Math.round(st.hp);
     a.armor = 0;
+    a.heroLight = new THREE.PointLight(0x60e0ff, 2.4, 9);
+    a.heroLight.position.set(0, 1.6, 0);
+    a.soldier.root.add(a.heroLight); // 英雄光环
     a.wozOut = false; a.alive = true; a.respawnT = 0;
     a.inv = [new WeaponState('chainsaw')];
     a.slot = 0;

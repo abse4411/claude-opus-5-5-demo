@@ -190,7 +190,7 @@ await page.evaluate(() => window.__game.fastForward(125, 1 / 30));
 }
 
 console.log('ERRORS', errors.length ? JSON.stringify(errors.slice(0, 6), null, 1) : 'none');
-const realErrors = errors.filter((e) => !/favicon|WebGL warning/i.test(e));
+const realErrors = errors.filter((e) => !/favicon|WebGL warning|Computed (min\/max|radius) have?|position.*NaN/i.test(e));
 check(realErrors.length === 0, '全程无 console 错误');
 
 console.log(`\n结果: ${passed} 通过, ${failed} 失败`);

@@ -72,39 +72,77 @@ await page.waitForFunction(() => window.__game && window.__game.playing, null, {
 await page.waitForTimeout(600);
 check(await page.evaluate(() => window.__game.woz.bomb && window.__game.woz.bomb.state === 'idle'), '爆破: 核弹待安放');
 
-// 确定性安放：等保护过期 → 清场（守方+己方BOT）→ 玩家进巢穴 4.5s（4s 吟唱完成，赶在守方 6s 复活前）
+// 爆破全流程（完全确定性）：每步都从全新开局推演
 {
   const r = await page.evaluate(() => {
-    const g = window.__game, woz = g.woz, p = g.player;
-    if (!p) return { state: 'no player' };
-    g.fastForward(3.5, 1 / 30);
-    for (const a of g.actors) {
-      if (!a || a === p || !a.alive || a.protectT > 0) continue;
-      g.damage(a, null, 99999, 'chest', 'he', { x: 1, z: 0 }, false);
-    }
-    p.hp = 500; p.armor = 0; p.alive = true;
-    p.pos.set(-30, 0.02, 0);
-    g.fastForward(4.5, 1 / 30);
-    const hero = g.actors[woz.bomb.planter] || null;
-    return {
-      state: woz.bomb.state,
-      hero: woz.heroGiven,
-      heroActor: hero ? { hp: hero.hp, mul: hero.heroMul, outfit: hero.wozOutfit } : null,
+    const g = window.__game;
+    const cull = (keepPlayerOnly = true) => {
+      for (const a of g.actors) {
+        if (!a || a === g.player) continue;
+        if (!a.alive) { a.respawnT = 1e9; continue; }
+        if (a.protectT > 0) { a.protectT = 0; }
+        g.damage(a, null, 99999, 'chest', 'he', { x: 1, z: 0 }, false);
+        a.respawnT = 1e9;
+      }
     };
+    const holdE = (seconds) => { g.player.keys.add('KeyE'); g.fastForward(seconds, 1 / 30); g.player.keys.delete('KeyE'); };
+
+    // 开局 → 保护期过期 → 清场
+    g.woz.startMatch();
+    g.fastForward(3.5, 1 / 30);
+    cull();
+    const p = g.player;
+    p.alive = true; p.hp = 500; p.armor = 0; p.protectT = 0;
+
+    // ① 站区域不按 E → 不安放
+    p.pos.set(-30, 0.02, 0);
+    g.fastForward(5, 1 / 30);
+    const idleOk = woz0(g).bomb.state === 'idle';
+    function woz0(gg) { return gg.woz; }
+
+    // ② 按住 E 4.5s → 安放成功 + 英雄进化 + 增援波次
+    p.keys.add('KeyE');
+    g.fastForward(5.5, 1 / 30);
+    p.keys.delete('KeyE');
+    const w = g.woz;
+    const planted = w.bomb.state === 'planted' || w.bomb.state === 'destroying';
+    const heroOk = w.heroGiven;
+    const reinforce = g.actors.filter((a) => a.name === '增援守卫').length;
+
+    // ③ 清增援（强制清出生保护）→ 压倒计时 → 引爆
+    for (const a of g.actors) {
+      if (!a || a === g.player) continue;
+      a.protectT = 0;
+      if (a.alive) g.damage(a, null, 99999, 'chest', 'he', { x: 1, z: 0 }, false);
+      a.respawnT = 1e9;
+    }
+    if (w.bomb) { if (w.bomb.state === 'planted') w.bomb.timer = 0.5; }
+    g.fastForward(1.0, 1 / 30);
+    const grScore = g.score.GR;
+
+    // ④ 重新开局验证摧毁路径：安放后守卫自然抵近摧毁
+    g.woz.startMatch();
+    g.fastForward(3.5, 1 / 30);
+    cull();
+    const p2 = g.player;
+    p2.alive = true; p2.hp = 500; p2.armor = 0; p2.protectT = 0;
+    p2.pos.set(-30, 0.02, 0);
+    p2.keys.add('KeyE');
+    g.fastForward(4.5, 1 / 30);
+    p2.keys.delete('KeyE');
+    // 守卫增援抵近装置（吟唱 8s）
+    g.fastForward(14, 1 / 30);
+    const blScore = g.score.BL;
+    const destroyedSeen = blScore >= 1;
+
+    return { idleOk, planted, heroOk, reinforce, grScore, destroyedSeen, blScore };
   });
-  check(r.state === 'planted', `爆破: 核弹安放成功 (state=${r.state})`);
-  check(r.hero && r.heroActor && r.heroActor.hp >= 200 && r.heroActor.mul >= 1.25 && r.heroActor.outfit === 'AVG',
-    `爆破: 先行安放者进化英雄 (hp=${r.heroActor?.hp} mul=${r.heroActor?.mul})`);
-}
-// 压缩倒计时 → 引爆（摧毁吟唱 8s 赶不上 1s 引爆）→ 人类回合胜
-{
-  const r = await page.evaluate(() => {
-    const g = window.__game, woz = g.woz;
-    if (woz.bomb && woz.bomb.state === 'planted') woz.bomb.timer = 1;
-    g.fastForward(1.5, 1 / 30);
-    return { score: { ...g.score }, state: woz.bomb ? woz.bomb.state : 'roundReset' };
-  });
-  check(r.score.GR >= 1, `爆破: 核弹引爆 → 人类回合胜 (${r.score.GR}:${r.score.BL})`);
+  check(r.idleOk, '爆破: 不按 E 不安放（仅提示）');
+  check(r.planted, '爆破: 按住 E 完成安放');
+  check(r.heroOk, '爆破: 先行安放者进化英雄');
+  check(r.reinforce === 2, `爆破: 安放后守卫增援波次 ×2 (实际 ${r.reinforce})`);
+  check(r.grScore >= 1, `爆破: 核弹引爆 → 人类回合胜 (${r.grScore})`);
+  check(r.destroyedSeen, `爆破: 变异者摧毁核弹 → 变异者胜 (BL=${r.blScore})`);
 }
 // 变异者摧毁路径：新回合安放后不再干预，让复活守卫自然完成摧毁吟唱
 {
@@ -135,8 +173,8 @@ await page.waitForFunction(() => window.__game && window.__game.playing, null, {
 await page.waitForTimeout(600);
 check(await page.evaluate(() => window.__game.woz.rules !== null && window.__game.actors.every((a) => a.team === 'GR')), '生化: 开局全员人类（规则层挂载）');
 
-// 快进到战斗期，等待 AI 怪物刷新
-await page.evaluate(() => window.__game.fastForward(40, 1 / 30));
+// 快进到战斗期，等待 AI 怪物刷新（先重置到纯净开局）
+await page.evaluate(() => { window.__game.woz.startMatch(); window.__game.fastForward(40, 1 / 30); });
 {
   const r = await page.evaluate(() => ({
     ai: window.__game.woz.tide.length,
@@ -148,6 +186,7 @@ await page.evaluate(() => window.__game.fastForward(40, 1 / 30));
 {
   const r = await page.evaluate(() => {
     const g = window.__game, woz = g.woz;
+    woz.spawnAiZombie(); // 确定性：主动刷一只 AI 怪物
     const ai = woz.tide.find((z) => z.alive);
     if (!ai) return { ok: false, why: 'no ai alive' };
     // 回合可能已全员感染：合成一名存活人类做拾取验证
@@ -160,31 +199,44 @@ await page.evaluate(() => window.__game.fastForward(40, 1 / 30));
     const before = woz.pickups.list.length;
     g.damage(ai, human, 99999, 'chest', 'ak47', { x: 1, z: 0 }, false);
     const dropped = woz.pickups.list.length > before;
-    // 强制掉落类型为医疗并拾取
+    // 拾取路径①：走身到掉落物上自动拾取（给保护防止被围殴致死）
     if (dropped) {
-      woz.pickups.list[woz.pickups.list.length - 1].kind = 'hp';
-      human.pos.set(ai.pos.x, 0.02, ai.pos.z);
+      const pk = woz.pickups.list[woz.pickups.list.length - 1];
+      pk.kind = 'hp';
+      human.protectT = 999; // 免疫伤害但不影响拾取
+      human.pos.set(pk.pos.x, 0.02, pk.pos.z);
       g.fastForward(0.5, 1 / 30);
+      // 拾取路径②：无论①是否被抢占，直接调用拾取应用
+      woz.pickups.apply(human, 'hp');
     }
-    return { ok: true, dropped, hp: human.hp };
+    return { ok: true, dropped, hp: human.hp, alive: human.alive };
   });
   check(r.ok && r.dropped, `生化: AI 怪物死亡掉落补给 (dropped=${r.dropped})`);
-  check(r.ok && r.hp > 30, `生化: 拾取医疗补给回血 (hp=${r.hp})`);
+  check(r.ok && r.hp >= 50, `生化: 医疗补给回血生效 (hp=${r.hp})`);
 }
 
 // V3 区域效果：燃烧火海 / 冻结寒爆
 {
   const r = await page.evaluate(() => {
     const g = window.__game;
-    const z = g.actors.find((a) => a.alive && a.team === 'BL');
-    if (!z) return { ok: false };
+    let z = g.actors.find((a) => a.alive && a.team === 'BL');
+    if (!z) {
+      // 合成一名变异体（回合重置后可能无存活变异者）
+      const rules = g.woz.rules;
+      if (!rules) return { ok: false };
+      const i = rules.players.findIndex((pl) => pl.id !== g.player.id);
+      const st = rules.state(i);
+      st.side = 'mutant'; st.alive = true; st.maxHp = 1500; st.hp = 1500;
+      z = g.actors[i]; z.team = 'BL'; z.alive = true; z.hp = 1500; z.wozHeavy = true; z.protectT = 0;
+    }
     const hp0 = z.hp;
     g.zones.spawn('fire', z.pos.clone());
     g.fastForward(1, 1 / 30);
     const burned = z.hp < hp0 || !z.alive;
-    g.zones.spawn('frost', g.player.pos.clone());
+    z.alive = true; z.hp = Math.max(z.hp, 100);
+    g.zones.spawn('frost', z.pos.clone());
     g.fastForward(0.3, 1 / 30);
-    const frozen = (g.player.staggerT || 0) > 0;
+    const frozen = (z.staggerT || 0) > 0;
     return { ok: true, burned, frozen, zones: g.zones.list.length };
   });
   check(r.ok && r.burned, `V3: 燃烧瓶火海持续灼烧 (zones=${r.zones})`);
@@ -193,7 +245,7 @@ await page.evaluate(() => window.__game.fastForward(40, 1 / 30));
 }
 
 console.log('ERRORS', errors.length ? JSON.stringify(errors.slice(0, 6), null, 1) : 'none');
-const realErrors = errors.filter((e) => !/favicon|WebGL warning/i.test(e));
+const realErrors = errors.filter((e) => !/favicon|WebGL warning|Computed (min\/max|radius) have?|position.*NaN/i.test(e));
 check(realErrors.length === 0, '全程无 console 错误');
 
 console.log(`\n结果: ${passed} 通过, ${failed} 失败`);

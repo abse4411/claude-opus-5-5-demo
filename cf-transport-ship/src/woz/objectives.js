@@ -110,8 +110,13 @@ export class NuclearBomb {
       && Math.hypot(a.pos.x - this.pos.x, a.pos.z - this.pos.z) <= 2.2);
   }
 
-  humansInSite() {
-    return this.game.actors.filter((a) => this.inSite(a));
+  humansInSite(holding = true) {
+    return this.game.actors.filter((a) => this.inSite(a)
+      && (!holding || a.isPlayer ? !!(a.keys && a.keys.has('KeyE')) : true));
+  }
+
+  get canPlant() {
+    return this.state === 'idle' && this.humansInSite(true).length > 0;
   }
 
   /**
@@ -121,15 +126,15 @@ export class NuclearBomb {
     const g = this.game;
     let ev = null;
     if (this.state === 'idle') {
-      const planters = this.humansInSite();
-      if (planters.length > 0) {
-        this.state = 'planting';
+      if (this.humansInSite(true).length > 0) {
+        this.state = 'planting'; // 区域内有人按住 E（BOT 视作持续按住）
         this.progress = 0;
+      } else if (this.humansInSite(false).length > 0) {
+        this.ring.material.color.setHex(0xffe08a); // 在区域内但未按键：高亮提示
       }
-      this.ring.material.color.setHex(0xd9b13a);
     }
     if (this.state === 'planting') {
-      const planters = this.humansInSite();
+      const planters = this.humansInSite(true); // 必须按住 E
       if (planters.length === 0) {
         this.state = 'idle';
         this.progress = 0;
