@@ -24,7 +24,8 @@ function noiseFill(x, base, vary, size) {
   }
 }
 
-export function buildCityMap(scene, T, world) {
+export function buildCityMap(scene, T, world, variant = 'street') {
+  if (variant === 'plaza') return buildPlaza(scene, T, world);
   const meshes = [];
   const lampSpots = [];
   const anim = [];
@@ -218,5 +219,87 @@ export function buildCityMap(scene, T, world) {
   return {
     spawns, lampSpots, funnelTop: new THREE.Vector3(0, 9, 0), meshes, materials: mats,
     update(dt, t) { for (const f of anim) f(dt, t); },
+  };
+}
+
+
+// ---- 都会广场变体：开阔中央广场 + 雕像环岛 + 地铁口 + 花坛阵 ----
+export function buildPlazaMap(scene, T, world) {
+  const meshes = [];
+  const lampSpots = [];
+  const batch = {};
+  const floorTex = canvasTex(512, (x, s2) => {
+    noiseFill(x, '#2a2d33', 40, s2);
+    x.strokeStyle = 'rgba(160,160,160,.4)'; x.lineWidth = 2;
+    for (let i = 1; i < 4; i++) { x.beginPath(); x.moveTo(0, i * s2 / 4); x.lineTo(s2, i * s2 / 4); x.stroke(); }
+  }, 8);
+  const M = {
+    plaza: new THREE.MeshStandardMaterial({ map: floorTex, roughness: 0.85 }),
+    statue: new THREE.MeshStandardMaterial({ color: 0x4a4f58, roughness: 0.4, metalness: 0.6 }),
+    hedge: new THREE.MeshStandardMaterial({ color: 0x1e3a24, roughness: 0.95 }),
+    stair: new THREE.MeshStandardMaterial({ color: 0x3a4048, roughness: 0.8 }),
+    glass: new THREE.MeshStandardMaterial({ color: 0x101820, roughness: 0.15, metalness: 0.5 }),
+    dark: new THREE.MeshStandardMaterial({ color: 0x17181c, roughness: 0.9 }),
+  };
+  function B(key, mat) {
+    if (!batch[key]) {
+      const mesh = new THREE.Mesh(new THREE.BufferGeometry(), mat);
+      mesh.castShadow = mesh.receiveShadow = true; mesh.matrixAutoUpdate = false;
+      batch[key] = { mesh, geos: [] }; scene.add(mesh); meshes.push(mesh);
+    }
+    return batch[key];
+  }
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), one = new THREE.Vector3(1, 1, 1);
+  function put(key, geo, x, y, z, ry = 0) {
+    e.set(0, ry, 0); q.setFromEuler(e);
+    m4.compose(new THREE.Vector3(x, y, z), q, one);
+    B(key, M[key] || M.dark).geos.push(geo.clone().applyMatrix4(m4));
+  }
+  const BX = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+  function solid(x, z, sx, sz, h, ry = 0) {
+    world.add({ x, y: h / 2, z, sx: ry ? sz : sx, sz: ry ? sx : sz, sy: h, yaw: ry, mat: 'concrete', bullet: 'block', sight: true, surface: 'metal' });
+  }
+  const fg = new THREE.PlaneGeometry(76, 26); fg.rotateX(-Math.PI / 2);
+  put('plaza', fg, 0, 0, 0);
+  // 边界
+  solid(0, -12.6, 76, 1, 3.2); put('dark', BX(76, 3.2, 1), 0, 1.6, -12.6);
+  solid(0, 12.6, 76, 1, 3.2); put('dark', BX(76, 3.2, 1), 0, 1.6, 12.6);
+  solid(-37.6, 0, 1, 26, 3.2); put('dark', BX(1, 3.2, 26), -37.6, 1.6, 0);
+  solid(37.6, 0, 1, 26, 3.2); put('dark', BX(1, 3.2, 26), 37.6, 1.6, 0);
+  // 中央环岛雕像（守点：跳上基座 0.8m）
+  solid(0, 0, 4.4, 4.4, 0.8);
+  put('statue', BX(4.4, 0.8, 4.4), 0, 0.4, 0);
+  solid(0, 0, 1.2, 1.2, 2.6);
+  put('statue', BX(1.2, 1.8, 1.2), 0, 0.8, 0);
+  put('statue', BX(1.6, 0.5, 1.6), 0, 2.4, 0);
+  // 地铁口（下沉不做出入口，做低矮掩体）
+  for (const [mx, mz] of [[-12, -6], [12, 6]]) {
+    solid(mx, mz, 3.4, 0.7, 1.1);
+    put('stair', BX(3.4, 1.1, 0.7), mx, 0.55, mz);
+  }
+  // 花坛阵（灌木掩体）
+  for (const [hx, hz] of [[-18, -4], [-14, 4], [16, -4], [20, 4], [-6, 7.5], [8, -7.5], [-28, 5], [28, -5]]) {
+    solid(hx, hz, 2.2, 1.1, 0.85);
+    put('hedge', BX(2.2, 0.85, 1.1), hx, 0.425, hz);
+  }
+  // 路灯
+  for (const [lx, lz] of [[-20, 0], [0, 9], [0, -9], [20, 0], [-32, -6], [32, 6]]) {
+    put('dark', BX(0.28, 4.4, 0.28), lx, 2.2, lz);
+    lampSpots.push(new THREE.Vector3(lx, 4.1, lz));
+  }
+  const spawns = { BL: [], GR: [] };
+  for (let i = 0; i < 10; i++) {
+    const zz = -7 + (i % 5) * 3.4, xx = -33.8 + Math.floor(i / 5) * 2.6;
+    spawns.BL.push({ x: xx, z: zz, yaw: -Math.PI / 2 });
+    spawns.GR.push({ x: -xx, z: -zz, yaw: Math.PI / 2 });
+  }
+  for (const key of Object.keys(batch)) {
+    const b = batch[key];
+    b.mesh.geometry = mergeGeometries(b.geos, false);
+    b.mesh.geometry.computeBoundingSphere();
+  }
+  return {
+    spawns, lampSpots, funnelTop: new THREE.Vector3(0, 8, 0), meshes, materials: {},
+    update() {},
   };
 }

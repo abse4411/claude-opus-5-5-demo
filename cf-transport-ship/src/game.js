@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { Renderer } from './render.js';
 import { buildTextures } from './textures.js';
 import { buildMap } from './map.js';
-import { buildCityMap } from './woz/map-city.js';
+import { buildCityMap, buildPlazaMap } from './woz/map-city.js';
 import { buildLabMap } from './woz/map-lab.js';
 import { Environment } from './env.js';
 import { World, NavGrid } from './physics.js';
@@ -57,6 +57,7 @@ export class Game {
       ship: { name: '运输船', build: buildMap },
       city: { name: '死亡城市', build: buildCityMap },
       lab: { name: '生化实验室', build: buildLabMap },
+      plaza: { name: '都会广场', build: buildPlazaMap },
     };
     const mapDef = MAPS[this.opts.map] || MAPS.ship;
     this.mapName = mapDef.name;

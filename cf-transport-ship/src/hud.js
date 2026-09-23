@@ -374,7 +374,7 @@ const TEMPLATE = `
     <div class="opts">
       <div class="opt"><div class="lab">模式</div><div class="seg" data-k="mode"><button data-v="tdm">团队竞技</button><button data-v="infection">生化感染</button><button data-v="revenge">生化复仇</button><button data-v="bio">生化模式</button><button data-v="confront">生化对抗</button><button data-v="demol">生化爆破</button></div></div>
       <div id="modeInfo" style="grid-column:1/-1;margin:6px 0 2px;padding:8px 12px;border:1px solid rgba(245,179,33,.35);border-radius:8px;background:rgba(20,16,6,.5);font:12px/1.7 "PingFang SC","Microsoft YaHei",sans-serif;color:#d8cdb0;text-align:left"></div>
-      <div class="opt"><div class="lab">地图</div><div class="seg" data-k="map"><button data-v="ship">运输船</button><button data-v="city">死亡城市</button><button data-v="lab">生化实验室</button></div></div>
+      <div class="opt"><div class="lab">地图</div><div class="seg" data-k="map"><button data-v="ship">运输船</button><button data-v="city">死亡城市</button><button data-v="lab">生化实验室</button><button data-v="plaza">都会广场</button></div></div>
       <div class="opt"><div class="lab">阵营</div><div class="seg team" data-k="team"><button data-v="BL">潜伏者<small>Black List</small></button><button data-v="GR">保卫者<small>Global Risk</small></button></div></div>
       <div class="opt"><div class="lab">主武器</div><div class="seg" data-k="primary"><button data-v="ak47">AK-47</button><button data-v="m4a1">M4A1</button><button data-v="awm">AWM</button><button data-v="mp5">MP5</button></div></div>
       <div class="row2">
