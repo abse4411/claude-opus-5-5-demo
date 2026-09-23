@@ -179,6 +179,13 @@ export class WozHud {
         html += `<div class="pt oNone">☢ 核弹<small>待安放 · 冲入巢穴</small></div>`;
       }
     }
+    if (data.buffs && (data.buffs.atk || data.buffs.speed || data.buffs.supply)) {
+      const b = [];
+      if (data.buffs.atk) b.push('攻击+10%');
+      if (data.buffs.speed) b.push('移速+8%');
+      if (data.buffs.supply) b.push('弹药补给中');
+      html += `<div class="pt oGR">增益<small>${b.join(' · ')}</small></div>`;
+    }
     this.el.obj.innerHTML = html;
   }
 

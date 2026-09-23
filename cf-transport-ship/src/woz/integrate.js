@@ -269,6 +269,19 @@ export class WozManager {
   // ---- 生化对抗：占领据点 ----
   tickConfront(dt) {
     const g = this.g;
+    // 据点增益：A=攻击+10%，B=弹药补给（每 10s），C=移速+8%
+    const owned = (n) => this.points.find((p) => p.def.name === n)?.owner === 'GR';
+    this.buffAtk = owned('A');
+    this.buffSpeed = owned('C');
+    this.supplyT = (this.supplyT ?? 10) - dt;
+    if (owned('B') && this.supplyT <= 0) {
+      this.supplyT = 10;
+      for (const a of g.actors) {
+        if (!a.alive || a.team !== 'GR') continue;
+        for (const w of a.inv) { const d = w.def; if (d.type !== 'melee' && d.type !== 'grenade') w.reserve += Math.ceil(d.mag / 2); }
+      }
+      if (g.player.alive) g.hud.toast('据点 B 弹药补给已下发', 1.5);
+    }
     for (const p of this.points) {
       const ev = p.update(dt);
       if (ev === 'captured') {
@@ -276,6 +289,7 @@ export class WozManager {
         wozAudio.avenger(null);
       }
     }
+    for (const a of g.actors) if (a.alive && a.team === 'GR') a.speedMul = 1 + (this.buffSpeed ? 0.08 : 0);
     if (this.points.every((p) => p.owner === 'GR')) return this.endObjectives('GR', '人类攻占了全部据点！');
     if (g.timeLeft <= 0) return this.endObjectives('BL', '时间耗尽，变异者守住了据点！');
     this.hud.updateObj(this.objData());
@@ -404,6 +418,7 @@ export class WozManager {
       mode: this.mode,
       points: this.points.map((p) => ({ name: p.def.name, owner: p.owner, progress: Math.round(p.progress), contested: p.contested })),
       bomb: this.bomb ? { state: this.bomb.state, timer: Math.max(0, Math.ceil(this.bomb.timer)), prog: this.bomb.progress, canPlant: this.bomb.canPlant } : null,
+      buffs: { atk: !!this.buffAtk, speed: !!this.buffSpeed, supply: this.points.find((p) => p.def.name === 'B')?.owner === 'GR' } ,
     };
   }
 
@@ -626,7 +641,10 @@ export class WozManager {
     const rules = this.rules;
     let mul = 1;
     if (att && att.heroMul) mul *= att.heroMul; // 爆破模式英雄
-    if (!rules) return mul;
+    if (!rules) {
+      if (att && att.team === 'GR' && this.cat() === 'confront' && this.buffAtk) mul *= 1.1; // 据点 A 增益
+      return mul;
+    }
     if (att && att.id < rules.playerCount) {
       const st = rules.state(att.id);
       if (st.side === 'mutant') mul *= rules.damageMultiplier(st);
