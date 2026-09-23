@@ -35,6 +35,7 @@ export class WozManager {
     this.aiT = 0;
     this.heroGiven = false;
     this.playerClassChosen = false; // 玩家是否已主动选择变异者职业
+    this.axes = [];                   // 猎食者投掷斧头抛射物
   }
 
   // 模式分类：infection 族（感染/复仇/生化）走规则层；对抗/爆破走目标物逻辑
@@ -150,9 +151,10 @@ export class WozManager {
     this.round++;
     this.playerClassChosen = false;
     this.seed = (this.seed * 1103515245 + 12345) >>> 0;
-    // 清理尸潮
+    // 清理尸潮与抛射物
     for (const z of this.tide) g.renderer.scene.remove(z.soldier.root);
     this.tide = [];
+    this.clearAxes();
     // 全员复活为人类，回 GR 出生点
     this.pendingConvert.clear();
     for (const a of g.actors) {
@@ -191,6 +193,7 @@ export class WozManager {
   tick(dt) {
     const g = this.g;
     if (!g.playing || g.ended) return;
+    this.tickAxes(dt);
     // 购买期结束自动关闭武器商店
     if (this.rules) {
       if (this.rules.phase === 'buy') this._buyOpen = true;
@@ -199,6 +202,72 @@ export class WozManager {
     if (this.cat() === 'confront') return this.tickConfront(dt);
     if (this.cat() === 'demol') return this.tickDemol(dt);
     this.tickInfection(dt);
+  }
+
+  // ---- 猎食者投掷斧头（原作技能）：直线带重力 arc 抛射物 ----
+  throwAxe(a) {
+    const g = this.g;
+    const dir = new THREE.Vector3();
+    if (a.isPlayer) g.renderer.camera.getWorldDirection(dir);
+    else a.forward(dir);
+    const pos = a.pos.clone(); pos.y += 1.5;
+    // 稍作上抬补偿重力下坠，近距平直远距抛物
+    dir.y += a.isPlayer ? 0.02 : Math.min(0.09, a.pos.distanceTo(this.nearestEnemy(a)?.pos ?? a.pos) * 0.004);
+    dir.normalize();
+    const grp = new THREE.Group();
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.66, 0.05), new THREE.MeshLambertMaterial({ color: 0x7a5230 }));
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.04), new THREE.MeshLambertMaterial({ color: 0xc8ccd2, emissive: 0x361111 }));
+    blade.position.y = 0.28;
+    grp.add(handle, blade);
+    grp.position.copy(pos);
+    g.renderer.scene.add(grp);
+    const mul = a.id >= 0 && a.id < this.rules.playerCount ? this.rules.damageMultiplier(this.rules.state(a.id)) : 1;
+    this.axes.push({ live: true, mesh: grp, pos, vel: dir.multiplyScalar(WOZ.axeSpeed), owner: a, dmg: WOZ.axeDamage * mul, life: WOZ.axeLifetime });
+    if (a.isPlayer) g.hud.toast('投掷斧头！', 0.8);
+    g.audio.playGrenadeThrow();
+  }
+
+  tickAxes(dt) {
+    const g = this.g;
+    for (const ax of this.axes) {
+      if (!ax.live) continue;
+      ax.life -= dt;
+      ax.vel.y -= WOZ.axeGravity * dt;
+      const step = ax.vel.clone().multiplyScalar(dt);
+      const len = step.length();
+      const hitWall = len > 0 ? g.world.raycast(ax.pos.x, ax.pos.y, ax.pos.z, step.x / len, step.y / len, step.z / len, len, 'bullet') : null;
+      ax.pos.add(step);
+      ax.mesh.position.copy(ax.pos);
+      ax.mesh.rotation.x -= 16 * dt;
+      let hitActor = null;
+      for (const v of g.actors) {
+        if (!v.alive || v === ax.owner || v.team === ax.owner.team || v.wozOut) continue;
+        const dx = v.pos.x - ax.pos.x, dz = v.pos.z - ax.pos.z;
+        if (dx * dx + dz * dz > 0.85) continue;
+        const dy = ax.pos.y - v.pos.y;
+        if (dy > -0.3 && dy < 1.8) { hitActor = v; break; } // 命中身体区间（脚部-0.3 ~ 头部1.8）
+      }
+      if (hitActor) {
+        ax.live = false;
+        const dir = ax.vel.clone().setY(0).normalize();
+        g.damage(hitActor, ax.owner, ax.dmg, 'chest', 'claw', dir, false); // claw 标签走变异者击杀链
+        g.fx.bloodSplat(hitActor.pos);
+      } else if (hitWall || ax.life <= 0 || ax.pos.y < 0.05) {
+        ax.live = false;
+        if (hitWall) g.audio.playGrenadeBounce(ax.pos.clone());
+      }
+    }
+    this.clearAxes(true);
+  }
+
+  clearAxes(keep = false) {
+    for (const ax of this.axes) {
+      if (!keep || !ax.live) {
+        this.g.renderer.scene.remove(ax.mesh);
+        ax.dead = true;
+      }
+    }
+    this.axes = keep ? this.axes.filter((ax) => ax.live) : [];
   }
 
   tickInfection(dt) {
@@ -782,7 +851,7 @@ export class WozManager {
     if (v.id < rules.playerCount) {
       const vs = rules.state(v.id);
       if (vs.side === 'mutant') {
-        if (vs.skillActive && vs.cls === MutantClass.Devourer) mul *= 1 - WOZ.hardenReduction;
+        void vs; // 变异者减伤走进化系统（V14）
       } else {
         mul *= 1 - rules.humanDamageReduction(v.id);
       }
@@ -847,6 +916,8 @@ export class WozManager {
     } else if (skill === 'harden') {
       wozAudio.harden(a.isPlayer ? null : a.pos.clone());
       if (a.isPlayer) g.hud.toast('硬化！减伤 70%', 1);
+    } else if (skill === 'axeThrow') {
+      this.throwAxe(a);
     }
   }
 

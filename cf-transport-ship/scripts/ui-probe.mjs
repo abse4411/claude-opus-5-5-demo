@@ -415,6 +415,35 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v11') {
+  // 猎食者投掷斧头：技能触发生成抛射物并命中前方人类
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      rules.convertToMutant(p.id, 'devourer', false);
+      g.woz.convertNow(p, true);
+      const st = rules.state(p.id);
+      st.skillCharge = 1;
+      // 开阔甲板摆位：(5,·,0) 面向 -x 的 (-2,·,0)，同高度平地连线无遮挡
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 0; p.vel = { x: 0, y: 0, z: 0 };
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      v.pos.set(-2, 0.1, 0); v.protectT = 0; v.armor = 0;
+      p.updateCamera(0.016); // 同步相机朝向到玩家视角（抛射方向取自相机）
+      const fired = rules.tryUseSkill(p.id);
+      const spawned = g.woz.axes.length;
+      const humans = g.actors.filter((a) => a.id < rules.playerCount && rules.state(a.id).side === 'human').map((a) => ({ id: a.id, hp: a.hp, alive: a.alive }));
+      for (let i = 0; i < 40; i++) g.woz.tickAxes(1 / 60); // 手动步进 0.67s（30m/s 足够飞 8m）
+      const hitAny = humans.some((h) => rules.state(h.id).side === 'mutant' || g.actors[h.id].hp < h.hp || !g.actors[h.id].alive);
+      return { ok: true, fired, spawned, hitAny, charge: st.skillCharge, label: document.getElementById('wzRingTxt')?.textContent };
+    });
+    check(r.ok && r.fired && r.spawned === 1, `斧头: 猎食者技能触发生成抛射物 (fired=${r.fired} n=${r.spawned})`);
+    check(r.hitAny, `斧头: 命中前方人类并触发感染链 (hitAny=${r.hitAny})`);
+    check(r.charge < 1, `斧头: 技能充能已消耗 (${r.charge})`);
+  }
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

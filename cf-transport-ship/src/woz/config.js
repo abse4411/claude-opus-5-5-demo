@@ -30,6 +30,10 @@ export const WOZ = {
   blindWailRange: 18,
   hardenReduction: 0.7,
   hardenDuration: 4,
+  axeDamage: 300,           // 猎食者投掷斧头（原作技能：投掷斧头）
+  axeSpeed: 30,
+  axeLifetime: 2,
+  axeGravity: 7,
 
   // 吞噬进化
   devourHeal: 300,
@@ -118,6 +122,7 @@ export const MutantSkill = {
   Dash: 'dash',
   BlindWail: 'blindWail',
   Harden: 'harden',
+  AxeThrow: 'axeThrow',
 };
 
 export const CLASS_LABEL = {
@@ -132,13 +137,14 @@ export const SKILL_LABEL = {
   [MutantSkill.Dash]: '疾冲',
   [MutantSkill.BlindWail]: '致盲尖啸',
   [MutantSkill.Harden]: '硬化',
+  [MutantSkill.AxeThrow]: '投掷斧头',
 };
 
 export function skillOf(cls) {
   if (cls === MutantClass.Mother) return MutantSkill.Rage;
   if (cls === MutantClass.Nightrunner) return MutantSkill.Dash;
   if (cls === MutantClass.Souleater) return MutantSkill.BlindWail;
-  if (cls === MutantClass.Devourer) return MutantSkill.Harden;
+  if (cls === MutantClass.Devourer) return MutantSkill.AxeThrow;
   return MutantSkill.None;
 }
 
@@ -146,6 +152,6 @@ export function skillDuration(cls) {
   if (cls === MutantClass.Mother) return 5;
   if (cls === MutantClass.Nightrunner) return WOZ.dashDuration;
   if (cls === MutantClass.Souleater) return WOZ.blindWailDuration;
-  if (cls === MutantClass.Devourer) return WOZ.hardenDuration;
+  if (cls === MutantClass.Devourer) return 0.3; // 投掷为瞬时效果，短窗口防连发
   return 0;
 }

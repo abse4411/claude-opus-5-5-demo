@@ -207,6 +207,12 @@ body.lk #clinks{opacity:.22}
 .card .srow span{width:28px;font-size:10px;color:#9aa4ae;text-align:left}
 .card .srow i{flex:1;height:4px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden;display:block;text-align:left}
 .card .srow i b{display:inline-block;height:100%;background:linear-gradient(90deg,#4fa0ff,#8fd0ff);border-radius:2px}
+.helpGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hcard{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:12px 14px;text-align:left}
+.hcard h3{margin:0 0 8px;font-size:14px;color:#f5b321;letter-spacing:1px}
+.hcard p{margin:0;font:12.5px/2.1 "PingFang SC","Microsoft YaHei",sans-serif;color:#d8cdb0}
+.hcard kbd{display:inline-block;min-width:16px;padding:0 5px;margin:0 2px;border:1px solid rgba(245,179,33,.5);border-radius:4px;color:#f5b321;font:700 11px/16px Consolas,monospace;text-align:center}
+@media (max-width:760px){.helpGrid{grid-template-columns:1fr}}
 #touch{position:absolute;inset:0;pointer-events:none}
 #touch .pad{position:absolute;pointer-events:auto;border-radius:50%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25)}
 #touch .btn{position:absolute;pointer-events:auto;border-radius:50%;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.35);display:grid;place-items:center;font-size:13px;color:#fff}
