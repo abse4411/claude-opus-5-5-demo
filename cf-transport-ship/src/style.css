@@ -135,6 +135,7 @@ body.lk #clinks{opacity:.22}
 .tbl table{width:100%;border-collapse:collapse;font-size:13px}
 .tbl th{font-weight:400;color:var(--hudDim);text-align:right;padding:4px 6px;border-bottom:1px solid rgba(255,255,255,.1)}
 .tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl td.role{color:#c9b39a;font-size:12px}
 .tbl td{padding:4px 6px;text-align:right;font-family:var(--num);font-size:14px}
 .tbl td:first-child{font-family:var(--cn)}
 .tbl .tBL th.team{color:var(--bl2)} .tbl .tGR th.team{color:var(--gr2)}

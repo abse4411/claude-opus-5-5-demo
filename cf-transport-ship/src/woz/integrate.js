@@ -365,9 +365,10 @@ export class WozManager {
   endObjectives(winner, msg) {
     const g = this.g;
     this.score[winner]++;
-    const hero = this.g.player.team === 'GR';
-    const win = winner === 'GR';
-    g.hud.toast(`<b style="color:${win ? '#8cc8ff' : '#ff5040'}">${hero ? (win ? '胜利！' : '失败！') : (win ? '失败！' : '胜利！')}</b> ${msg}（${this.score.GR}:${this.score.BL}）`, 3.5);
+    this.hud.showBanner(
+      winner === 'GR' ? '🛡 人类胜利！' : '☣ 变异者胜利！',
+      winner === 'GR' ? '#8cc8ff' : '#ff7040',
+      `${msg} · 比分 人类 ${this.score.GR} : ${this.score.BL} 变异者`, 3.5);
     if (this.score.GR >= ROUND_WINS || this.score.BL >= ROUND_WINS) return this.endMatch();
     // 下一回合
     this.round++;
@@ -618,6 +619,23 @@ export class WozManager {
     if (!rules || rules.phase !== 'battle' || this.playerClassChosen) return false;
     const st = rules.state(p.id);
     return st.side === 'mutant' && !st.isMother;
+  }
+
+  // 模式中文名（计分板标题等）
+  modeCN() {
+    return { infection: '生化感染', revenge: '生化复仇', bio: '生化模式', confront: '生化对抗', demol: '生化爆破' }[this.mode] || this.mode;
+  }
+
+  // 计分板角色列
+  roleLabel(a) {
+    const rules = this.rules;
+    if (!rules) return a.team === 'BL' ? '变异者' : '人类佣兵';
+    if (a.id >= rules.playerCount) return 'AI 尸潮';
+    const st = rules.state(a.id);
+    if (!st || st.side === 'human') return '人类';
+    if (st.isAvenger) return '复仇者';
+    if (st.isMother) return '母体';
+    return CLASS_LABEL[st.cls] || '变异者';
   }
 
   // ================= 死亡 / 重生 =================

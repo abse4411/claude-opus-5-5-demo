@@ -367,6 +367,34 @@ if (ver === 'v1') {
     const after = await page.evaluate(() => ({ closed: !window.__game.inLoadout, phase: window.__game.woz.rules.phase }));
     check(after.closed && after.phase !== 'buy', `商店: 战斗开始自动关闭 (phase=${after.phase})`);
   }
+} else if (ver === 'v9') {
+  // 计分板：角色列 + 动态标题
+  await goto('&mode=infection');
+  {
+    await page.evaluate(() => { window.__game.fastForward(20, 1 / 30); });
+    await page.keyboard.down('Tab');
+    await page.waitForTimeout(400);
+    const board = await page.evaluate(() => ({
+      visible: !document.getElementById('board').classList.contains('hidden'),
+      title: document.getElementById('boardTitle').textContent,
+      hasRole: [...document.querySelectorAll('#board th')].some((th) => th.textContent === '角色'),
+      roles: [...new Set([...document.querySelectorAll('#board td.role')].map((td) => td.textContent))],
+    }));
+    check(board.visible && board.title.includes('生化感染'), `计分板: 标题 [${board.title}]`);
+    check(board.hasRole && board.roles.length >= 2, `计分板: 角色列 (${board.roles.join(',')})`);
+    await page.screenshot({ path: `scripts/shots/${ver}-board.png` });
+    await page.keyboard.up('Tab');
+    // 回合结算横幅
+    const banner = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules;
+      rules.phase = 'roundend'; rules.phaseTimeLeft = 5; rules.result = 'humansSurvived';
+      g.fastForward(0.3, 1 / 30);
+      const el = document.getElementById('wozBanner');
+      return { on: el.style.opacity === '1', text: el.textContent };
+    });
+    check(banner.on && banner.text.includes('人类胜利') && banner.text.includes('比分'), `结算: 横幅 [${banner.text.slice(0, 30)}]`);
+    await page.screenshot({ path: `scripts/shots/${ver}-banner.png` });
+  }
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

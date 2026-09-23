@@ -253,6 +253,17 @@ export class WozHud {
       this.classBtns.remove();
       this.classBtns = null;
     }
+    // 回合结算横幅
+    if (rules.phase === 'roundend' && rules.result) {
+      const key = 'r' + mgr.round + ':' + rules.result;
+      if (this._lastResultKey !== key) {
+        this._lastResultKey = key;
+        const humanWin = rules.result === 'humansSurvived';
+        this.showBanner(humanWin ? '🛡 人类胜利！' : '☣ 变异者胜利！',
+          humanWin ? '#8cc8ff' : '#ff7040',
+          `第 ${mgr.round} 回合结束 · 比分 人类 ${mgr.score.GR} : ${mgr.score.BL} 变异者`, 3.5);
+      }
+    }
     // 横幅淡出
     if (this.bannerT > 0) {
       this.bannerT -= 1 / 60;
@@ -326,13 +337,18 @@ export class WozHud {
   }
 
   avengerBanner(name) {
+    this.showBanner(`⚡ ${name} 觉醒为生化复仇者`, '#60e0ff');
+  }
+
+  // 通用大横幅（复仇者觉醒 / 回合结算）
+  showBanner(html, color, sub = '', dur = 3) {
     if (!this.mounted) return;
-    this.el.banner.textContent = `⚡ ${name} 觉醒为生化复仇者`;
+    this.el.banner.innerHTML = `<div style="color:${color}">${html}</div>${sub ? `<small style="display:block;font:600 16px/1.6 'Microsoft YaHei',sans-serif;color:#dfe6ec;margin-top:8px;text-shadow:0 1px 3px #000">${sub}</small>` : ''}`;
     this.el.banner.style.opacity = 1;
-    this.bannerT = 3;
+    this.bannerT = dur;
   }
 
   onRoundStart() {
-    if (this.mounted) this.el.banner.style.opacity = 0;
+    if (this.mounted) { this.el.banner.style.opacity = 0; this._lastResultKey = ''; }
   }
 }

@@ -147,8 +147,7 @@ export class HUD {
     e.sBL.textContent = s.score.BL; e.sGR.textContent = s.score.GR;
     const tl = Math.max(0, s.timeLeft), mm = (tl / 60) | 0, ss = (tl % 60) | 0;
     e.sTime.textContent = `${mm}:${ss < 10 ? '0' : ''}${ss}`;
-    const WOZ_MODE_CN = { infection: '生化感染', revenge: '生化复仇', bio: '生化模式', confront: '生化对抗', demol: '生化爆破' };
-    e.sGoal.textContent = this.g.woz ? (WOZ_MODE_CN[this.g.opts.mode] || '') : `团队竞技 · 目标 ${s.goal}`;
+    e.sGoal.textContent = this.g.woz ? this.g.woz.modeCN() : `团队竞技 · 目标 ${s.goal}`;
     e.tBL.classList.toggle('mine', s.myTeam === 'BL'); e.tGR.classList.toggle('mine', s.myTeam === 'GR');
     // 生命护甲
     e.hpVal.textContent = Math.max(0, Math.ceil(s.hp));
@@ -277,12 +276,12 @@ export class HUD {
       if (bar) bar.style.width = `${Math.max(0, Math.min(1, p.prog)) * 100}%`;
     }
   }
-  scoreboard(show, actors, myId, score) {
+  scoreboard(show, actors, myId, score, roleOf) {
     this.el.board.classList.toggle('hidden', !show);
     if (!show) return;
     const rows = (team) => actors.filter((a) => a.team === team).sort((a, b) => b.stats.k - a.stats.k || a.stats.d - b.stats.d)
-      .map((a) => `<tr class="${a.id === myId ? 'me' : ''} ${a.alive ? '' : 'dead'}"><td>${esc(a.name)}</td><td>${a.stats.k}</td><td>${a.stats.d}</td><td>${a.stats.hs}</td><td>${a.ping}</td></tr>`).join('');
-    const tbl = (team) => `<table class="t${team}"><tr><th class="team">${TEAM_CN[team]} · ${score[team]}</th><th>击杀</th><th>死亡</th><th>爆头</th><th>延迟</th></tr>${rows(team)}</table>`;
+      .map((a) => `<tr class="${a.id === myId ? 'me' : ''} ${a.alive ? '' : 'dead'}"><td>${esc(a.name)}</td><td class="role">${roleOf ? roleOf(a) : '—'}</td><td>${a.stats.k}</td><td>${a.stats.d}</td><td>${a.stats.hs}</td><td>${a.ping}</td></tr>`).join('');
+    const tbl = (team) => `<table class="t${team}"><tr><th class="team">${TEAM_CN[team]} · ${score[team]}</th><th>角色</th><th>击杀</th><th>死亡</th><th>爆头</th><th>延迟</th></tr>${rows(team)}</table>`;
     this.el.boardBody.innerHTML = `<div class="cols">${tbl('BL')}${tbl('GR')}</div>`;
   }
   endScreen(win, score, actors, myId) {
@@ -495,7 +494,7 @@ const TEMPLATE = `
   <div id="prompt"></div>
   <div id="protect"></div>
   <div id="nameTip"></div>
-  <div id="board" class="hidden tbl"><h3><span>运输船 · 团队竞技</span><span>Tab</span></h3><div id="boardBody"></div></div>
+  <div id="board" class="hidden tbl"><h3><span id="boardTitle">运输船 · 团队竞技</span><span>Tab</span></h3><div id="boardBody"></div></div>
   <div id="touch" class="hidden"></div>
 </div>
 

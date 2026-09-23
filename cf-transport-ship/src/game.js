@@ -851,6 +851,11 @@ export class Game {
     }
     this.hud.setPrompt(prompt);
     const tab = p.keys.has('Tab') && this.playing && !this.paused;
-    if (tab !== this.boardShown || (tab && this.frame % 20 === 0)) { this.boardShown = tab; this.hud.scoreboard(tab, this.actors, p.id, this.score); }
+    if (tab !== this.boardShown || (tab && this.frame % 20 === 0)) {
+      this.boardShown = tab;
+      const title = document.getElementById('boardTitle');
+      if (title) title.textContent = `${this.mapName} · ${this.woz ? this.woz.modeCN() : '团队竞技'}`;
+      this.hud.scoreboard(tab, this.actors, p.id, this.score, this.woz ? (a) => this.woz.roleLabel(a) : null);
+    }
   }
 }
