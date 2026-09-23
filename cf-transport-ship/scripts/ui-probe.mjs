@@ -270,6 +270,36 @@ if (ver === 'v1') {
     await page.waitForTimeout(300);
     await shot('mutant-bigbar');
   }
+} else if (ver === 'v6') {
+  // 感染模式：爪击感染 → 信息流播报 + 手动进化播报
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      window.__game.fastForward(20, 1 / 30); // 走完购买期与爆发
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const mother = g.actors.find((a) => a.alive && rules.state(a.id)?.isMother) || p;
+      const victim = g.actors.find((a) => a.alive && a !== p && a !== mother && rules.state(a.id)?.side === 'human' && a.id < rules.playerCount);
+      if (!victim) return { ok: false };
+      g.damage(victim, mother, 99999, 'chest', 'claw', { x: 1, z: 0 }, false);
+      window.__game.fastForward(0.2, 1 / 30);
+      const vid = victim.id;
+      if (rules.state(vid).side === 'mutant') {
+        const cur = rules.state(vid).cls;
+        rules.setMutantClass(vid, cur === 'devourer' ? 'souleater' : 'devourer'); // 手动进化（避开相同职业）
+      }
+      window.__game.fastForward(0.2, 1 / 30);
+      return {
+        ok: true,
+        inf: [...document.querySelectorAll('#feed .kf.inf')].map((e) => e.textContent),
+        evo: [...document.querySelectorAll('#feed .kf.evo')].map((e) => e.textContent),
+      };
+    });
+    check(r.ok && r.inf.some((t) => t.includes('被感染')), `感染: 信息流播报感染 (${r.inf[0] || '无'})`);
+    check(r.evo.some((t) => t.includes('进化')), `感染: 信息流播报进化 (${r.evo[0] || '无'})`);
+    await page.waitForTimeout(300);
+    await shot('feed');
+  }
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

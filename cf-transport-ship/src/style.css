@@ -43,6 +43,11 @@ body.lk #clinks{opacity:.22}
 .kf .k.BL,.kf .v.BL{color:var(--bl2)} .kf .k.GR,.kf .v.GR{color:var(--gr2)}
 .kf img{height:18px;filter:drop-shadow(0 0 1px #000)}
 .kf .hs{height:18px}
+.kf.evt{justify-content:center;font-weight:700;border-radius:4px}
+.kf.inf{background:rgba(18,56,22,.65);color:#a8e8a0;box-shadow:inset 0 0 0 1px rgba(110,200,110,.45)}
+.kf.evo{background:rgba(66,34,8,.65);color:#ffb070;box-shadow:inset 0 0 0 1px rgba(255,150,60,.45)}
+.kf.avg{background:rgba(10,44,68,.65);color:#7cdcff;box-shadow:inset 0 0 0 1px rgba(90,200,255,.55)}
+.kf.tide{background:rgba(58,10,10,.65);color:#ff9b8a;box-shadow:inset 0 0 0 1px rgba(255,90,60,.5)}
 @keyframes kfIn{from{transform:translateX(30px);opacity:0}to{transform:none;opacity:1}}
 
 #vitals{position:absolute;left:14px;bottom:14px;display:flex;gap:8px;font-family:var(--num)}

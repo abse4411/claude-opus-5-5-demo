@@ -774,15 +774,21 @@ export class WozManager {
     const st = this.rules.state(id);
     a.hp = Math.max(1, st.hp);   // 规则层已按新职业重置血池
     a.soldier.root.scale.setScalar(st.cls === MutantClass.Devourer ? 1.18 : 1.08); // 体型同步
+    if (this._autoCls === id) { this._autoCls = -1; } // 感染时的自动默认职业不重复播报
+    else g.hud.eventFeed(`${a.name} 进化为 <b>${CLASS_LABEL[cls] || '变异者'}</b>`, 'evo');
     if (a.isPlayer) g.hud.toast(`已变身：<b style="color:#ff7040">${CLASS_LABEL[cls]}</b>`, 2);
   }
 
   onInfected(victimId, attackerId) {
+    const v = this.g.actors[victimId], at = this.g.actors[attackerId];
+    this.g.hud.eventFeed(`${v?.name || '?'} ☣ 被感染了${at ? ` · ${at.name}` : ''}`, 'inf');
     // BOT 子体随机职业（玩家保留默认夜行者自选变身）
-    const a = this.g.actors[victimId];
+    const a = v;
     if (!a || a.isPlayer || this.rules.state(victimId).isMother) return;
+    this._autoCls = victimId;
     const r = Math.random();
-    this.rules.setMutantClass(victimId, r < 0.5 ? MutantClass.Nightrunner : r < 0.8 ? MutantClass.Souleater : MutantClass.Devourer);
+    const changed = this.rules.setMutantClass(victimId, r < 0.5 ? MutantClass.Nightrunner : r < 0.8 ? MutantClass.Souleater : MutantClass.Devourer);
+    if (!changed) this._autoCls = -1; // 职业未变（默认夜行者）时清除抑制标记，避免吃掉后续手动播报
   }
 
   onSkillFired(id, skill) {
@@ -843,6 +849,7 @@ export class WozManager {
     }
     g.audio.announce('Avenger online!');
     wozAudio.avenger(a.isPlayer ? null : a.pos.clone());
+    g.hud.eventFeed(`⚡ ${a.name} 觉醒为<b>生化复仇者</b>！`, 'avg', 10);
     this.hud.avengerBanner(a.name);
   }
 
@@ -869,6 +876,7 @@ export class WozManager {
 
   onCorpseTide(count) {
     const g = this.g;
+    g.hud.eventFeed(`☠ <b>尸潮降临！</b>${count} 只 AI 变异者涌入战场`, 'tide', 10);
     for (let i = 0; i < count; i++) {
       const z = new Zombie(g, { id: 100 + i, name: '尸潮', team: 'BL', wozExtra: true });
       g.actors.push(z);

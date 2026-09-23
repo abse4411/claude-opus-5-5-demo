@@ -188,7 +188,7 @@ export class HUD {
     this.dmgDirs = this.dmgDirs.filter((d) => d.t > 0);
     // 击杀信息淡出
     const now = performance.now();
-    this.feedItems = this.feedItems.filter((f) => { if (now - f.t > 7000) { f.el.remove(); return false; } return true; });
+    this.feedItems = this.feedItems.filter((f) => { if (now - f.t > (f.life || 7000)) { f.el.remove(); return false; } return true; });
     // 提示
     if (this.toastT > 0) { this.toastT -= dt; if (this.toastT <= 0) e.toast.style.opacity = 0; }
     // 中央信息
@@ -222,6 +222,15 @@ export class HUD {
     this.el.feed.prepend(d);
     this.feedItems.push({ el: d, t: performance.now() });
     while (this.feedItems.length > 6) { const f = this.feedItems.shift(); f.el.remove(); }
+  }
+  // WOZ 事件播报（感染/进化/复仇者/尸潮），cls: inf|evo|avg|tide
+  eventFeed(html, cls, dur = 8) {
+    const d = document.createElement('div');
+    d.className = 'kf evt ' + (cls || '');
+    d.innerHTML = html;
+    this.el.feed.prepend(d);
+    this.feedItems.push({ el: d, t: performance.now(), life: dur * 1000 });
+    while (this.feedItems.length > 7) { const f = this.feedItems.shift(); f.el.remove(); }
   }
   hitmarker(hs, kill) {
     this.el.hit.className = kill ? 'kill' : hs ? 'hs' : '';
