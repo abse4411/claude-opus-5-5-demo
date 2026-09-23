@@ -158,6 +158,14 @@ body.lk #clinks{opacity:.22}
 .seg.team button.on[data-v=BL]{background:rgba(224,82,46,.25);border-color:var(--bl);box-shadow:inset 0 0 0 1px var(--bl)}
 .seg.team button.on[data-v=GR]{background:rgba(47,143,240,.25);border-color:var(--gr);box-shadow:inset 0 0 0 1px var(--gr)}
 .seg button small{display:block;font-size:10.5px;color:var(--hudDim);margin-top:2px}
+.mcards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 0 4px;grid-column:1/-1}
+.mcard{padding:10px 6px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:rgba(12,16,20,.55);cursor:pointer;text-align:center;transition:border-color .12s, background .12s}
+.mcard:hover{background:rgba(50,38,14,.5)}
+.mcard.on{border-color:var(--accent);background:rgba(245,179,33,.16);box-shadow:inset 0 0 0 1px var(--accent)}
+.mcard .ic{font-size:22px;line-height:1.25}
+.mcard b{display:block;font-size:13px;color:#f2e6c8;margin-top:2px}
+.mcard small{display:block;font-size:10px;color:#9aa4ae;margin-top:2px}
+.mapMeta{grid-column:1/-1;margin:-2px 0 8px;padding:6px 10px;border-left:3px solid rgba(245,179,33,.55);background:rgba(15,18,22,.5);font:11px/1.6 "PingFang SC","Microsoft YaHei",sans-serif;color:#aab4be;text-align:left}
 .slider{display:flex;align-items:center;gap:10px}
 .slider input{flex:1;accent-color:var(--accent)}
 .slider span{font-family:var(--num);width:40px;text-align:right}

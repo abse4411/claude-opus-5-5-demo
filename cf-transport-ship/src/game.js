@@ -704,7 +704,7 @@ export class Game {
     if (dt <= 0) return;
     const R = this.renderer, cam = R.camera;
     this.realTime = (this.realTime || 0) + dt;
-    const active = this.playing && !this.paused;
+    const active = this.playing && !this.paused && !this.testFreeze; // testFreeze: e2e 冻结真实帧，仅 fastForward 驱动
     if (active) this.simulate(dt);
     else if (!this.playing) {
       // 菜单：环绕运输船

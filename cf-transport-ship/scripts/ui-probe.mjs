@@ -203,6 +203,36 @@ if (ver === 'v1') {
     });
     check(pr.on && pr.text.includes('拾取'), `TDM: 武器拾取提示 (${pr.text.trim()})`);
   }
+} else if (ver === 'v4') {
+  const menuUrl = pathToFileURL(resolve('dist/index.html')).href + '?q=low';
+  await page.goto(menuUrl);
+  await page.waitForTimeout(800);
+  await page.evaluate(() => localStorage.removeItem('cf_ship_opts'));
+  await page.reload();
+  await page.waitForTimeout(800);
+  {
+    const n = await page.evaluate(() => document.querySelectorAll('#modeCards .mcard').length);
+    check(n === 6, `菜单: 6 张模式卡片 (${n})`);
+    const def = await page.evaluate(() => document.querySelector('#modeCards .mcard.on')?.dataset.v);
+    check(def === 'tdm', `菜单: 默认选中团队竞技 (${def})`);
+    await page.click('#modeCards .mcard[data-v="demol"]');
+    const r = await page.evaluate(() => ({
+      mode: window.__game.hud.opts.mode,
+      info: document.getElementById('modeInfo').textContent,
+      on: document.querySelector('#modeCards .mcard.on')?.dataset.v,
+    }));
+    check(r.mode === 'demol' && r.on === 'demol' && r.info.includes('核弹'), `菜单: 点击卡片选爆破并显示机制说明 (${r.info.slice(0, 20)}…)`);
+    await page.click('.seg[data-k="map"] button[data-v="harbor"]');
+    const m = await page.evaluate(() => document.getElementById('mapMeta').textContent);
+    check(m.includes('雾港'), `菜单: 地图说明随选择更新 (${m.slice(0, 16)}…)`);
+    await page.screenshot({ path: `scripts/shots/${ver}-menu.png` });
+    // 从菜单点击开始 → 对局以所选模式启动
+    await page.click('#btnStart');
+    await page.waitForFunction(() => window.__game && window.__game.playing, null, { timeout: 60000 });
+    const started = await page.evaluate(() => window.__game.opts.mode + '/' + window.__game.opts.map);
+    check(started === 'demol/harbor', `菜单: 开始游戏应用选择 (${started})`);
+  }
+  await page.evaluate(() => localStorage.removeItem('cf_ship_opts'));
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

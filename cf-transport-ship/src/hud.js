@@ -28,6 +28,7 @@ export class HUD {
     try { Object.assign(this.opts, JSON.parse(localStorage.getItem('cf_ship_opts') || '{}')); } catch (e) { /* 忽略 */ }
     this.buildMenu();
     this.showModeInfo(this.opts.mode);
+    this.showMapMeta(this.opts.map);
   }
   saveOpts() { try { localStorage.setItem('cf_ship_opts', JSON.stringify(this.opts)); } catch (e) { /* 忽略 */ } }
 
@@ -45,6 +46,17 @@ export class HUD {
     const el = document.getElementById('modeInfo');
     if (el && info) el.innerHTML = `<b style="color:#f5b321">${info.name}</b>｜${info.desc}`;
   }
+  static MAP_META = {
+    ship: '运输船：经典对称船舱攻防，中路集装箱与两侧二层管道。全部模式可用。',
+    city: '死亡城市：三线开阔街道，巴士/喷泉/车阵掩体。爆破模式巢穴在西侧，对抗据点沿中路纵列分布。',
+    lab: '生化实验室：室内环形动线，中央标本厅培养罐阵与玻璃观察窗掩体，近距离交火密集。',
+    plaza: '都会广场：开阔环岛与中央雕像，三条大道辐射。视野开阔，适合狙击与尸潮冲锋。',
+    harbor: '雾港：浓雾大幅降低可视距离，港区集装箱迷宫。适合伏击与听声辨位。',
+  };
+  showMapMeta(map) {
+    const el = document.getElementById('mapMeta');
+    if (el) el.textContent = HUD.MAP_META[map] || '';
+  }
 
   // ---------- 菜单 ----------
   buildMenu() {
@@ -60,6 +72,7 @@ export class HUD {
           o[k] = isNaN(+b.dataset.v) ? b.dataset.v : +b.dataset.v;
           this.saveOpts();
           if (k === 'mode') this.showModeInfo(o[k]);
+          if (k === 'map') this.showMapMeta(o[k]);
           this.g.onOption?.(k, o[k]);
           this.g.audio?.playUI('click');
         });
@@ -71,6 +84,18 @@ export class HUD {
       inp.addEventListener('input', () => {
         o[k] = +inp.value; sp.textContent = (+inp.value).toFixed(k === 'fov' ? 0 : 2); this.saveOpts();
         this.g.onOption?.(k, o[k]);
+      });
+    }
+    // WOZ 模式大卡片（替代模式 seg）
+    for (const c of this.root.querySelectorAll('#modeCards .mcard')) {
+      c.classList.toggle('on', String(o.mode) === c.dataset.v);
+      c.addEventListener('click', () => {
+        o.mode = c.dataset.v;
+        for (const x of this.root.querySelectorAll('#modeCards .mcard')) x.classList.toggle('on', x === c);
+        this.showModeInfo(o.mode);
+        this.saveOpts();
+        this.g.onOption?.('mode', o.mode);
+        this.g.audio?.playUI('click');
       });
     }
     $('#btnStart').addEventListener('click', () => this.g.startMatch());
@@ -103,6 +128,7 @@ export class HUD {
   syncControls() {
     const o = this.opts;
     for (const s of this.root.querySelectorAll('.seg[data-k]')) for (const b of s.querySelectorAll('button')) b.classList.toggle('on', String(o[s.dataset.k]) === b.dataset.v);
+    for (const c of this.root.querySelectorAll('#modeCards .mcard')) c.classList.toggle('on', String(o.mode) === c.dataset.v);
     for (const sl of this.root.querySelectorAll('.slider[data-k]')) {
       const k = sl.dataset.k; sl.querySelector('input').value = o[k]; sl.querySelector('span').textContent = (+o[k]).toFixed(k === 'fov' ? 0 : 2);
     }
@@ -415,6 +441,15 @@ const NADE_CARDS = ['he', 'molotov', 'frost', 'gas'].map((id) => {
   return `<div class="card" data-g="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
 }).join('');
 
+const MODE_CARDS = [
+  ['tdm', '🔫', '团队竞技', '经典 PVP · 目标击杀'],
+  ['infection', '☣️', '生化感染', '母体感染链 · 变异技能'],
+  ['revenge', '⚡', '生化复仇', '复仇者电锯 · 尸潮'],
+  ['bio', '🧟', '生化模式', 'AI 尸潮 · 补给掉落'],
+  ['confront', '🚩', '生化对抗', '三据点攻防战'],
+  ['demol', '☢️', '生化爆破', '安放核弹 · 英雄觉醒'],
+].map(([v, ic, nm, tag]) => `<div class="mcard" data-v="${v}"><span class="ic">${ic}</span><b>${nm}</b><small>${tag}</small></div>`).join('');
+
 const TEMPLATE = `
 <div id="hud" class="hidden">
   <div id="score">
@@ -464,9 +499,10 @@ const TEMPLATE = `
       <div class="note hidden" id="touchNote">检测到触屏设备：已启用虚拟摇杆（左侧移动、右侧滑动视角）。电脑 + 鼠标体验最佳。</div>
     </div>
     <div class="opts">
-      <div class="opt"><div class="lab">模式</div><div class="seg" data-k="mode"><button data-v="tdm">团队竞技</button><button data-v="infection">生化感染</button><button data-v="revenge">生化复仇</button><button data-v="bio">生化模式</button><button data-v="confront">生化对抗</button><button data-v="demol">生化爆破</button></div></div>
-      <div id="modeInfo" style="grid-column:1/-1;margin:6px 0 2px;padding:8px 12px;border:1px solid rgba(245,179,33,.35);border-radius:8px;background:rgba(20,16,6,.5);font:12px/1.7 "PingFang SC","Microsoft YaHei",sans-serif;color:#d8cdb0;text-align:left"></div>
+      <div class="mcards" id="modeCards">${MODE_CARDS}</div>
+      <div id="modeInfo" style="grid-column:1/-1;margin:2px 0 8px;padding:8px 12px;border:1px solid rgba(245,179,33,.35);border-radius:8px;background:rgba(20,16,6,.5);font:12px/1.7 "PingFang SC","Microsoft YaHei",sans-serif;color:#d8cdb0;text-align:left"></div>
       <div class="opt"><div class="lab">地图</div><div class="seg" data-k="map"><button data-v="ship">运输船</button><button data-v="city">死亡城市</button><button data-v="lab">生化实验室</button><button data-v="plaza">都会广场</button><button data-v="harbor">雾港</button></div></div>
+      <div class="mapMeta" id="mapMeta"></div>
       <div class="opt"><div class="lab">阵营</div><div class="seg team" data-k="team"><button data-v="BL">潜伏者<small>Black List</small></button><button data-v="GR">保卫者<small>Global Risk</small></button></div></div>
       <div class="opt"><div class="lab">主武器</div><div class="seg" data-k="primary"><button data-v="ak47">AK-47</button><button data-v="m4a1">M4A1</button><button data-v="awm">AWM</button><button data-v="mp5">MP5</button></div></div>
       <div class="row2">

@@ -24,6 +24,7 @@ const check = (cond, name) => {
 await page.goto(url + '&mode=confront');
 await page.waitForFunction(() => window.__game && window.__game.playing, null, { timeout: 60000 });
 await page.waitForTimeout(600);
+await page.evaluate(() => { window.__game.testFreeze = true; }); // 冻结真实帧，全确定性
 check(await page.evaluate(() => window.__game.woz.points.length === 3), '对抗: 3 个据点已建立');
 check(await page.evaluate(() => window.__game.woz.points.every((p) => p.owner === 'none')), '对抗: 开局据点无主');
 check(await page.evaluate(() => window.__game.actors.filter((a) => a.team === 'GR').length === 6
@@ -70,6 +71,7 @@ check(await page.evaluate(() => window.__game.woz.round >= 2 || window.__game.en
 await page.goto(url + '&mode=demol');
 await page.waitForFunction(() => window.__game && window.__game.playing, null, { timeout: 60000 });
 await page.waitForTimeout(600);
+await page.evaluate(() => { window.__game.testFreeze = true; }); // 冻结真实帧，全确定性
 check(await page.evaluate(() => window.__game.woz.bomb && window.__game.woz.bomb.state === 'idle'), '爆破: 核弹待安放');
 
 // 爆破全流程（完全确定性）：每步都从全新开局推演
@@ -171,6 +173,7 @@ check(await page.evaluate(() => window.__game.woz.bomb && window.__game.woz.bomb
 await page.goto(url + '&mode=bio');
 await page.waitForFunction(() => window.__game && window.__game.playing, null, { timeout: 60000 });
 await page.waitForTimeout(600);
+await page.evaluate(() => { window.__game.testFreeze = true; }); // 冻结真实帧，全确定性
 check(await page.evaluate(() => window.__game.woz.rules !== null && window.__game.actors.every((a) => a.team === 'GR')), '生化: 开局全员人类（规则层挂载）');
 
 // 快进到战斗期，等待 AI 怪物刷新（先重置到纯净开局）

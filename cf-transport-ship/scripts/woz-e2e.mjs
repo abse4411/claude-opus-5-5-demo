@@ -24,6 +24,7 @@ const check = (cond, name) => {
 await page.goto(url + '&mode=infection');
 await page.waitForFunction(() => window.__game && window.__game.playing, null, { timeout: 60000 });
 await page.waitForTimeout(800);
+await page.evaluate(() => { window.__game.testFreeze = true; }); // 冻结真实帧，全确定性
 
 check(await page.evaluate(() => window.__game.woz && window.__game.woz.rules !== null), '感染: WozManager 已挂载');
 check(await page.evaluate(() => window.__game.actors.length === 10), '感染: 10 人局（1 玩家 + 9 BOT）');
@@ -106,6 +107,8 @@ await page.evaluate(() => window.__game.fastForward(260, 1 / 30));
 await page.goto(url + '&mode=revenge');
 await page.waitForFunction(() => window.__game && window.__game.playing, null, { timeout: 60000 });
 await page.waitForTimeout(800);
+await page.evaluate(() => { window.__game.testFreeze = true; }); // 冻结真实帧，全确定性
+await page.evaluate(() => { window.__game.woz.endMatch = function() {}; }); // 禁止对局在注入段之间自然终结（ended 后 damage 会失效）
 await page.evaluate(() => window.__game.fastForward(16, 1 / 30));
 check(await page.evaluate(() => window.__game.woz.rules.phase === 'battle'), '复仇: 进入战斗期');
 
@@ -139,7 +142,7 @@ await page.evaluate(() => window.__game.fastForward(125, 1 / 30));
 {
   const r = await page.evaluate(() => {
     const g = window.__game, rules = g.woz.rules;
-    if (rules.phase !== 'battle') { rules.phase = 'battle'; rules.phaseTimeLeft = 44; }
+    rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999; // 冻结阶段，防真实帧翻转回合
     rules.avengerUsed = false;
     const dir = { x: 0.6, z: 0.8 };
     // 保 0/1 号为存活人类，3~9 号人类全部压死（感染转化），2 号压死留作电锯测试对象
@@ -153,6 +156,7 @@ await page.evaluate(() => window.__game.fastForward(125, 1 / 30));
       if (a) { a.team = 'GR'; a.alive = true; }
     }
     g.fastForward(0.1, 1 / 30);
+    if (rules.avengerId() < 0) rules.tryTriggerAvenger(); // 同步直呼，消除 tick 时序依赖
     const av = rules.avengerId();
     const a = av >= 0 ? g.actors[av] : null;
     return {
@@ -170,7 +174,23 @@ await page.evaluate(() => window.__game.fastForward(125, 1 / 30));
 {
   const r = await page.evaluate(() => {
     const g = window.__game, rules = g.woz.rules;
-    const av = rules.avengerId();
+    rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999; // 冻结阶段
+    let av = rules.avengerId();
+    if (av < 0) {
+      // 复仇者被回合翻转重置过：确定性重触发（人类压到 ≤2）
+      rules.avengerUsed = false;
+      for (let i = 2; i < rules.playerCount; i++) {
+        const st = rules.state(i), a = g.actors[i];
+        if (st.side === 'human' && st.alive && a.alive) g.damage(a, null, 9999, 'chest', 'he', { x: 0.6, z: 0.8 }, false);
+      }
+      for (let i = 0; i < 2; i++) {
+        const st = rules.state(i), a = g.actors[i];
+        st.side = 'human'; st.alive = true; st.reviveTimer = 0;
+        if (a) { a.team = 'GR'; a.alive = true; }
+      }
+      g.fastForward(0.1, 1 / 30);
+      av = rules.avengerId();
+    }
     if (av < 0) return { ok: false, why: 'no avenger' };
     // 找一个活体变异者；没有就用一个活人先感染再杀
     let v = g.actors.find((a) => a.alive && a.id < rules.playerCount && rules.isMutantSide(a.id) && a.id !== av);
@@ -182,11 +202,16 @@ await page.evaluate(() => window.__game.fastForward(125, 1 / 30));
     }
     // 复活态处理：子体可能处于待转化复活流程，直接再补一刀走变异者死亡分支
     rules.state(v.id).alive = true;
-    v.alive = true; v.hp = 100;
+    v.alive = true; v.hp = 100; v.protectT = 0; v.armor = 0;
+    if (g.actors[av]) g.actors[av].protectT = 0;
     g.damage(v, g.actors[av], 99999, 'chest', 'chainsaw', dir, false);
-    return { ok: true, canRevive: rules.state(v.id).canRevive, alive: rules.state(v.id).alive };
+    const st = rules.state(v.id), avp = rules.state(av), avActor = g.actors[av];
+    return {
+      ok: true, canRevive: st.canRevive, alive: st.alive,
+      dbg: `v.side=${st.side} v.alive=${st.alive} av.alive=${avp.alive} avActor.alive=${avActor?.alive} avUsed=${rules.avengerUsed} phase=${rules.phase} playing=${g.playing} revivesLeft=${st.revivesLeft}`,
+    };
   });
-  check(r.ok && r.canRevive === false, `复仇: 电锯击杀 → 不可复活 (canRevive=${r.canRevive} ${r.why || ''})`);
+  check(r.ok && r.canRevive === false, `复仇: 电锯击杀 → 不可复活 (canRevive=${r.canRevive} ${r.dbg || r.why || ''})`);
 }
 
 console.log('ERRORS', errors.length ? JSON.stringify(errors.slice(0, 6), null, 1) : 'none');
