@@ -264,7 +264,8 @@ export class Bot extends Actor {
     this.yaw = wrapPi(this.yaw + THREE.MathUtils.clamp(ey, -turn, turn));
     this.pitch += THREE.MathUtils.clamp(dPitch - this.pitch, -turn * 0.6, turn * 0.6);
     // 移动 & 武器
-    this.move(dt, wishX, wishZ, this.wantJump, crouch, walk);
+    if (this.rootT > 0) { this.rootT -= dt; this.move(dt, 0, 0, false, false, false); } // 被缠绕定身
+    else this.move(dt, wishX, wishZ, this.wantJump, crouch, walk);
     this.wantJump = false;
     const w = this.weapon;
     this.weaponUpdate(dt, { fire, firePressed: firePressed || (fire && !this.fireHeld), alt, altPressed: alt, reload: false, sw });

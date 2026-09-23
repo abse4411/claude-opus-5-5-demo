@@ -107,7 +107,8 @@ export class Zombie extends Actor {
     const wrapPi = (a) => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
     this.yaw = wrapPi(this.yaw + THREE.MathUtils.clamp(wrapPi(dYaw - this.yaw), -turn, turn));
     const mStag = staggered ? 0.3 : 1;
-    this.move(dt, wishX * mStag, wishZ * mStag, this.wantJump, false, false);
+    if (this.rootT > 0) { this.rootT -= dt; this.move(dt, 0, 0, false, false, false); } // 被缠绕定身
+    else this.move(dt, wishX * mStag, wishZ * mStag, this.wantJump, false, false);
     this.wantJump = false;
     // 攻击输入交给武器状态机（含攻速间隔）；暂缓硬直期间无法出爪
     const facing = Math.abs(wrapPi(dYaw - this.yaw)) < 0.7;

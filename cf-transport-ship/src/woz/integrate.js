@@ -36,6 +36,7 @@ export class WozManager {
     this.heroGiven = false;
     this.playerClassChosen = false; // 玩家是否已主动选择变异者职业
     this.axes = [];                   // 猎食者投掷斧头抛射物
+    this.grabs = [];                  // 缠绕者触须拖拽
   }
 
   // 模式分类：infection 族（感染/复仇/生化）走规则层；对抗/爆破走目标物逻辑
@@ -155,6 +156,7 @@ export class WozManager {
     for (const z of this.tide) g.renderer.scene.remove(z.soldier.root);
     this.tide = [];
     this.clearAxes();
+    this.clearGrabs();
     // 全员复活为人类，回 GR 出生点
     this.pendingConvert.clear();
     for (const a of g.actors) {
@@ -194,6 +196,7 @@ export class WozManager {
     const g = this.g;
     if (!g.playing || g.ended) return;
     this.tickAxes(dt);
+    this.tickGrabs(dt);
     // 购买期结束自动关闭武器商店
     if (this.rules) {
       if (this.rules.phase === 'buy') this._buyOpen = true;
@@ -268,6 +271,83 @@ export class WozManager {
       }
     }
     this.axes = keep ? this.axes.filter((ax) => ax.live) : [];
+  }
+
+  // ---- 缠绕者缠绕（原作技能）：触须远程抓住人类并拖拽过来 ----
+  fireEntangle(a) {
+    const g = this.g, rules = this.rules;
+    // 选目标：玩家按准星方向夹角选最近；BOT 取最近敌人
+    let best = null, bestScore = 1e9;
+    const camDir = new THREE.Vector3();
+    if (a.isPlayer) g.renderer.camera.getWorldDirection(camDir);
+    for (const v of g.actors) {
+      if (!v.alive || v === a || v.team === a.team || v.wozOut || v.id >= rules.playerCount) continue;
+      const d = a.pos.distanceTo(v.pos);
+      if (d > WOZ.entangleRange) continue;
+      let score = d;
+      if (a.isPlayer) {
+        const to = new THREE.Vector3(v.pos.x - a.pos.x, (v.pos.y + 1.2) - (a.pos.y + 1.5), v.pos.z - a.pos.z).normalize();
+        const ang = Math.acos(THREE.MathUtils.clamp(to.dot(camDir), -1, 1));
+        if (ang > 0.25) continue; // 准星 14° 内才算瞄准
+        score = ang;
+      }
+      if (score < bestScore) { bestScore = score; best = v; }
+    }
+    const st = rules.state(a.id);
+    if (!best) { // 空放不消耗充能
+      st.skillCharge = 1; st.skillActive = false; st.skillTimeLeft = 0;
+      if (a.isPlayer) g.hud.toast('缠绕：准星内没有目标', 1);
+      return;
+    }
+    best.protectT = 0;
+    best.rootT = WOZ.entangleRootTime;
+    g.damage(best, a, WOZ.entangleDamage * (a.id < rules.playerCount ? rules.damageMultiplier(st) : 1), 'chest', 'claw', new THREE.Vector3(-Math.sin(a.yaw), 0, -Math.cos(a.yaw)), false);
+    const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.09, 1, 6), new THREE.MeshLambertMaterial({ color: 0x8a2f1d, emissive: 0x2a0a04 }));
+    g.renderer.scene.add(tent);
+    this.grabs.push({ live: true, v: best, owner: a, t: 0, tent });
+    if (a.isPlayer) g.hud.toast('缠绕！拖拽目标中', 1);
+    if (best.isPlayer) { g.hud.toast('<b style="color:#ff5040">被触须缠住了！</b>', 1.5); g.fx.shake = 1.2; }
+  }
+
+  tickGrabs(dt) {
+    const g = this.g;
+    const UP = new THREE.Vector3(0, 1, 0);
+    for (const gr of this.grabs) {
+      if (!gr.live) continue;
+      gr.t += dt;
+      const { v, owner } = gr;
+      if (!v.alive || !owner.alive || gr.t > WOZ.entangleRootTime || v.wozOut) { gr.live = false; continue; }
+      v.rootT = Math.max(v.rootT || 0, 0.05);
+      // 拖拽：向缠绕者位移，墙体拦截则原地绷紧
+      const dx = owner.pos.x - v.pos.x, dz = owner.pos.z - v.pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > 1.5) {
+        const step = Math.min(WOZ.entangleDragSpeed * dt, dist - 1.5);
+        const nx = dx / dist, nz = dz / dist;
+        if (!g.world.raycast(v.pos.x, v.pos.y + 0.9, v.pos.z, nx, 0, nz, step + 0.3, 'move')) {
+          v.pos.x += nx * step; v.pos.z += nz * step;
+          if (v.isPlayer) g.fx.shake = Math.max(g.fx.shake || 0, 0.35);
+        }
+      }
+      // 触须视觉：缠绕者胸口 → 目标胸口
+      const a1 = owner.pos.clone(); a1.y += 1.4;
+      const a2 = v.pos.clone(); a2.y += 1.2;
+      const mid = a1.clone().add(a2).multiplyScalar(0.5);
+      const dir = a2.clone().sub(a1);
+      const len = Math.max(0.1, dir.length());
+      gr.tent.position.copy(mid);
+      gr.tent.quaternion.setFromUnitVectors(UP, dir.normalize());
+      gr.tent.scale.set(1, len, 1);
+    }
+    for (const gr of this.grabs) {
+      if (!gr.live) g.renderer.scene.remove(gr.tent);
+    }
+    this.grabs = this.grabs.filter((gr) => gr.live);
+  }
+
+  clearGrabs() {
+    for (const gr of this.grabs) this.g.renderer.scene.remove(gr.tent);
+    this.grabs = [];
   }
 
   tickInfection(dt) {
@@ -676,8 +756,8 @@ export class WozManager {
     if (p.consumePressed('KeyG')) {
       if (!rules.tryUseSkill(p.id)) g.hud.toast(`技能充能 ${(st.skillCharge * 100) | 0}%`, 1);
     }
-    // 5/6/7 子体变身
-    for (const [code, cls] of [['Digit5', MutantClass.Nightrunner], ['Digit6', MutantClass.Souleater], ['Digit7', MutantClass.Devourer]]) {
+    // 5/6/7/8 子体变身
+    for (const [code, cls] of [['Digit5', MutantClass.Nightrunner], ['Digit6', MutantClass.Souleater], ['Digit7', MutantClass.Devourer], ['Digit8', MutantClass.Tangler]]) {
       if (p.consumePressed(code) && rules.setMutantClass(p.id, cls)) this.playerClassChosen = true;
     }
   }
@@ -889,7 +969,7 @@ export class WozManager {
     if (!a || a.isPlayer || this.rules.state(victimId).isMother) return;
     this._autoCls = victimId;
     const r = Math.random();
-    const changed = this.rules.setMutantClass(victimId, r < 0.5 ? MutantClass.Nightrunner : r < 0.8 ? MutantClass.Souleater : MutantClass.Devourer);
+    const changed = this.rules.setMutantClass(victimId, r < 0.4 ? MutantClass.Nightrunner : r < 0.65 ? MutantClass.Souleater : r < 0.85 ? MutantClass.Devourer : MutantClass.Tangler);
     if (!changed) this._autoCls = -1; // 职业未变（默认夜行者）时清除抑制标记，避免吃掉后续手动播报
   }
 
@@ -918,6 +998,8 @@ export class WozManager {
       if (a.isPlayer) g.hud.toast('硬化！减伤 70%', 1);
     } else if (skill === 'axeThrow') {
       this.throwAxe(a);
+    } else if (skill === 'entangle') {
+      this.fireEntangle(a);
     }
   }
 

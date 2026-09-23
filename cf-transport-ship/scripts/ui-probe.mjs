@@ -318,7 +318,7 @@ if (ver === 'v1') {
         sideBtnsHidden: document.getElementById('wozClasses').style.display === 'none',
       };
     });
-    check(r.visible && r.cards === 3, `变身: 选择面板弹出且 3 张职业卡 (${r.cards})`);
+    check(r.visible && r.cards === 4, `变身: 选择面板弹出且 4 张职业卡 (${r.cards})`);
     check(r.sideBtnsHidden, '变身: 面板打开时右下迷你按钮隐藏');
     await page.waitForTimeout(200);
     await shot('pick');
@@ -414,6 +414,37 @@ if (ver === 'v1') {
     await page.evaluate(() => window.__game.toggleHelp());
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
+  }
+} else if (ver === 'v12') {
+  // 缠绕者：触须抓拽 —— 定身 + 拖近 + 触须伤害
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      rules.convertToMutant(p.id, 'tangler', false);
+      g.woz.convertNow(p, true);
+      const st = rules.state(p.id);
+      st.skillCharge = 1;
+      // 平地直线：(5,·,0) 面向 -x 的靶子 (-5,·,0)，10m
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 0; p.vel = { x: 0, y: 0, z: 0 };
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      v.pos.set(-5, 0.1, 0); v.protectT = 0; v.armor = 0;
+      p.updateCamera(0.016);
+      const hpBefore = v.hp;
+      const fired = rules.tryUseSkill(p.id);
+      const grabs = g.woz.grabs.length;
+      const rooted = v.rootT > 0;
+      const d0 = p.pos.distanceTo(v.pos);
+      for (let i = 0; i < 36; i++) g.woz.tickGrabs(1 / 60); // 0.6s 拖拽
+      const d1 = p.pos.distanceTo(v.pos);
+      return { ok: true, fired, grabs, rooted, hpBefore, hpAfter: v.hp, d0: +d0.toFixed(1), d1: +d1.toFixed(1), cls: st.cls };
+    });
+    check(r.ok && r.fired && r.grabs === 1, `缠绕: 技能触发生成触须抓取 (fired=${r.fired} n=${r.grabs})`);
+    check(r.rooted && r.hpAfter < r.hpBefore, `缠绕: 目标定身并受触须伤害 (${r.hpBefore} → ${r.hpAfter})`);
+    check(r.d1 < r.d0 - 2, `缠绕: 目标被拖近 (${r.d0}m → ${r.d1}m)`);
   }
 } else if (ver === 'v11') {
   // 猎食者投掷斧头：技能触发生成抛射物并命中前方人类

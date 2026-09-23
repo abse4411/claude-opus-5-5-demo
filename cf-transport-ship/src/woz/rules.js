@@ -191,6 +191,7 @@ export class WozRules {
   baseHp(p) {
     if (p.cls === MutantClass.Mother) return WOZ.motherHp;
     if (p.cls === MutantClass.Devourer) return WOZ.devourerHp;
+    if (p.cls === MutantClass.Tangler) return WOZ.tanglerHp;
     return WOZ.childHp;
   }
 

@@ -65,9 +65,10 @@ export class Player extends Actor {
       f += this.touch.mz; s += this.touch.mx;
       const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw);
       const wx = -sy * f + cy * s, wz = -cy * f - sy * s;
-      const jump = K.has('Space') || this.touch.jump;
+      const jump = (K.has('Space') || this.touch.jump) && !(this.rootT > 0);
       const crouch = K.has('KeyC') || this.touch.crouch;
       this.walk = K.has('ShiftLeft') || K.has('ShiftRight');
+      if (this.rootT > 0) { this.rootT -= dt; f = 0; s = 0; } // 被缠绕定身
       this.move(dt, wx, wz, jump, crouch, this.walk);
       if (this.touch.jump) this.touch.jump = false;
       // 武器
