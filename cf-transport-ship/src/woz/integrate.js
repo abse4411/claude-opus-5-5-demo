@@ -191,6 +191,11 @@ export class WozManager {
   tick(dt) {
     const g = this.g;
     if (!g.playing || g.ended) return;
+    // 购买期结束自动关闭武器商店
+    if (this.rules) {
+      if (this.rules.phase === 'buy') this._buyOpen = true;
+      else if (this._buyOpen) { this._buyOpen = false; if (g.inLoadout) g.closeLoadout(); }
+    }
     if (this.cat() === 'confront') return this.tickConfront(dt);
     if (this.cat() === 'demol') return this.tickDemol(dt);
     this.tickInfection(dt);

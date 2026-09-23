@@ -200,6 +200,13 @@ export class HUD {
     e.protect.textContent = s.protect > 0 && s.alive ? `出生保护 ${s.protect.toFixed(1)}s（开火即解除）` : '';
     e.nameTip.textContent = s.aimName || ''; e.nameTip.className = s.aimTeam || '';
     if (this.slotsT > 0) { this.slotsT -= dt; e.slots.style.opacity = Math.min(1, this.slotsT * 2); } else e.slots.style.opacity = 0;
+    // 武器商店：WOZ 购买期倒计时
+    const rules = this.g.woz?.rules;
+    if (rules && rules.phase === 'buy') {
+      e.loadTimer.innerHTML = ` ｜ ⏱ 购买期剩余 <b style="color:#ffd24a">${Math.ceil(rules.phaseTimeLeft)}</b> 秒（按 B 打开商店）`;
+    } else if (e.loadTimer.innerHTML) {
+      e.loadTimer.innerHTML = '';
+    }
   }
   slots(inv, cur) {
     const e = this.el.slots;
@@ -440,8 +447,11 @@ function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 
 const PRIM_CARDS = PRIMARIES.map((id) => {
   const d = WEAPONS[id];
-  const sub = { ak47: '潜伏者经典 · 伤害高', m4a1: '保卫者经典 · 稳定', awm: '一枪致命 · 需开镜', mp5: '射速快 · 移动灵活' }[id];
-  return `<div class="card" data-w="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
+  const sub = { ak47: '潜伏者经典 · 伤害高', m4a1: '保卫者经典 · 稳定', awm: '一枪致命 · 需开镜', mp5: '射速快 · 移动灵活' }[id] || '生化战场同源武器';
+  const bar = (label, pct) => `<div class="srow"><span>${label}</span><i><b style="width:${Math.round(Math.min(1, pct) * 100)}%"></b></i></div>`;
+  return `<div class="card" data-w="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small>
+    ${bar('伤害', d.dmg / 55)}${bar('射速', d.rpm / 900)}${bar('机动', (d.speed - 0.75) / 0.25)}
+  </div>`;
 }).join('');
 
 const NADE_CARDS = ['he', 'molotov', 'frost', 'gas'].map((id) => {
@@ -543,7 +553,7 @@ const TEMPLATE = `
   <button class="go" id="btnResume">继 续</button><button class="go sec" id="btnQuit" style="margin-top:10px">退出到主菜单</button>
 </div></div>
 
-<div id="loadout" class="screen hidden"><div class="loadBox"><h2>更换主武器</h2><div class="sub">复活时生效；在出生点内立即生效。副武器沙漠之鹰、军刀、手雷自动配备。</div>
+<div id="loadout" class="screen hidden"><div class="loadBox"><h2>武器商店 · 装备配置</h2><div class="sub">复活时生效；在出生点内立即生效。副武器沙漠之鹰、军刀、手雷自动配备。<span id="loadTimer"></span></div>
   <div class="cards" id="loadCards">${PRIM_CARDS}</div>
     <div class="opt"><div class="lab">投掷武器</div></div>
     <div class="cards" id="nadeCards">${NADE_CARDS}</div>

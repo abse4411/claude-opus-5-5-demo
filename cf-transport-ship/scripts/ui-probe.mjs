@@ -336,6 +336,37 @@ if (ver === 'v1') {
     check(after.cls === 'devourer' && after.chosen && after.hidden, `变身: 点击猎食者后面板关闭 (cls=${after.cls})`);
     check(after.sideBtns, '变身: 关闭后右下切换按钮恢复');
   }
+} else if (ver === 'v8') {
+  // 感染模式购买期：商店打开 → 倒计时 → 战斗开始自动关闭
+  await goto('&mode=infection');
+  {
+    const pre = await page.evaluate(() => {
+      const g = window.__game;
+      return { phase: g.woz.rules.phase, left: Math.ceil(g.woz.rules.phaseTimeLeft) };
+    });
+    check(pre.phase === 'buy' && pre.left > 0 && pre.left <= 16, `感染: 开局购买期 (${pre.phase} ${pre.left}s)`);
+    await page.evaluate(() => window.__game.toggleLoadout());
+    await page.waitForTimeout(250);
+    const shop = await page.evaluate(() => ({
+      visible: !document.getElementById('loadout').classList.contains('hidden'),
+      cards: document.querySelectorAll('#loadCards .card').length,
+      srows: (document.querySelector('#loadCards .card')?.querySelectorAll('.srow') || []).length,
+      timer: document.getElementById('loadTimer').textContent,
+    }));
+    check(shop.visible && shop.cards === 10, `商店: 打开且 10 张主武器卡 (${shop.cards})`);
+    check(shop.srows === 3, `商店: 属性条渲染 (${shop.srows} 行)`);
+    check(shop.timer.includes('购买期'), `商店: 购买期倒计时 (${shop.timer.trim().slice(-18)})`);
+    await page.waitForTimeout(200);
+    await shot('shop');
+    // 战斗开始自动关闭
+    await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules;
+      rules.phaseTimeLeft = 0.2;
+      g.fastForward(0.5, 1 / 30);
+    });
+    const after = await page.evaluate(() => ({ closed: !window.__game.inLoadout, phase: window.__game.woz.rules.phase }));
+    check(after.closed && after.phase !== 'buy', `商店: 战斗开始自动关闭 (phase=${after.phase})`);
+  }
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }
