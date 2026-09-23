@@ -307,5 +307,28 @@ console.log('== WOZ 规则层断言 ==');
   check(base > WOZ.mutantSpeed, `V8: 咆哮期间变异者加速 (${base.toFixed(2)})`);
 }
 
+// 12. V14 变异者进化阶段（攻击/防御/特殊进化）
+{
+  const sim = new ArenaSim('infection', 91);
+  sim.rules.beginRound(5); skipBuy(sim);
+  const mid = sim.rules.players.findIndex((p) => !p.isMother && p.side === 'human');
+  const st = sim.rules.state(mid);
+  st.side = 'mutant'; st.alive = true;
+  check(sim.rules.evoStage(st) === 0, 'V14: 初始为基础形态');
+  st.devourCount = 3;
+  check(sim.rules.evoStage(st) === 1, 'V14: 3 吞噬 → 一阶攻击进化');
+  check(Math.abs(sim.rules.damageMultiplier(st) / (1 + st.evoPoints * WOZ.evoDamagePerPoint) - WOZ.evoStageAtk) < 1e-6, 'V14: 一阶攻击 +15%');
+  st.devourCount = 6;
+  check(sim.rules.evoStage(st) === 2, 'V14: 6 吞噬 → 二阶防御进化');
+  check(Math.abs(sim.rules.evoDamageReduction(st) - WOZ.evoStageDef) < 1e-6, 'V14: 二阶减伤 15%');
+  st.devourCount = 9;
+  check(sim.rules.evoStage(st) === 3, 'V14: 9 吞噬 → 三阶特殊进化');
+  check(sim.rules.effectiveMaxHp(st) === st.maxHp + st.evoPoints * WOZ.evoHpPerPoint + WOZ.evoStageHpBonus, 'V14: 三阶 HP 上限 +500');
+  const spd = sim.rules.mutantSpeedMultiplier(mid);
+  check(spd > WOZ.mutantSpeed * 1.07, `V14: 三阶移速加成 (${spd.toFixed(2)})`);
+  st.devourCount = 2;
+  check(Math.abs(sim.rules.evoDamageReduction(st)) < 1e-6, 'V14: 阶段判定严格按吞噬数');
+}
+
 console.log(`\n结果: ${passed} 通过, ${failed} 失败`);
 process.exit(failed === 0 ? 0 : 1);

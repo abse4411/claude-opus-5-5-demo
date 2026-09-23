@@ -188,7 +188,7 @@ export class WozHud {
       this.el.bigDevour.textContent = st.devourCooldown > 0 ? '吞噬冷却中…'
         : corpse >= 0 ? '[E] 吞噬尸体' : '';
       this.el.bigEvo.textContent = avenger ? '被复仇者击杀的变异者无法复活'
-        : `进化 ${st.evoPoints} 点 · 吞噬 ${st.devourCount} 次`;
+        : `进化 ${st.evoPoints} 点 · 吞噬 ${st.devourCount} 次 · ${['基础形态', '一阶·攻击强化', '二阶·防御强化', '三阶·特殊进化'][rules.evoStage(st)]}`;
       if (avenger) {
         this.el.ringChar.textContent = '⚡';
         this.el.ringTxt.textContent = '电锯';

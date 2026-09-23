@@ -38,6 +38,7 @@ export class WozManager {
     this.axes = [];                   // 猎食者投掷斧头抛射物
     this.grabs = [];                  // 缠绕者触须拖拽
     this.fuses = [];                  // 爆破者自爆引信
+    this._evoStageSeen = {};          // 进化阶段播报去重
   }
 
   // 模式分类：infection 族（感染/复仇/生化）走规则层；对抗/爆破走目标物逻辑
@@ -152,6 +153,7 @@ export class WozManager {
     const g = this.g;
     this.round++;
     this.playerClassChosen = false;
+    this._evoStageSeen = {};
     this.seed = (this.seed * 1103515245 + 12345) >>> 0;
     // 清理尸潮与抛射物
     for (const z of this.tide) g.renderer.scene.remove(z.soldier.root);
@@ -190,6 +192,8 @@ export class WozManager {
     a.speedMul = 1;
     a.wozOut = false;
     a.respawnT = 0;
+    if (a.evoLight) { a.evoLight.parent?.remove(a.evoLight); a.evoLight = null; } // 清三阶进化光效
+    a.rootT = 0;
     if (spawn) g.spawnActor(a, a.isPlayer && this.round === 1);
   }
 
@@ -985,7 +989,7 @@ export class WozManager {
     if (v.id < rules.playerCount) {
       const vs = rules.state(v.id);
       if (vs.side === 'mutant') {
-        void vs; // 变异者减伤走进化系统（V14）
+        mul *= 1 - rules.evoDamageReduction(vs); // 二阶防御进化
       } else {
         mul *= 1 - rules.humanDamageReduction(v.id);
       }
@@ -1097,8 +1101,30 @@ export class WozManager {
 
   onDevoured(mutantId, corpseId) {
     void corpseId;
-    const a = this.g.actors[mutantId];
+    const g = this.g, rules = this.rules;
+    const a = g.actors[mutantId];
     if (a) wozAudio.devour(a.isPlayer ? null : a.pos.clone());
+    // 进化阶段播报 + 三阶特殊进化表现（体型/发光/回满增量）
+    if (!a || !rules) return;
+    const st = rules.state(mutantId);
+    const stage = rules.evoStage(st);
+    if (this._evoStageSeen[mutantId] !== stage) {
+      this._evoStageSeen[mutantId] = stage;
+      const names = ['', '一阶进化：攻击强化', '二阶进化：防御强化', '三阶进化：特殊进化！'];
+      if (names[stage]) {
+        if (a.isPlayer) g.hud.toast(`<b style="color:#ffb040">${names[stage]}</b>`, 2);
+        g.hud.eventFeed(`${a.name} 达成<b>${names[stage]}</b>`, 'evo');
+      }
+      if (stage >= 3) {
+        a.soldier.root.scale.multiplyScalar(1.12);
+        if (!a.evoLight) {
+          a.evoLight = new THREE.PointLight(0xff5030, 1.6, 7);
+          a.evoLight.position.set(0, 1.6, 0);
+          a.soldier.root.add(a.evoLight);
+        }
+        if (a.isPlayer) { st.hp = Math.min(rules.effectiveMaxHp(st), st.hp + WOZ.evoStageHpBonus); a.hp = Math.max(1, Math.round(st.hp)); }
+      }
+    }
   }
 
   onMutantKilledByHuman(victimId, killerId) {

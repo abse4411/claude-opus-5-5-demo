@@ -206,8 +206,16 @@ export class WozRules {
 
   effectiveMaxHp(p) {
     return p.side === 'mutant'
-      ? p.maxHp + p.evoPoints * WOZ.evoHpPerPoint
+      ? p.maxHp + p.evoPoints * WOZ.evoHpPerPoint + (this.evoStage(p) >= 3 ? WOZ.evoStageHpBonus : 0)
       : 100;
+  }
+
+  // 进化阶段：0 基础 / 1 攻击进化 / 2 防御进化 / 3 特殊进化
+  evoStage(p) {
+    const n = p.devourCount || 0;
+    let stage = 0;
+    for (const k of WOZ.evoStageDevours) if (n >= k) stage++;
+    return stage;
   }
 
   convertToMutant(id, cls, isMother, rebirth = false) {
@@ -349,8 +357,14 @@ export class WozRules {
 
   damageMultiplier(p) {
     let m = 1 + p.evoPoints * WOZ.evoDamagePerPoint;
+    if (this.evoStage(p) >= 1) m *= WOZ.evoStageAtk; // 一阶：攻击进化
     if (p.rebirths > 0) m *= Math.pow(WOZ.rebirthDamageMul, p.rebirths);
     return m;
+  }
+
+  // 二阶：防御进化（受到伤害减免）
+  evoDamageReduction(p) {
+    return this.evoStage(p) >= 2 ? WOZ.evoStageDef : 0;
   }
 
   isSkillActive(id) {
@@ -370,6 +384,7 @@ export class WozRules {
     if (p.skillActive && p.cls === MutantClass.Nightrunner) m *= WOZ.dashSpeed * 0.55;
     if (this.motherRageActive() && p.cls !== MutantClass.Mother) m *= 1.25;
     if (p.skillActive && p.cls === MutantClass.Mother) m *= 1.35;
+    if (this.evoStage(p) >= 3) m *= WOZ.evoStageSpeed; // 三阶：特殊进化移速
     return m;
   }
 

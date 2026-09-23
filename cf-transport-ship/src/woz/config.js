@@ -42,6 +42,12 @@ export const WOZ = {
   devourChargeBonus: 0.15,
   evoDamagePerPoint: 0.02,
   evoHpPerPoint: 50,
+  // 进化阶段（原作：变异者逐步获得 防御 / 攻击 / 再次变异 / 特殊进化）
+  evoStageDevours: [3, 6, 9],  // 一阶攻击 / 二阶防御 / 三阶特殊进化
+  evoStageAtk: 1.15,
+  evoStageDef: 0.15,
+  evoStageSpeed: 1.08,
+  evoStageHpBonus: 500,
 
   // 人类进化
   humanTierSeconds: 45,

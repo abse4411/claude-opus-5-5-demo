@@ -415,6 +415,41 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v14') {
+  // 变异者进化阶段：二阶减伤数值 + 三阶 HUD 播报
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      rules.convertToMutant(p.id, 'devourer', false);
+      g.woz.convertNow(p, true);
+      const st = rules.state(p.id);
+      st.devourCount = 6; // 二阶：防御进化
+      p.protectT = 0; p.armor = 0;
+      const shooter = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!shooter) return { ok: false };
+      g.fastForward(0.2, 1 / 30); // tickInfection 同步引擎血量
+      const hp0 = st.hp;
+      g.damage(p, shooter, 100, 'chest', 'ak', { x: 1, z: 0 }, false);
+      g.fastForward(0.2, 1 / 30);
+      const reduction = 1 - (hp0 - st.hp) / 100;
+      st.devourCount = 9; // 三阶：特殊进化
+      g.woz._evoStageSeen[p.id] = -1; // 强制重播报
+      g.woz.onDevoured(p.id, -1);
+      g.fastForward(0.2, 1 / 30);
+      return {
+        ok: true, reduction: +reduction.toFixed(2),
+        stage: rules.evoStage(st),
+        evoTxt: document.getElementById('wzBigEvo').textContent,
+        feed: [...document.querySelectorAll('#feed .kf.evo')].map((e) => e.textContent).join('|'),
+      };
+    });
+    check(r.ok && Math.abs(r.reduction - 0.15) < 0.03, `进化: 二阶防御减伤 ~15% (实际 ${r.reduction})`);
+    check(r.stage === 3 && r.evoTxt.includes('三阶'), `进化: HUD 显示三阶 [${r.evoTxt.slice(-12)}]`);
+    check(r.feed.includes('特殊进化'), `进化: 信息流播报三阶 [${r.feed.slice(-40)}]`);
+  }
 } else if (ver === 'v13') {
   // 爆破者：自爆 —— 引信后感染爆炸，近亡远安，自身阵亡
   await goto('&mode=infection');
