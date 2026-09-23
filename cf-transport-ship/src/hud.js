@@ -2,6 +2,8 @@
 import { WEAPONS, PRIMARIES } from './weapons.js';
 
 const TEAM_CN = { BL: '潜伏者', GR: '保卫者' };
+// WOZ 原作两大阵营（搜狗百科）：GR=保卫军，BL=原罪军；TDM 保留 CF 命名
+const TEAM_WOZ = { BL: '原罪军', GR: '保卫军' };
 const $ = (s, r = document) => r.querySelector(s);
 
 const HS_ICON = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><g fill="none" stroke="#ff4030" stroke-width="3"><circle cx="20" cy="20" r="11"/><path d="M20 2v10M20 28v10M2 20h10M28 20h10"/></g><circle cx="20" cy="20" r="3.5" fill="#ff4030"/></svg>`);
@@ -45,6 +47,14 @@ export class HUD {
     const info = HUD.MODE_INFO[mode];
     const el = document.getElementById('modeInfo');
     if (el && info) el.innerHTML = `<b style="color:#f5b321">${info.name}</b>｜${info.desc}`;
+    // WOZ 模式下菜单阵营选项显示原作阵营名（保卫军/原罪军）
+    const seg = this.root.querySelector('.seg.team[data-k="team"]');
+    if (seg) {
+      const nm = mode !== 'tdm' ? TEAM_WOZ : TEAM_CN;
+      const bl = seg.querySelector('button[data-v="BL"]'), gr = seg.querySelector('button[data-v="GR"]');
+      if (bl) bl.innerHTML = `${nm.BL}<small>${mode !== 'tdm' ? 'Original Sin' : 'Black List'}</small>`;
+      if (gr) gr.innerHTML = `${nm.GR}<small>${mode !== 'tdm' ? 'Defense Corps' : 'Global Risk'}</small>`;
+    }
   }
   static MAP_META = {
     ship: '运输船：经典对称船舱攻防，中路集装箱与两侧二层管道。全部模式可用。',
@@ -159,10 +169,18 @@ export class HUD {
   loading(p, text) { this.el.loadBar.style.width = (p * 100).toFixed(0) + '%'; if (text) this.el.loadTxt.textContent = text; }
 
   // ---------- 局内 ----------
+  teamName(team) {
+    const g = this.g;
+    return g && g.woz && g.opts.mode !== 'tdm' ? TEAM_WOZ[team] : TEAM_CN[team];
+  }
+
   update(dt, s) {
     const e = this.el;
     // 比分与时间
     e.sBL.textContent = s.score.BL; e.sGR.textContent = s.score.GR;
+    const nmBL = e.tBL.querySelector('.nm'), nmGR = e.tGR.querySelector('.nm');
+    if (nmBL) nmBL.textContent = this.teamName('BL');
+    if (nmGR) nmGR.textContent = this.teamName('GR');
     const tl = Math.max(0, s.timeLeft), mm = (tl / 60) | 0, ss = (tl % 60) | 0;
     e.sTime.textContent = `${mm}:${ss < 10 ? '0' : ''}${ss}`;
     e.sGoal.textContent = this.g.woz ? this.g.woz.modeCN() : `团队竞技 · 目标 ${s.goal}`;
@@ -299,7 +317,7 @@ export class HUD {
     if (!show) return;
     const rows = (team) => actors.filter((a) => a.team === team).sort((a, b) => b.stats.k - a.stats.k || a.stats.d - b.stats.d)
       .map((a) => `<tr class="${a.id === myId ? 'me' : ''} ${a.alive ? '' : 'dead'}"><td>${esc(a.name)}</td><td class="role">${roleOf ? roleOf(a) : '—'}</td><td>${a.stats.k}</td><td>${a.stats.d}</td><td>${a.stats.hs}</td><td>${a.ping}</td></tr>`).join('');
-    const tbl = (team) => `<table class="t${team}"><tr><th class="team">${TEAM_CN[team]} · ${score[team]}</th><th>角色</th><th>击杀</th><th>死亡</th><th>爆头</th><th>延迟</th></tr>${rows(team)}</table>`;
+    const tbl = (team) => `<table class="t${team}"><tr><th class="team">${this.teamName(team)} · ${score[team]}</th><th>角色</th><th>击杀</th><th>死亡</th><th>爆头</th><th>延迟</th></tr>${rows(team)}</table>`;
     this.el.boardBody.innerHTML = `<div class="cols">${tbl('BL')}${tbl('GR')}</div>`;
   }
   endScreen(win, score, actors, myId) {
@@ -307,7 +325,7 @@ export class HUD {
     const r = this.el.endRes;
     r.textContent = win === null ? '平局' : win ? '胜利' : '失败';
     r.className = 'res ' + (win ? 'win' : 'lose');
-    this.el.endSc.textContent = `潜伏者 ${score.BL} : ${score.GR} 保卫者`;
+    this.el.endSc.textContent = `${this.teamName('BL')} ${score.BL} : ${score.GR} ${this.teamName('GR')}`;
     const mvp = [...actors].sort((a, b) => (b.stats.k * 2 - b.stats.d + b.stats.hs) - (a.stats.k * 2 - a.stats.d + a.stats.hs))[0];
     this.el.endMvp.textContent = mvp ? `MVP：${mvp.name}（${mvp.stats.k} 杀 / ${mvp.stats.hs} 爆头）` : '';
     const me = actors.find((a) => a.id === myId);
@@ -315,7 +333,7 @@ export class HUD {
     this.el.endMe.textContent = me ? `你的战绩：${me.stats.k} 击杀 · ${me.stats.d} 死亡 · ${me.stats.hs} 爆头 · 命中率 ${acc}%` : '';
     const rows = (team) => actors.filter((a) => a.team === team).sort((a, b) => b.stats.k - a.stats.k)
       .map((a) => `<tr class="${a.id === myId ? 'me' : ''}"><td>${esc(a.name)}</td><td>${a.stats.k}</td><td>${a.stats.d}</td><td>${a.stats.hs}</td></tr>`).join('');
-    const tbl = (team) => `<table class="t${team}"><tr><th class="team">${TEAM_CN[team]}</th><th>击杀</th><th>死亡</th><th>爆头</th></tr>${rows(team)}</table>`;
+    const tbl = (team) => `<table class="t${team}"><tr><th class="team">${this.teamName(team)}</th><th>击杀</th><th>死亡</th><th>爆头</th></tr>${rows(team)}</table>`;
     this.el.endTable.innerHTML = `<div class="cols">${tbl('BL')}${tbl('GR')}</div>`;
   }
   // ---------- 小地图 ----------

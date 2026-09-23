@@ -415,6 +415,32 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v17') {
+  // 阵营更名：WOZ 模式显示 保卫军/原罪军（原作阵营），TDM 保留 CF 命名
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game;
+      g.fastForward(20, 1 / 30);
+      return {
+        topBL: document.querySelector('#tBL .nm')?.textContent,
+        topGR: document.querySelector('#tGR .nm')?.textContent,
+      };
+    });
+    check(r.topBL === '原罪军' && r.topGR === '保卫军', `阵营: 局内顶栏 WOZ 命名 (${r.topGR} vs ${r.topBL})`);
+    await page.keyboard.down('Tab');
+    await page.waitForTimeout(400);
+    const board = await page.evaluate(() => [...document.querySelectorAll('#board th.team')].map((th) => th.textContent).join('|'));
+    await page.keyboard.up('Tab');
+    check(board.includes('保卫军') && board.includes('原罪军'), `阵营: 计分板 WOZ 命名 [${board}]`);
+    // 菜单阵营选项联动
+    const menu = await page.evaluate(() => {
+      window.__game.hud.showModeInfo('infection');
+      const seg = document.querySelector('.seg.team[data-k="team"]');
+      return seg.textContent;
+    });
+    check(menu.includes('保卫军') && menu.includes('原罪军'), '阵营: 菜单选项 WOZ 命名联动');
+  }
 } else if (ver === 'v16') {
   // 复仇者：重击 360°旋转清场 + 防御被动
   await goto('&mode=revenge');
