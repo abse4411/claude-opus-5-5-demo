@@ -241,15 +241,26 @@ export class HUD {
   // ---------- 小地图 ----------
   buildRadar(world) {
     const S = 8; // px/m
-    const W = 74 * S, H = 26 * S;
+    const cols = [...world.colliders].filter((k) => k.solid && k.top > 0.3 && k.bottom < 2 && k.hx < 30 && k.tag !== 'deck').sort((a, b) => a.top - b.top);
+    // 自动计算地图包围盒（旋转碰撞体按外接框计），任意地图通用
+    let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+    for (const k of cols) {
+      const c = Math.abs(Math.cos(k.yaw || 0)), s = Math.abs(Math.sin(k.yaw || 0));
+      const ex = k.hx * c + k.hz * s, ez = k.hx * s + k.hz * c;
+      x0 = Math.min(x0, k.x - ex); x1 = Math.max(x1, k.x + ex);
+      z0 = Math.min(z0, k.z - ez); z1 = Math.max(z1, k.z + ez);
+    }
+    if (!isFinite(x0)) { x0 = -37; x1 = 37; z0 = -13; z1 = 13; }
+    x0 -= 2; x1 += 2; z0 -= 2; z1 += 2;
+    const W = Math.ceil((x1 - x0) * S), H = Math.ceil((z1 - z0) * S);
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const x = c.getContext('2d');
     x.fillStyle = 'rgba(70,80,84,0.95)'; x.fillRect(0, 0, W, H);
-    const cols = [...world.colliders].filter((k) => k.solid && k.top > 0.3 && k.bottom < 2 && k.hx < 30 && k.tag !== 'deck').sort((a, b) => a.top - b.top);
+    const OX = -x0, OZ = -z0; // 世界坐标 → 画布像素偏移
     for (const k of cols) {
       if (k.bullet === 'pass' && k.mat !== 'mesh') continue;
       x.save();
-      x.translate((k.x + 37) * S, (k.z + 13) * S);
+      x.translate((k.x + OX) * S, (k.z + OZ) * S);
       x.rotate(-k.yaw);
       const hgt = k.top;
       x.fillStyle = k.mat === 'mesh' ? 'rgba(200,200,190,.5)' : hgt > 4 ? '#1d2327' : hgt > 2 ? '#2d353a' : hgt > 1.3 ? '#3b454b' : '#56616a';
@@ -258,13 +269,15 @@ export class HUD {
       x.strokeRect(-k.hx * S, -k.hz * S, k.hx * 2 * S, k.hz * 2 * S);
       x.restore();
     }
-    // 管道顶棚（二楼）用虚线表示
-    x.strokeStyle = 'rgba(245,179,33,.35)'; x.setLineDash([6, 4]);
-    x.strokeRect((-29.5 + 37) * S, (9.4 + 13) * S, 36.6 * S, 2.44 * S);
-    x.strokeRect((29.5 - 36.6 + 37) * S, (-11.84 + 13) * S, 36.6 * S, 2.44 * S);
-    this.radarImg = c; this.radarS = S;
+    // 运输船管道顶棚（二楼）用虚线表示
+    if (this.g?.mapName === '运输船') {
+      x.strokeStyle = 'rgba(245,179,33,.35)'; x.setLineDash([6, 4]);
+      x.strokeRect((-29.5 + OX) * S, (9.4 + OZ) * S, 36.6 * S, 2.44 * S);
+      x.strokeRect((29.5 - 36.6 + OX) * S, (-11.84 + OZ) * S, 36.6 * S, 2.44 * S);
+    }
+    this.radarImg = c; this.radarS = S; this.radarOX = OX; this.radarOZ = OZ;
   }
-  drawRadar(me, actors, t) {
+  drawRadar(me, actors, t, markers) {
     const ctx = this.radarCtx, cv = this.el.radar;
     const W = cv.width = cv.clientWidth * 1.5 | 0, H = cv.height = cv.clientHeight * 1.5 | 0;
     ctx.clearRect(0, 0, W, H);
@@ -274,7 +287,7 @@ export class HUD {
     ctx.translate(W / 2, H / 2);
     ctx.rotate(me.yaw);
     ctx.scale(zoom, zoom);
-    ctx.translate(-(me.pos.x + 37) * S, -(me.pos.z + 13) * S);
+    ctx.translate(-(me.pos.x + this.radarOX) * S, -(me.pos.z + this.radarOZ) * S);
     ctx.globalAlpha = 0.95;
     ctx.drawImage(this.radarImg, 0, 0);
     ctx.globalAlpha = 1;
@@ -282,7 +295,7 @@ export class HUD {
       if (a === me) continue;
       const seen = a.team === me.team || (a.radarT > 0);
       if (!seen) continue;
-      const px = (a.pos.x + 37) * S, pz = (a.pos.z + 13) * S;
+      const px = (a.pos.x + this.radarOX) * S, pz = (a.pos.z + this.radarOZ) * S;
       if (!a.alive) {
         if (a.team !== me.team || a.deadT > 5) continue;
         ctx.strokeStyle = '#9aa'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(px - 8, pz - 8); ctx.lineTo(px + 8, pz + 8); ctx.moveTo(px + 8, pz - 8); ctx.lineTo(px - 8, pz + 8); ctx.stroke();
@@ -307,6 +320,63 @@ export class HUD {
     const g = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, W * 0.45);
     g.addColorStop(0, 'rgba(255,255,255,.18)'); g.addColorStop(1, 'rgba(255,255,255,0)');
     ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(W / 2, H / 2); ctx.arc(W / 2, H / 2, W * 0.45, -Math.PI / 2 - 0.6, -Math.PI / 2 + 0.6); ctx.closePath(); ctx.fill();
+    // 目标点标记层（据点 / 核弹站点 / 已安放核弹），出界钳制到雷达边缘
+    if (markers && markers.length) this.drawRadarMarkers(ctx, W, H, me, markers, t, zoom);
+  }
+  markerScreenPos(me, m, W, H, zoom) {
+    const S = this.radarS;
+    const dx = (m.x - me.pos.x) * S, dz = (m.z - me.pos.z) * S;
+    const cos = Math.cos(me.yaw), sin = Math.sin(me.yaw);
+    let sx = W / 2 + (dx * cos - dz * sin) * zoom;
+    let sz = H / 2 + (dx * sin + dz * cos) * zoom;
+    const M = 16;
+    const off = sx < M || sx > W - M || sz < M || sz > H - M;
+    return { x: Math.max(M, Math.min(W - M, sx)), y: Math.max(M, Math.min(H - M, sz)), off };
+  }
+  drawRadarMarkers(ctx, W, H, me, markers, t, zoom) {
+    for (const m of markers) {
+      const p = this.markerScreenPos(me, m, W, H, zoom);
+      if (m.kind === 'point') {
+        const col = m.owner === 'GR' ? '#4fa0ff' : m.owner === 'BL' ? '#ff6a4a' : '#cfd6dd';
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = Math.PI / 6 + i * Math.PI / 3;
+          const px = p.x + Math.cos(a) * 12, pz = p.y + Math.sin(a) * 12;
+          i ? ctx.lineTo(px, pz) : ctx.moveTo(px, pz);
+        }
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(8,12,16,.85)'; ctx.fill();
+        ctx.lineWidth = 2.5; ctx.strokeStyle = col; ctx.stroke();
+        ctx.fillStyle = col; ctx.font = '700 13px "Microsoft YaHei",sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(m.label, p.x, p.y + 1);
+        if (m.contested) {
+          ctx.globalAlpha = 0.45 + 0.45 * Math.abs(Math.sin(t * 6));
+          ctx.beginPath(); ctx.arc(p.x, p.y, 16, 0, 7);
+          ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2.5; ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      } else if (m.kind === 'site') {
+        ctx.globalAlpha = 0.55 + 0.35 * Math.abs(Math.sin(t * 2.5));
+        ctx.beginPath(); ctx.arc(p.x, p.y, 14, 0, 7);
+        ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 9, 0, 7);
+        ctx.fillStyle = 'rgba(20,14,2,.8)'; ctx.fill();
+        ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = '#ffd24a'; ctx.font = '700 11px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('☢', p.x, p.y + 1);
+      } else if (m.kind === 'bomb') {
+        ctx.globalAlpha = 0.55 + 0.45 * Math.abs(Math.sin(t * 10));
+        ctx.beginPath(); ctx.arc(p.x, p.y, 12, 0, 7);
+        ctx.fillStyle = '#ff3018'; ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#fff'; ctx.font = '700 12px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('☢', p.x, p.y + 1);
+      }
+    }
   }
 }
 

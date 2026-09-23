@@ -427,6 +427,20 @@ export class WozManager {
     };
   }
 
+  // 小地图目标点标记（据点 / 核弹站点 / 已安放核弹）
+  radarMarkers() {
+    const ms = [];
+    for (const p of this.points) {
+      ms.push({ kind: 'point', x: p.def.x, z: p.def.z, label: p.def.name, owner: p.owner, contested: p.contested });
+    }
+    if (this.bomb) {
+      const b = this.bomb;
+      if (b.state === 'planted' || b.state === 'destroying') ms.push({ kind: 'bomb', x: b.pos.x, z: b.pos.z });
+      else if (b.state !== 'detonated' && b.state !== 'destroyed') ms.push({ kind: 'site', x: b.def.x, z: b.def.z });
+    }
+    return ms;
+  }
+
   devourAndSkills(dt) {
     const g = this.g, rules = this.rules;
     void dt;

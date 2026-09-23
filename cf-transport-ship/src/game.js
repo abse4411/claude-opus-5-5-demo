@@ -63,6 +63,7 @@ export class Game {
     };
     const mapDef = MAPS[this.opts.map] || MAPS.ship;
     this.mapName = mapDef.name;
+    document.querySelector('#radarWrap .lbl').textContent = mapDef.name;
     this.map = mapDef.build(this.renderer.scene, this.T, this.world);
     this.applyFogOverride();
     this.hud.loading(0.68, '天空与海洋');
@@ -841,7 +842,7 @@ export class Game {
       hp: p.hp, armor: p.armor, alive: p.alive, weapon: w, scoped: p.scoped && w.def.type === 'sniper', spreadPx,
       yaw: p.yaw, respawnIn: p.respawnT, killedBy: this.killedBy, protect: p.protectT, aimName, aimTeam,
     });
-    this.hud.drawRadar(p, this.actors, this.time);
+    this.hud.drawRadar(p, this.actors, this.time, this.woz ? this.woz.radarMarkers() : null);
     const tab = p.keys.has('Tab') && this.playing && !this.paused;
     if (tab !== this.boardShown || (tab && this.frame % 20 === 0)) { this.boardShown = tab; this.hud.scoreboard(tab, this.actors, p.id, this.score); }
   }
