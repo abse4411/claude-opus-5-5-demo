@@ -138,80 +138,57 @@ await page.evaluate(() => window.__game.fastForward(125, 1 / 30));
   check(tide === 4, `复仇: 尸潮 4 只 AI 已生成 (实际 ${tide})`);
 }
 
-// 复仇者路径（确定性）：战斗期内把人类压到 ≤2，触发变身并立即断言
+// 复仇者全链路（单一 evaluate 全确定性）：触发 → 形态断言 → 清场 → 确定性目标电锯击杀 → 不可复活
 {
   const r = await page.evaluate(() => {
-    const g = window.__game, rules = g.woz.rules;
-    rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999; // 冻结阶段，防真实帧翻转回合
-    rules.avengerUsed = false;
+    const g = window.__game, rules = g.woz.rules, p = g.player;
+    rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999; // 冻结阶段
     const dir = { x: 0.6, z: 0.8 };
-    // 保 0/1 号为存活人类，3~9 号人类全部压死（感染转化），2 号压死留作电锯测试对象
+    // 强制 0/1 号存活人类，其余人类全部压死（感染转化）→ 满足触发条件
+    rules.avengerUsed = false;
     for (let i = 2; i < rules.playerCount; i++) {
       const st = rules.state(i), a = g.actors[i];
-      if (st.side === 'human' && st.alive && a.alive) g.damage(a, null, 9999, 'chest', 'he', dir, false);
+      if (st.side === 'human' && st.alive && a.alive) { a.protectT = 0; g.damage(a, null, 9999, 'chest', 'he', dir, false); }
     }
     for (let i = 0; i < 2; i++) {
       const st = rules.state(i), a = g.actors[i];
       st.side = 'human'; st.alive = true; st.reviveTimer = 0;
-      if (a) { a.team = 'GR'; a.alive = true; }
+      if (a) { a.team = 'GR'; a.alive = true; a.protectT = 0; }
     }
     g.fastForward(0.1, 1 / 30);
     if (rules.avengerId() < 0) rules.tryTriggerAvenger(); // 同步直呼，消除 tick 时序依赖
     const av = rules.avengerId();
-    const a = av >= 0 ? g.actors[av] : null;
-    return {
-      av, humansAlive: rules.humansAlive(),
-      team: a?.team, hp: a?.hp, weapon: a ? a.inv[a.slot].id : null, outfit: a?.wozOutfit,
-      stHp: av >= 0 ? rules.state(av).hp : null,
+    if (av < 0) return { ok: false, why: 'no avenger', humansAlive: rules.humansAlive() };
+    const avA = g.actors[av];
+    // 形态断言（触发后立即读取，无中间帧干扰）
+    const form = {
+      team: avA.team, hp: avA.hp, weapon: avA.inv[avA.slot]?.id || null,
+      outfit: avA.wozOutfit, stHp: rules.state(av).hp,
     };
+    // 清场：击杀复仇者与玩家以外所有存活者，消除后续干扰
+    for (const a of g.actors) {
+      if (!a || a === avA || a === p || !a.alive) continue;
+      a.protectT = 0;
+      g.damage(a, null, 99999, 'chest', 'he', dir, false);
+    }
+    // 清场可能把人类杀到 0 → 规则层提前结算翻转 phase，重新冻结
+    rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+    // 确定性目标：0/1 号位中非复仇者者，强制复活并规则层转化为变异者
+    const tid = av === 0 ? 1 : 0;
+    const st = rules.state(tid), ta = g.actors[tid];
+    st.side = 'human'; st.alive = true; st.reviveTimer = 0;
+    ta.team = 'GR'; ta.alive = true; ta.protectT = 0;
+    rules.convertToMutant(tid, 'nightrunner', false);
+    ta.team = 'BL'; // 规则层已转化，ACTOR 队伍须同步，否则击杀被友伤抑制吞掉
+    ta.alive = true; ta.hp = 100; ta.protectT = 0; ta.armor = 0;
+    g.damage(ta, avA, 99999, 'chest', 'chainsaw', { x: 0.3, z: 0.95 }, false);
+    const stv = rules.state(tid);
+    return { ok: true, av, canRevive: stv.canRevive, vside: stv.side, humansAlive: rules.humansAlive(), ...form };
   });
-  check(r.av >= 0, `复仇: 复仇者已变身 (id=${r.av}，存活人类 ${r.humansAlive})`);
+  check(r.ok && r.av >= 0, `复仇: 复仇者已变身 (id=${r.av}，存活人类 ${r.humansAlive})`);
   check(r.team === 'GR' && r.weapon === 'chainsaw' && r.outfit === 'AVG' && r.stHp >= 1500 && r.hp >= 1500,
     `复仇: 复仇者形态正确 (team=${r.team} hp=${r.hp} weapon=${r.weapon} outfit=${r.outfit})`);
-}
-
-// 复仇者电锯击杀变异者 → 禁止复活（同一 evaluate 内确定性地走完整链路）
-{
-  const r = await page.evaluate(() => {
-    const g = window.__game, rules = g.woz.rules;
-    rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999; // 冻结阶段
-    let av = rules.avengerId();
-    if (av < 0) {
-      // 复仇者被回合翻转重置过：确定性重触发（人类压到 ≤2）
-      rules.avengerUsed = false;
-      for (let i = 2; i < rules.playerCount; i++) {
-        const st = rules.state(i), a = g.actors[i];
-        if (st.side === 'human' && st.alive && a.alive) g.damage(a, null, 9999, 'chest', 'he', { x: 0.6, z: 0.8 }, false);
-      }
-      for (let i = 0; i < 2; i++) {
-        const st = rules.state(i), a = g.actors[i];
-        st.side = 'human'; st.alive = true; st.reviveTimer = 0;
-        if (a) { a.team = 'GR'; a.alive = true; }
-      }
-      g.fastForward(0.1, 1 / 30);
-      av = rules.avengerId();
-    }
-    if (av < 0) return { ok: false, why: 'no avenger' };
-    // 找一个活体变异者；没有就用一个活人先感染再杀
-    let v = g.actors.find((a) => a.alive && a.id < rules.playerCount && rules.isMutantSide(a.id) && a.id !== av);
-    const dir = { x: 0.3, z: 0.95 };
-    if (!v) {
-      v = g.actors.find((a) => a.alive && a.id < rules.playerCount && a.id !== av);
-      if (!v) return { ok: false, why: 'no target' };
-      g.damage(v, g.actors[av], 9999, 'chest', 'chainsaw', dir, false); // 先感染
-    }
-    // 复活态处理：子体可能处于待转化复活流程，直接再补一刀走变异者死亡分支
-    rules.state(v.id).alive = true;
-    v.alive = true; v.hp = 100; v.protectT = 0; v.armor = 0;
-    if (g.actors[av]) g.actors[av].protectT = 0;
-    g.damage(v, g.actors[av], 99999, 'chest', 'chainsaw', dir, false);
-    const st = rules.state(v.id), avp = rules.state(av), avActor = g.actors[av];
-    return {
-      ok: true, canRevive: st.canRevive, alive: st.alive,
-      dbg: `v.side=${st.side} v.alive=${st.alive} av.alive=${avp.alive} avActor.alive=${avActor?.alive} avUsed=${rules.avengerUsed} phase=${rules.phase} playing=${g.playing} revivesLeft=${st.revivesLeft}`,
-    };
-  });
-  check(r.ok && r.canRevive === false, `复仇: 电锯击杀 → 不可复活 (canRevive=${r.canRevive} ${r.dbg || r.why || ''})`);
+  check(r.ok && r.canRevive === false, `复仇: 电锯击杀 → 不可复活 (canRevive=${r.canRevive} v.side=${r.vside || r.why || ''})`);
 }
 
 console.log('ERRORS', errors.length ? JSON.stringify(errors.slice(0, 6), null, 1) : 'none');
