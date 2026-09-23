@@ -4,6 +4,7 @@ import { Renderer } from './render.js';
 import { buildTextures } from './textures.js';
 import { buildMap } from './map.js';
 import { buildCityMap } from './woz/map-city.js';
+import { buildLabMap } from './woz/map-lab.js';
 import { Environment } from './env.js';
 import { World, NavGrid } from './physics.js';
 import { Effects } from './effects.js';
@@ -52,8 +53,14 @@ export class Game {
     this.hud.loading(0.55, '搭建运输船');
     await nextFrame();
     this.world = new World();
-    this.mapName = this.opts.map === 'city' ? '死亡城市' : '运输船';
-    this.map = (this.opts.map === 'city' ? buildCityMap : buildMap)(this.renderer.scene, this.T, this.world);
+    const MAPS = {
+      ship: { name: '运输船', build: buildMap },
+      city: { name: '死亡城市', build: buildCityMap },
+      lab: { name: '生化实验室', build: buildLabMap },
+    };
+    const mapDef = MAPS[this.opts.map] || MAPS.ship;
+    this.mapName = mapDef.name;
+    this.map = mapDef.build(this.renderer.scene, this.T, this.world);
     this.hud.loading(0.68, '天空与海洋');
     await nextFrame();
     this.env = new Environment(this.renderer.renderer, this.renderer.scene, this.opts.quality);
