@@ -37,7 +37,7 @@ const state = await page.evaluate(() => {
 console.log('STATE', JSON.stringify(state));
 console.log('ERRORS', errors.length ? JSON.stringify(errors.slice(0, 8), null, 1) : 'none');
 const ok = state.playing === true && state.actors > 0 && state.frame > 30
-  && errors.filter((e) => !/favicon|WebGL warning|Computed (min\/max|radius) have?|position.*NaN/i.test(e)).length === 0;
+  && errors.filter((e) => !/favicon|WebGL warning/i.test(e)).length === 0;
 console.log(ok ? 'SMOKE PASS' : 'SMOKE FAIL');
 await browser.close();
 process.exit(ok ? 0 : 1);

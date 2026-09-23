@@ -116,7 +116,7 @@ check(await page.evaluate(() => window.__game.woz.bomb && window.__game.woz.bomb
       if (a.alive) g.damage(a, null, 99999, 'chest', 'he', { x: 1, z: 0 }, false);
       a.respawnT = 1e9;
     }
-    if (w.bomb) { if (w.bomb.state === 'planted') w.bomb.timer = 0.5; }
+    if (w.bomb) { w.bomb.state = 'planted'; w.bomb.timer = 0.5; } // 强制回安放态（增援可能已转为摧毁态）
     g.fastForward(1.0, 1 / 30);
     const grScore = g.score.GR;
 
@@ -245,7 +245,7 @@ await page.evaluate(() => { window.__game.woz.startMatch(); window.__game.fastFo
 }
 
 console.log('ERRORS', errors.length ? JSON.stringify(errors.slice(0, 6), null, 1) : 'none');
-const realErrors = errors.filter((e) => !/favicon|WebGL warning|Computed (min\/max|radius) have?|position.*NaN/i.test(e));
+const realErrors = errors.filter((e) => !/favicon|WebGL warning/i.test(e));
 check(realErrors.length === 0, '全程无 console 错误');
 
 console.log(`\n结果: ${passed} 通过, ${failed} 失败`);

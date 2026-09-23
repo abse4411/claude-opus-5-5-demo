@@ -53,7 +53,7 @@ export function gunMaterials() {
   return M;
 }
 
-function part(parent, geo, mat, x, y, z, rx = 0, ry = 0, rz = 0, name) {
+function part(parent, geo, mat, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, name) {
   const m = new THREE.Mesh(geo, mat);
   m.position.set(x, y, z); m.rotation.set(rx, ry, rz);
   if (name) m.name = name;
@@ -347,7 +347,7 @@ const builders = {
   molotov(m) {
     const g = new THREE.Group();
     const b = new THREE.SphereGeometry(0.036, 12, 10); b.scale(1, 1.5, 1);
-    part(g, b, new THREE.MeshStandardMaterial({ color: 0xb46a1e, emissive: 0x502800, roughness: 0.35 }));
+    part(g, b, new THREE.MeshStandardMaterial({ color: 0xb46a1e, emissive: 0x502800, roughness: 0.35 }), 0, 0, 0);
     part(g, new THREE.CylinderGeometry(0.012, 0.012, 0.05, 8), m.metal, 0, 0.062, 0);
     part(g, BX(0.008, 0.09, 0.008), m.rubber, 0.012, 0.09, 0);
     anchor(g, 'grip', 0, 0, 0); anchor(g, 'muzzle', 0, 0, -0.05);
@@ -356,7 +356,7 @@ const builders = {
   frost(m) {
     const g = new THREE.Group();
     const b = new THREE.SphereGeometry(0.04, 14, 12);
-    part(g, b, new THREE.MeshStandardMaterial({ color: 0x9adfff, emissive: 0x1a5a80, roughness: 0.25, metalness: 0.3 }));
+    part(g, b, new THREE.MeshStandardMaterial({ color: 0x9adfff, emissive: 0x1a5a80, roughness: 0.25, metalness: 0.3 }), 0, 0, 0);
     part(g, new THREE.CylinderGeometry(0.012, 0.012, 0.05, 8), m.metal, 0, 0.055, 0);
     anchor(g, 'grip', 0, 0, 0); anchor(g, 'muzzle', 0, 0, -0.05);
     return g;
@@ -424,3 +424,6 @@ export function buildGunMerged(id) {
   mesh.userData.anchors = d.anchors;
   return mesh;
 }
+
+// 调试钩子：定位 NaN 几何来源
+if (typeof window !== 'undefined') window.__debugGuns = { buildGun, buildGunMerged, WEAPON_IDS: Object.keys(builders) };

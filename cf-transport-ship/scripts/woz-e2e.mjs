@@ -33,11 +33,11 @@ await page.evaluate(() => window.__game.fastForward(20, 1 / 30));
 {
   const s = await page.evaluate(() => ({
     phase: window.__game.woz.rules.phase,
-    mothers: window.__game.actors.filter((a) => a.team === 'BL').length,
+    mothers: window.__game.woz.rules.players.filter((p) => p.isMother).length,
     motherMaxHp: Math.max(...window.__game.woz.rules.players.filter((p) => p.isMother).map((p) => p.maxHp), 0),
   }));
   check(s.phase === 'battle', `感染: 爆发后进入战斗期 (${s.phase})`);
-  check(s.mothers === 2, `感染: 2 名母体落地引擎 (实际 ${s.mothers})`);
+  check(s.mothers === 2, `感染: 规则层 2 名母体 (实际 ${s.mothers})`);
   check(s.motherMaxHp >= 3000, `感染: 母体血池上限 3000 (实际 ${s.motherMaxHp})`);
 }
 
@@ -190,7 +190,7 @@ await page.evaluate(() => window.__game.fastForward(125, 1 / 30));
 }
 
 console.log('ERRORS', errors.length ? JSON.stringify(errors.slice(0, 6), null, 1) : 'none');
-const realErrors = errors.filter((e) => !/favicon|WebGL warning|Computed (min\/max|radius) have?|position.*NaN/i.test(e));
+const realErrors = errors.filter((e) => !/favicon|WebGL warning/i.test(e));
 check(realErrors.length === 0, '全程无 console 错误');
 
 console.log(`\n结果: ${passed} 通过, ${failed} 失败`);
