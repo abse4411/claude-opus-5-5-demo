@@ -572,20 +572,32 @@ export class WozManager {
   }
 
   // ---- 补给空投（V24）：战斗期周期空投全补给箱，雷达金菱形标记 ----
+  // V61 金色武器空投：每第 3 个空投为金色，附带随机稀有枪械
+  static GOLD_GUNS = ['awm', 'm60', 'minigun', 'ppsh', 'winchester', 'dragonsbreath', 'm79'];
   spawnAirdrop() {
     const g = this.g;
+    this.dropN = (this.dropN || 0) + 1;
+    const golden = this.dropN % 3 === 0;
     const sp = this.pickSpawn(Math.random() < 0.5 ? 'GR' : 'BL');
     const grp = new THREE.Group();
-    const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.6, 0.9), new THREE.MeshLambertMaterial({ color: 0xb08828, emissive: 0x382200 }));
+    const boxMat = golden ? new THREE.MeshLambertMaterial({ color: 0xffd24a, emissive: 0x8a6a00 }) : new THREE.MeshLambertMaterial({ color: 0xb08828, emissive: 0x382200 });
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.6, 0.9), boxMat);
     const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.14, 0.94), new THREE.MeshLambertMaterial({ color: 0xd8d2c0, emissive: 0x333020 }));
-    const chute = new THREE.Mesh(new THREE.ConeGeometry(1.1, 1.2, 8, 1, true), new THREE.MeshLambertMaterial({ color: 0xd85840, side: THREE.DoubleSide, transparent: true, opacity: 0.85 }));
+    const chuteMat = golden ? new THREE.MeshLambertMaterial({ color: 0xffe080, side: THREE.DoubleSide, transparent: true, opacity: 0.85 }) : new THREE.MeshLambertMaterial({ color: 0xd85840, side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
+    const chute = new THREE.Mesh(new THREE.ConeGeometry(1.1, 1.2, 8, 1, true), chuteMat);
     chute.position.y = 1.4;
     grp.add(box, stripe, chute);
     grp.position.set(sp.x, 26, sp.z);
     g.renderer.scene.add(grp);
-    this.airdrops.push({ live: true, grp, chute, x: sp.x, z: sp.z, y: 26, state: 'fall', t: 0 });
-    g.hud.toast('<b style="color:#ffd24a">补给空投已投放！</b>注意雷达标记', 2.5);
-    g.hud.eventFeed('📦 补给空投正在降落', 'evt');
+    const gun = golden ? WozManager.GOLD_GUNS[(Math.random() * WozManager.GOLD_GUNS.length) | 0] : null;
+    this.airdrops.push({ live: true, grp, chute, x: sp.x, z: sp.z, y: 26, state: 'fall', t: 0, golden, gun });
+    if (golden) {
+      g.hud.toast('<b style="color:#ffd24a">★ 金色武器空投！</b>内含稀有枪械', 3);
+      g.hud.eventFeed('★ 金色武器空投正在降落', 'evt');
+    } else {
+      g.hud.toast('<b style="color:#ffd24a">补给空投已投放！</b>注意雷达标记', 2.5);
+      g.hud.eventFeed('📦 补给空投正在降落', 'evt');
+    }
   }
 
   tickAirdrops(dt) {
@@ -624,8 +636,22 @@ export class WozManager {
           }
           if (taker.hp > 0) taker.hp = Math.min(taker.wozMaxHp || 100, taker.hp + 60);
           if (taker.team === 'GR') taker.medkits = Math.min(1, (taker.medkits || 0) + 1); // 空投附带急救包
-          g.hud.toast(`<b style="color:#ffd24a">获得空投补给！</b>弹药补满 · 医疗 · 手雷`, 2.5);
-          g.hud.eventFeed(`${taker.name} 获取了补给空投`, 'evt');
+          if (d.golden && d.gun) {
+            // V61 金色武器：替换主武器为随机稀有枪（满弹药）
+            const WS = taker.inv[0]?.constructor;
+            if (WS) {
+              const gw = new WS(d.gun);
+              taker.inv[0] = gw;
+              if (taker.slot === 0) { taker.soldier.setWeapon(d.gun); if (taker.isPlayer) g.vm.equip(d.gun, 0.4); }
+              taker.readyAt = Math.min(taker.readyAt, g.time + 0.3);
+              g.hud.toast(`<b style="color:#ffd24a">★ 获得金色武器！</b>${gw.def.name} · 弹药补满 · 医疗 · 手雷`, 3);
+              g.hud.eventFeed(`${taker.name} 获取了金色武器空投（${gw.def.name}）`, 'evt');
+              if (taker.isPlayer) g.hud.slots(taker.inv, taker.slot);
+            }
+          } else {
+            g.hud.toast(`<b style="color:#ffd24a">获得空投补给！</b>弹药补满 · 医疗 · 手雷`, 2.5);
+            g.hud.eventFeed(`${taker.name} 获取了补给空投`, 'evt');
+          }
           audio.playUI('buy');
           d.live = false;
         } else if (d.life <= 0) d.live = false; // 无人认领超时消散
@@ -1023,7 +1049,7 @@ export class WozManager {
       if (b.state === 'planted' || b.state === 'destroying') ms.push({ kind: 'bomb', x: b.pos.x, z: b.pos.z });
       else if (b.state !== 'detonated' && b.state !== 'destroyed') ms.push({ kind: 'site', x: b.def.x, z: b.def.z });
     }
-    for (const d of this.airdrops) ms.push({ kind: 'drop', x: d.x, z: d.z });
+    for (const d of this.airdrops) ms.push({ kind: 'drop', x: d.x, z: d.z, gold: d.golden });
     return ms;
   }
 

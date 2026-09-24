@@ -416,6 +416,41 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v57') {
+  // V61 金色武器空投：每第 3 个金色 + 拾取换稀有枪 + 雷达金星
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st = rules.state(p.id);
+      if (st.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      p.giveLoadout('ak47', 'deagle', 'knife');
+      p.protectT = 999;
+      // 第 3 个空投应为金色
+      g.woz.dropN = 2;
+      g.woz.spawnAirdrop();
+      const d = g.woz.airdrops[g.woz.airdrops.length - 1];
+      const isGold = !!d.golden && !!d.gun;
+      // 金色空投落到玩家脚下拾取
+      d.x = p.pos.x + 0.3; d.z = p.pos.z; d.y = 0.3; d.state = 'landed'; d.life = 30;
+      const gunBefore = p.inv[0].id;
+      g.fastForward(0.2, 1 / 30);
+      const picked = !d.live;
+      const gunAfter = p.inv[0].id;
+      const goldOk = isGold && picked && gunAfter !== gunBefore && ['awm','m60','minigun','ppsh','winchester','dragonsbreath','m79'].includes(gunAfter);
+      // 雷达标记含 gold
+      g.woz.airdrops.length = 0;
+      g.woz.airdrops.push({ live: true, golden: true, x: 3, z: 3, state: 'landed', life: 20, t: 0, grp: { position: { set: () => {}, y: 0 } }, gun: 'awm' });
+      const marks = g.woz.radarMarkers().filter((m) => m.kind === 'drop');
+      return { ok: true, goldOk, gunAfter, goldMark: marks[0]?.gold === true };
+    });
+    check(r.ok, 'V61: 场景搭建');
+    check(r.goldOk === true, `V61: 金色空投判定+拾取换枪 (${r.gunAfter})`);
+    check(r.goldMark === true, 'V61: 雷达金色星标');
+  }
 } else if (ver === 'v56') {
   // V60 武器批次2：温彻斯特/龙息霰弹/毒液手雷 卡片+实弹/毒液区域
   await goto('&mode=infection');
