@@ -354,7 +354,7 @@ if (ver === 'v1') {
       srows: (document.querySelector('#loadCards .card')?.querySelectorAll('.srow') || []).length,
       timer: document.getElementById('loadTimer').textContent,
     }));
-    check(shop.visible && shop.cards === 20, `商店: 打开且 20 张主武器卡 (${shop.cards})`);
+    check(shop.visible && shop.cards === 21, `商店: 打开且 21 张主武器卡 (${shop.cards})`);
     check(shop.srows === 3, `商店: 属性条渲染 (${shop.srows} 行)`);
     check(shop.timer.includes('购买期'), `商店: 购买期倒计时 (${shop.timer.trim().slice(-18)})`);
     await page.waitForTimeout(200);
@@ -415,6 +415,39 @@ if (ver === 'v1') {
     await page.evaluate(() => window.__game.toggleHelp());
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
+  }
+} else if (ver === 'v36') {
+  // M79 榴弹发射器：开火抛射 → 爆炸重创 8m 内目标
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st0 = rules.state(p.id);
+      if (st0.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      p.inv[0] = new (p.inv[0].constructor)('m79');
+      p.inv[0].mag = 4; p.slot = 0; p.readyAt = 0;
+      // 平地直线靶：8m 外
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0.02; p.protectT = 999;
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      rules.convertToMutant(v.id, 'nightrunner', false);
+      g.woz.convertNow(v, true);
+      v.pos.set(-3, 0.1, 0); v.protectT = 0; v.armor = 0;
+      g.fastForward(1 / 30, 1 / 30);
+      p.updateCamera(0.016);
+      const hp0 = v.hp;
+      const magBefore = p.inv[0].mag;
+      p.weaponUpdate(0.016, { firePressed: true, fire: false, alt: false, altPressed: false, reload: false, sw: null }); // 真实输入路径
+      const flying = g.nades.length;
+      const magAfter = p.inv[0].mag;
+      g.fastForward(2.6, 1 / 30); // 飞行 + 引信
+      return { ok: true, magBefore, flying, magAfter, hp0, hpAfter: v.hp, dead: !v.alive || rules.state(v.id).alive === false };
+    });
+    check(r.ok && r.magAfter === r.magBefore - 1 && r.flying >= 1, `M79: 开火消耗弹药并抛射榴弹 (${r.magBefore}→${r.magAfter})`);
+    check(r.hpAfter < r.hp0 - 80 || r.dead, `M79: 榴弹爆炸重创目标 (${r.hp0}→${r.hpAfter})`);
   }
 } else if (ver === 'v35') {
   // 场景道具：油桶被击爆（AoE+殉爆）+ 木箱击碎必掉补给
@@ -648,7 +681,7 @@ if (ver === 'v1') {
       c: !!document.querySelector('#loadCards .card[data-w="m3super"]'),
       d: !!document.querySelector('#loadCards .card[data-w="mac10"]'),
     }));
-    check(r.cards === 20 && r.a && r.b && r.c && r.d, `武器A: 20 张卡片含四新枪 (${r.cards})`);
+    check(r.cards === 21 && r.a && r.b && r.c && r.d, `武器A: 21 张卡片含四新枪 (${r.cards})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'm14ebr', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');
@@ -979,7 +1012,7 @@ if (ver === 'v1') {
       m60: !!document.querySelector('#loadCards .card[data-w="m60"]'),
       prim: document.querySelectorAll('#loadCards .card').length,
     }));
-    check(r.prim === 20 && r.m60, `武器: 商店 20 张主武器卡含 M60 (${r.prim})`);
+    check(r.prim === 21 && r.m60, `武器: 商店 21 张主武器卡含 M60 (${r.prim})`);
     check(r.sec === 3 && r.r8, `副武器: 三张副武器卡含 R8 左轮 (${r.sec})`);
     await page.evaluate(() => {
       const g = window.__game, p = g.player;
@@ -1007,7 +1040,7 @@ if (ver === 'v1') {
       aug: !!document.querySelector('#loadCards .card[data-w="aug"]'),
       p90: !!document.querySelector('#loadCards .card[data-w="p90"]'),
     }));
-    check(r.cards === 20 && r.aug && r.p90, `武器: 商店 20 张主武器卡含 AUG/P90 (${r.cards})`);
+    check(r.cards === 21 && r.aug && r.p90, `武器: 商店 21 张主武器卡含 AUG/P90 (${r.cards})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'aug', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');

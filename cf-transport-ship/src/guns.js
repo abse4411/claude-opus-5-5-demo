@@ -266,6 +266,14 @@ const builders = {
     return g;
   },
   // ---- V2 扩充枪模（紧凑程序化造型，共用锚点） ----
+  m79shell(m) {
+    const g = new THREE.Group();
+    part(g, CZ(0.035, 0.1, 10), m.metal, 0, 0, 0);                       // 弹体
+    part(g, CZ(0.036, 0.016, 10), m.dark, 0, 0, 0.04);                   // 收口环
+    part(g, RB(0.05, 0.02, 0.05, 0.005), m.dark, 0, 0, -0.02);           // 弹带
+    anchor(g, 'grip', 0, -0.05, 0);
+    return g;
+  },
   flash(m) {
     const g = new THREE.Group();
     part(g, CZ(0.045, 0.13), m.metal, 0, 0, 0);                          // 圆柱弹体
@@ -295,6 +303,18 @@ const builders = {
     part(g, RB(0.03, 0.1, 0.05, 0.01), m.rubber, 0, -0.07, 0.1);        // 握把
     part(g, RB(0.028, 0.12, 0.06, 0.01), m.rubber, 0, -0.05, -0.02);    // 弹匣
     anchor(g, 'grip', 0, -0.05, 0.1); anchor(g, 'muzzle', 0, 0, -0.42);
+    return g;
+  },
+  m79(m) {
+    const g = new THREE.Group();
+    part(g, CZ(0.045, 0.5, 12), m.dark, 0, 0.03, -0.18);                // 粗发射管
+    part(g, CZ(0.05, 0.06, 12), m.black, 0, 0.03, -0.4);                // 管口箍
+    part(g, RB(0.05, 0.09, 0.14, 0.01), m.black, 0, -0.02, 0.1);        // 机匣
+    part(g, RB(0.03, 0.1, 0.05, 0.01), m.rubber, 0, -0.08, 0.1);        // 握把
+    part(g, RB(0.05, 0.05, 0.12, 0.012), m.wood, 0, -0.045, -0.12);     // 护木
+    part(g, RB(0.04, 0.09, 0.16, 0.014), m.wood, 0, 0.02, 0.24);        // 肩托
+    part(g, BX(0.016, 0.03, 0.03), m.metal, 0, 0.075, -0.05);           // 准星
+    anchor(g, 'grip', 0, -0.07, 0.1); anchor(g, 'muzzle', 0, 0.03, -0.44);
     return g;
   },
   qbz95(m) {

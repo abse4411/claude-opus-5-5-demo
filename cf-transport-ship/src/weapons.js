@@ -214,6 +214,16 @@ export const WEAPONS = {
     speed: 1.05, sound: 'knife', hudName: 'CROWBAR', knock: 5.0, stagger: 0.24, mag: 0, reserve: 0,
   },
 
+  // ---- V40（榴弹发射器）----
+  m79: {
+    id: 'm79', name: 'M79 榴弹枪', slot: 0, type: 'launcher', auto: false,
+    dmg: 1, mag: 4, reserve: 8, reload: 3.2, draw: 0.9, speed: 0.88, sound: 'grenade', hudName: 'M79',
+  },
+  m79shell: {
+    id: 'm79shell', name: '40mm 榴弹', slot: 3, type: 'grenade', auto: false,
+    dmg: 150, radius: 6, fuse: 2.5, knock: 8, stagger: 0.5, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: '40MM', mag: 1, reserve: 0,
+  },
+
   // ---- V20（近战/投掷扩展）----
   axe: {
     id: 'axe', name: '消防斧', slot: 2, type: 'melee', auto: true,
@@ -242,7 +252,7 @@ export const WEAPONS = {
   },
 };
 
-export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90', 'm60', 'scarl', 'm14ebr', 'm3super', 'mac10', 'qbz95', 'xm8', 'dualuzi'];
+export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90', 'm60', 'scarl', 'm14ebr', 'm3super', 'mac10', 'qbz95', 'xm8', 'dualuzi', 'm79'];
 // V19：副武器三选（沙鹰默认；R8 左轮为原作风格高伤手炮）
 export const SECONDARIES = ['deagle', 'usp', 'r8'];
 

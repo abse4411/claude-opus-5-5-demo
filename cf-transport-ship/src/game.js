@@ -577,6 +577,21 @@ export class Game {
       },
     });
   }
+  fireLauncher(a, w) {
+    const eye = a.eye(new THREE.Vector3());
+    const dir = a.forward(new THREE.Vector3());
+    if (a.isPlayer) this.vm.melee(false); // 视觉后坐
+    this.fx.shake = Math.max(this.fx.shake || 0, 0.35);
+    audio.playGrenadeThrow();
+    audio.playImpact(eye, 'metal');
+    const mesh = buildGunMerged('he');
+    mesh.scale.setScalar(0.85);
+    const vel = dir.clone().multiplyScalar(23);
+    vel.y += 1.5;
+    this.nades.push({ id: 'm79shell', mesh, pos: eye.clone().addScaledVector(dir, 0.55), vel, fuse: WEAPONS.m79shell.fuse, owner: a, spin: new THREE.Vector3(6, 2, 0) });
+    this.renderer.scene.add(mesh);
+    if (a.isPlayer) this.hud.slots(a.inv, a.slot);
+  }
   throwGrenade(a) {
     const eye = a.eye(new THREE.Vector3());
     const dir = a.forward(new THREE.Vector3());

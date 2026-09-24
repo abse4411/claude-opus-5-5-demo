@@ -201,6 +201,15 @@ export class Actor {
       if (inp.firePressed && w.mag > 0) { this.pendingThrow = 0.52; g.onGrenadeStart(this); }
       return;
     }
+    if (d.type === 'launcher') {
+      // 榴弹发射器（V40）：抛射 40mm 榴弹（弹跳+引信）
+      if (inp.firePressed && now >= w.nextFire && w.mag > 0) {
+        w.mag--; w.lastShot = now; w.nextFire = now + 60 / d.rpm;
+        this.stats.shots++;
+        g.fireLauncher(this, w);
+      }
+      return;
+    }
     // 枪械
     const trigger = d.auto ? inp.fire : inp.firePressed;
     if (!trigger || now < w.nextFire || now < w.boltUntil) return;
