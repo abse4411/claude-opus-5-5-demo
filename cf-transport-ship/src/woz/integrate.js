@@ -1531,6 +1531,72 @@ export class WozManager {
     if (cls === MutantClass.Crawler) a.soldier.material.color.setHex(0x9cc08a); // 蜥蜴沼泽绿
     else if (cls === MutantClass.Headhunter) a.soldier.material.color.setHex(0xaab2c0); // 断头者：冷钢灰蓝
     else a.soldier.material.color.setHex(0xffffff);
+    this.applyClassAttachments(a);
+  }
+
+  // V54 职业外观附件（调研外形全程序化）：噬魂者后背肉刺 / 猎食者背负巨斧 / 爆破者矿工帽+炸药包 /
+  // 夜行者瘦骨嶙峋 / 爬行者蜥蜴背鳍 / 断头者双肩大刀 / 母体王冠肩甲。挂在骨骼上随动画联动。
+  applyClassAttachments(a) {
+    const S = a.soldier;
+    if (S._deco) {
+      for (const { anchor, grp } of S._deco) {
+        anchor.remove(grp);
+        grp.traverse((o) => { o.geometry?.dispose(); if (o.material) o.material.dispose(); });
+      }
+      S._deco = null;
+    }
+    if (S.mesh) S.mesh.scale.set(1, 1, 1);
+    const st = this.rules?.state(a.id);
+    if (!st || st.side !== 'mutant') return;
+    const cls = st.cls;
+    const deco = [];
+    const mk = (anchor) => { const grp = new THREE.Group(); anchor.add(grp); deco.push({ anchor, grp }); return grp; };
+    const mat = (c, e = 0x000000, ei = 1) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.72, metalness: 0.08, emissive: e, emissiveIntensity: ei });
+    const add = (grp, geo, m, x, y, z, rx = 0, ry = 0, rz = 0) => { const mesh = new THREE.Mesh(geo, m); mesh.position.set(x, y, z); mesh.rotation.set(rx, ry, rz); grp.add(mesh); return mesh; };
+    const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
+    const cone = (r, h) => new THREE.ConeGeometry(r, h, 6);
+    const spine = () => mk(S.B.spine), head = () => mk(S.B.head);
+
+    if (cls === MutantClass.Souleater) {
+      // 后背肉刺：缺氧培养皿试验致畸（调研：双手和后背异形般的肉刺）
+      const g = spine(), m = mat(0x8a2a1a, 0x551108, 0.5);
+      for (let i = 0; i < 5; i++) add(g, cone(0.045, 0.28 + (i % 3) * 0.1), m, (i - 2) * 0.075, 0.16 - Math.abs(i - 2) * 0.04, -0.14 - (i % 2) * 0.05, -2.2 + (i - 2) * 0.14);
+    } else if (cls === MutantClass.Devourer) {
+      // 背负巨斧：投掷用战斧（调研：掷巨斧/体形厚实）
+      const g = spine(), wood = mat(0x4a3420), steel = mat(0x828a92, 0x14181d, 0.7);
+      add(g, box(0.05, 0.92, 0.05), wood, 0.02, 0.1, -0.18, 0.25, 0, 0.18);
+      add(g, box(0.3, 0.17, 0.04), steel, 0.12, 0.5, -0.25, 0.25, 0, 0.18);
+    } else if (cls === MutantClass.Bomber) {
+      // 矿工帽 + 背后炸药包（调研：原为矿工，手握炸药包）
+      const cap = head(), lampM = mat(0xfff2c0, 0xffe080, 1.6), capM = mat(0xc8a020), tnt = mat(0x8a2018), rope = mat(0xd8c8a0);
+      add(cap, box(0.26, 0.1, 0.27), capM, 0, 0.09, 0);
+      add(cap, box(0.07, 0.05, 0.07), lampM, 0, 0.15, 0.08);
+      const g = spine();
+      for (let i = 0; i < 3; i++) add(g, box(0.06, 0.26, 0.06), tnt, 0.05 - i * 0.05, 0.05, -0.17, 0, 0, 0.12 - i * 0.12);
+      add(g, box(0.14, 0.04, 0.04), rope, 0, 0.16, -0.17);
+    } else if (cls === MutantClass.Nightrunner) {
+      // 瘦骨嶙峋（调研：瘦弱的夜行者/瘦骨嶙峋的外表）
+      if (S.mesh) S.mesh.scale.set(0.8, 1.05, 0.8);
+    } else if (cls === MutantClass.Crawler) {
+      // 蜥蜴背鳍（调研：森林海岛蜥蜴基因）
+      const g = spine(), m = mat(0x46633a, 0x142010, 0.4);
+      for (let i = 0; i < 4; i++) add(g, cone(0.05, 0.26 - i * 0.04), m, 0, 0.14 + i * 0.13, -0.02 - i * 0.05, 0, 0, 0);
+    } else if (cls === MutantClass.Headhunter) {
+      // 双肩大刀 X 交叉（调研：手持两把大刀）
+      const g = spine(), steel = mat(0x9aa2ac, 0x181c22, 0.8), grip = mat(0x2c2320);
+      add(g, box(0.045, 1.0, 0.03), steel, 0.11, 0.12, -0.17, 0, 0, 0.55);
+      add(g, box(0.045, 1.0, 0.03), steel, -0.11, 0.12, -0.17, 0, 0, -0.55);
+      add(g, box(0.05, 0.14, 0.05), grip, 0.24, -0.3, -0.17, 0, 0, 0.55);
+      add(g, box(0.05, 0.14, 0.05), grip, -0.24, -0.3, -0.17, 0, 0, -0.55);
+    } else if (st.isMother) {
+      // 母体王冠 + 肩甲（变异者之母威压感）
+      const g = head(), m = mat(0x6a1410, 0xff4020, 0.55);
+      for (let i = 0; i < 5; i++) add(g, cone(0.03, 0.16 + (i % 2) * 0.08), m, (i - 2) * 0.055, 0.16, -0.02 + Math.abs(i - 2) * -0.03, -0.3 + (i - 2) * 0.15);
+      const s = spine(), sm = mat(0x4a1210, 0x300804, 0.4);
+      add(s, box(0.14, 0.1, 0.2), sm, 0.24, 0.24, 0);
+      add(s, box(0.14, 0.1, 0.2), sm, -0.24, 0.24, 0);
+    }
+    S._deco = deco.length ? deco : null;
   }
 
   onMutantConverted(id, cls, isMother, rebirth) {

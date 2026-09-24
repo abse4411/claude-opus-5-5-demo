@@ -416,6 +416,45 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v50') {
+  // V54 职业外观附件：肉刺/巨斧/矿工帽/瘦长/背鳍/双刀/王冠 + 切职业清理 + 复活清理
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      if (rules.state(p.id).side !== 'mutant') rules.convertToMutant(p.id, 'souleater', false);
+      g.woz.convertNow(p, true);
+      const count = (a) => (a.soldier._deco ? a.soldier._deco.reduce((n, d) => n + d.grp.children.length, 0) : 0);
+      const out = {};
+      out.souleater = count(p); // 后背 5 根肉刺
+      rules.setMutantClass(p.id, 'devourer');
+      out.devourer = count(p); // 斧柄+斧头
+      rules.setMutantClass(p.id, 'bomber');
+      out.bomber = count(p); // 帽+灯+3 炸药+导火索
+      rules.setMutantClass(p.id, 'nightrunner');
+      out.nr = count(p);
+      out.nrMesh = [p.soldier.mesh.scale.x, p.soldier.mesh.scale.y]; // 瘦长
+      rules.setMutantClass(p.id, 'crawler');
+      out.crawler = count(p);
+      rules.setMutantClass(p.id, 'headhunter');
+      out.hh = count(p);
+      // 复活为人类：附件清空 + 体型复位
+      g.woz.restoreHuman(p, true);
+      out.humanDeco = count(p);
+      out.humanScale = p.soldier.root.scale.x;
+      return out;
+    });
+    check(r.souleater === 5, `附件: 噬魂者后背肉刺 ×5 (${r.souleater})`);
+    check(r.devourer === 2, `附件: 猎食者背负巨斧 ×2 (${r.devourer})`);
+    check(r.bomber === 6, `附件: 爆破者矿工帽+炸药包 ×6 (${r.bomber})`);
+    check(r.nr === 0 && Math.abs(r.nrMesh[0] - 0.8) < 0.01, `附件: 夜行者瘦长无附件 (${r.nr}/${r.nrMesh})`);
+    check(r.crawler === 4, `附件: 爬行者背鳍 ×4 (${r.crawler})`);
+    check(r.hh === 4, `附件: 断头者双刀刀柄 ×4 (${r.hh})`);
+    check(r.humanDeco === 0 && Math.abs(r.humanScale - 1) < 0.01, `附件: 复活人类后清理 (${r.humanDeco}/${r.humanScale})`);
+  }
 } else if (ver === 'v49') {
   // V53 悲惨行者：AI 杂兵属性（低血/高速/爪伤20）+ bio 末分钟狂潮 + 复仇尸潮改悲惨行者
   await goto('&mode=bio');
