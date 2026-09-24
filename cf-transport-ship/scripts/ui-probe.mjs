@@ -2627,19 +2627,25 @@ if (ver === 'v1') {
       const g = window.__game, rules = g.woz.rules, p = g.player;
       g.fastForward(16, 1 / 30);
       rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999; g.woz.endMatch = () => {};
-      // 强制玩家（0 号，伤害最高者）变身为复仇者
+      // 强制玩家（伤害最高者）作为【最后的幸存者】变身复仇者（V94：阈值=1，玩家 id 不一定为 0）
+      const pid = p.id;
       rules.avengerUsed = false;
-      rules.state(0).humanDamage = 999999;
-      for (let i = 1; i < rules.playerCount; i++) {
+      for (let i = 0; i < rules.playerCount; i++) {
+        if (i === pid) continue;
         const st = rules.state(i), a = g.actors[i];
-        if (st.side === 'human' && st.alive && a.alive) g.damage(a, null, 9999, 'chest', 'he', { x: 0.6, z: 0.8 }, false);
+        if (st.side === 'human' && st.alive && a && a.alive) { a.protectT = 0; g.damage(a, null, 9999, 'chest', 'he', { x: 0.6, z: 0.8 }, false); }
       }
-      const p0 = rules.state(0);
+      for (let i = 0; i < rules.playerCount; i++) {
+        if (i === pid) continue;
+        const st = rules.state(i); // 残留（复活计时中/引擎已死）直接状态手术清出人类
+        if (st.side === 'human') { st.side = 'mutant'; st.alive = false; }
+      }
+      const p0 = rules.state(pid);
       p0.side = 'human'; p0.alive = true; p0.reviveTimer = 0; p0.humanDamage = 999999;
-      if (g.actors[0]) { g.actors[0].team = 'GR'; g.actors[0].alive = true; }
+      if (g.actors[pid]) { g.actors[pid].team = 'GR'; g.actors[pid].alive = true; }
       g.fastForward(0.1, 1 / 30);
       if (rules.avengerId() < 0) rules.tryTriggerAvenger();
-      if (rules.avengerId() !== 0) return { ok: false, av: rules.avengerId() };
+      if (rules.avengerId() !== pid) return { ok: false, av: rules.avengerId() };
       p.protectT = 0; p.armor = 0;
       // 三名变异者围到身边（≤2.8m）
       const victims = [];
@@ -3073,6 +3079,8 @@ if (ver === 'v1') {
     rules.convertToMutant(bot.id, 'nightrunner', false);
     g.woz.convertNow(bot, true); // 直调：不触发 V93 尸变
     bot.protectT = 0; bot.morphT = 0;
+    bot.pos.set(60, 0.1, 60); bot.rootT = 999; // V100 隔离：远离人类防止 AI 期间再出爪重置 atkT
+    if (bot.vel.set) bot.vel.set(0, 0, 0);
     // 轻击：出手瞬间 atkT=1，臂部摆出挥砍姿态
     const flip0 = bot.soldier.atkFlip;
     g.melee(bot, false);
