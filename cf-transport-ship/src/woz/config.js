@@ -128,7 +128,7 @@ export const DEMOL = {
 export const BIO = {
   aiInterval: 12,
   aiMax: 8,
-  waveFirst: 8,            // 首波 AI 怪物波次（V23 波次化）
+  waveFirst: 20,           // 首波 AI 怪物波次（V23 波次化，给人类发育窗口）
   waveInterval: 40,
   aiHp: 300,
   dropHeal: 50,

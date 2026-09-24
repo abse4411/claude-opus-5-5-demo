@@ -176,8 +176,14 @@ await page.waitForTimeout(600);
 await page.evaluate(() => { window.__game.testFreeze = true; }); // 冻结真实帧，全确定性
 check(await page.evaluate(() => window.__game.woz.rules !== null && window.__game.actors.every((a) => a.team === 'GR')), '生化: 开局全员人类（规则层挂载）');
 
-// 快进到战斗期，等待 AI 怪物刷新（先重置到纯净开局）
-await page.evaluate(() => { window.__game.woz.startMatch(); window.__game.fastForward(40, 1 / 30); });
+// 快进到战斗期并冻结阶段（防 bot 随机性把回合打输），等待 AI 波次刷新
+await page.evaluate(() => {
+  const g = window.__game;
+  g.woz.startMatch();
+  g.fastForward(22, 1 / 30); // 走完购买期进入战斗，首波（20s）已到
+  g.woz.rules.phase = 'battle'; g.woz.rules.phaseTimeLeft = 999; g.timeLeft = 999;
+  g.fastForward(18, 1 / 30);
+});
 {
   const r = await page.evaluate(() => ({
     ai: window.__game.woz.tide.length,
