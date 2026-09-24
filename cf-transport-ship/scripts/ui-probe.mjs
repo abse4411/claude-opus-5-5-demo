@@ -354,7 +354,7 @@ if (ver === 'v1') {
       srows: (document.querySelector('#loadCards .card')?.querySelectorAll('.srow') || []).length,
       timer: document.getElementById('loadTimer').textContent,
     }));
-    check(shop.visible && shop.cards === 13, `商店: 打开且 13 张主武器卡 (${shop.cards})`);
+    check(shop.visible && shop.cards === 17, `商店: 打开且 17 张主武器卡 (${shop.cards})`);
     check(shop.srows === 3, `商店: 属性条渲染 (${shop.srows} 行)`);
     check(shop.timer.includes('购买期'), `商店: 购买期倒计时 (${shop.timer.trim().slice(-18)})`);
     await page.waitForTimeout(200);
@@ -416,6 +416,32 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v29') {
+  // 新武器批次 A：SCAR-L / M14EBR / M3 Super90 / MAC-10 商店卡片 + 装备实装
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => ({
+      cards: document.querySelectorAll('#loadCards .card').length,
+      a: !!document.querySelector('#loadCards .card[data-w="scarl"]'),
+      b: !!document.querySelector('#loadCards .card[data-w="m14ebr"]'),
+      c: !!document.querySelector('#loadCards .card[data-w="m3super"]'),
+      d: !!document.querySelector('#loadCards .card[data-w="mac10"]'),
+    }));
+    check(r.cards === 17 && r.a && r.b && r.c && r.d, `武器A: 17 张卡片含四新枪 (${r.cards})`);
+    await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'm14ebr', diff: 'normal', quality: 'low' })));
+  }
+  await page.goto(base + '&mode=infection');
+  await page.waitForFunction(() => window.__game && window.__game.playing, null, { timeout: 60000 });
+  await page.waitForTimeout(700);
+  const w = await page.evaluate(() => {
+    const g = window.__game, p = g.player;
+    const first = p.inv[0].id;
+    p.inv[0] = new (p.inv[0].constructor)('mac10');
+    p.slot = 0; p.readyAt = 0;
+    g.fastForward(0.3, 1 / 30);
+    return { first, second: p.inv[0].id };
+  });
+  check(w.first === 'm14ebr' && w.second === 'mac10', `武器A: M14EBR 出厂 + MAC-10 换装 (${w.first}/${w.second})`);
 } else if (ver === 'v28') {
   // 打击感：受击红闪 / 击杀血爆 / 顿帧 / 命中标记
   await goto('&mode=infection');
@@ -732,7 +758,7 @@ if (ver === 'v1') {
       m60: !!document.querySelector('#loadCards .card[data-w="m60"]'),
       prim: document.querySelectorAll('#loadCards .card').length,
     }));
-    check(r.prim === 13 && r.m60, `武器: 商店 13 张主武器卡含 M60 (${r.prim})`);
+    check(r.prim === 17 && r.m60, `武器: 商店 17 张主武器卡含 M60 (${r.prim})`);
     check(r.sec === 3 && r.r8, `副武器: 三张副武器卡含 R8 左轮 (${r.sec})`);
     await page.evaluate(() => {
       const g = window.__game, p = g.player;
@@ -760,7 +786,7 @@ if (ver === 'v1') {
       aug: !!document.querySelector('#loadCards .card[data-w="aug"]'),
       p90: !!document.querySelector('#loadCards .card[data-w="p90"]'),
     }));
-    check(r.cards === 13 && r.aug && r.p90, `武器: 商店 13 张主武器卡含 AUG/P90 (${r.cards})`);
+    check(r.cards === 17 && r.aug && r.p90, `武器: 商店 17 张主武器卡含 AUG/P90 (${r.cards})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'aug', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');

@@ -149,6 +149,40 @@ export const WEAPONS = {
     sound: 'ak47', hudName: 'M60',
   },
 
+  // ---- V33（WOZ 时代枪械再扩充）----
+  scarl: {
+    id: 'scarl', name: 'SCAR-L', slot: 0, type: 'rifle', auto: true,
+    dmg: 32, headMul: 3.9, limbMul: 0.82, rpm: 620, mag: 30, reserve: 90, reload: 2.4, draw: 0.75,
+    speed: 0.97, range: 210, falloff: 0.987, pen: 1.05, armorPen: 0.78, knock: 2.0, stagger: 0.11,
+    spread: { base: 0.0028, move: 0.034, air: 0.14, crouch: 0.6, perShot: 0.0037, max: 0.034, recover: 9 },
+    recoil: { up: 0.0058, upMax: 0.06, side: 0.004, sideStart: 5, recover: 8 },
+    sound: 'ak47', hudName: 'SCAR-L',
+  },
+  m14ebr: {
+    id: 'm14ebr', name: 'M14EBR', slot: 0, type: 'rifle', auto: false,
+    dmg: 52, headMul: 3.2, limbMul: 0.88, rpm: 260, mag: 20, reserve: 60, reload: 2.8, draw: 0.85,
+    speed: 0.9, range: 280, falloff: 0.992, pen: 1.8, armorPen: 0.88, knock: 4.2, stagger: 0.28,
+    spread: { base: 0.0018, move: 0.05, air: 0.2, crouch: 0.55, perShot: 0.008, max: 0.05, recover: 6 },
+    recoil: { up: 0.018, upMax: 0.07, side: 0.006, sideStart: 3, recover: 7 },
+    sound: 'awm', hudName: 'M14EBR',
+  },
+  m3super: {
+    id: 'm3super', name: 'M3 Super90', slot: 0, type: 'shotgun', auto: false,
+    dmg: 12, pellets: 8, pelletSpread: 0.065, headMul: 2.2, limbMul: 0.9, rpm: 90, mag: 8, reserve: 32, reload: 3.0, draw: 0.95,
+    speed: 0.92, range: 40, falloff: 0.88, pen: 0.3, armorPen: 0.5, knock: 1.1, stagger: 0.09,
+    spread: { base: 0.01, move: 0.022, air: 0.1, crouch: 0.7, perShot: 0, max: 0.03, recover: 5 },
+    recoil: { up: 0.05, upMax: 0.055, side: 0.006, sideStart: 0, recover: 5 },
+    sound: 'deagle', hudName: 'M3 SUPER 90',
+  },
+  mac10: {
+    id: 'mac10', name: 'MAC-10', slot: 0, type: 'smg', auto: true,
+    dmg: 21, headMul: 3.2, limbMul: 0.86, rpm: 1080, mag: 32, reserve: 96, reload: 2.2, draw: 0.55,
+    speed: 1.04, range: 80, falloff: 0.94, pen: 0.55, armorPen: 0.5, knock: 1.1, stagger: 0.06,
+    spread: { base: 0.006, move: 0.024, air: 0.12, crouch: 0.7, perShot: 0.0026, max: 0.055, recover: 8 },
+    recoil: { up: 0.0038, upMax: 0.05, side: 0.005, sideStart: 4, recover: 8 },
+    sound: 'mp5', hudName: 'MAC-10',
+  },
+
   // ---- V20（近战/投掷扩展）----
   axe: {
     id: 'axe', name: '消防斧', slot: 2, type: 'melee', auto: true,
@@ -177,7 +211,7 @@ export const WEAPONS = {
   },
 };
 
-export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90', 'm60'];
+export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90', 'm60', 'scarl', 'm14ebr', 'm3super', 'mac10'];
 // V19：副武器三选（沙鹰默认；R8 左轮为原作风格高伤手炮）
 export const SECONDARIES = ['deagle', 'usp', 'r8'];
 
