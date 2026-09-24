@@ -599,6 +599,7 @@ export class Game {
           const vf = hit.a.forward(new THREE.Vector3()); vf.y = 0; vf.normalize();
           const back = vf.dot(_v.copy(hit.dir).setY(0).normalize()) > 0.5;
           let dmg = heavy ? d.dmgHeavy : d.dmgLight;
+          if (a.clawDmg) dmg = heavy ? a.clawDmg * 1.8 : a.clawDmg; // AI 杂兵固定爪伤（V53 悲惨行者/末分钟狂潮）
           if (back) dmg *= heavy ? 2 : 1.6;
           if (hit.part === 'head') dmg *= 1.3;
           // V52 断头者双大刀：轻/重击倍率（重击近身即可秒杀满血人类，原作"时常可以秒杀对手"）

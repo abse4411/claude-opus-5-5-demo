@@ -416,6 +416,46 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v49') {
+  // V53 悲惨行者：AI 杂兵属性（低血/高速/爪伤20）+ bio 末分钟狂潮 + 复仇尸潮改悲惨行者
+  await goto('&mode=bio');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      g.woz.spawnSorrowWalker();
+      const sw = g.woz.tide.filter((z) => z.alive && z.sorrowFast).pop();
+      if (!sw) return { ok: false };
+      const props = { hp: sw.hp, claw: sw.clawDmg, fast: sw.sorrowFast, tint: sw.soldier.material.color.getHex() };
+      // 末分钟狂潮：时间压到 60s 触发
+      rules.phaseTimeLeft = 60; g.timeLeft = 60;
+      g.fastForward(1.5, 1 / 30);
+      const frenzy = g.woz.tide.filter((z) => z.alive && z.name === '狂潮行者');
+      return { ok: true, props, frenzy: frenzy.length, frenzyHp: frenzy[0]?.hp };
+    });
+    check(r.ok && r.props.hp === 380, `悲惨行者: 血池 380 (${r.props?.hp})`);
+    check(r.props.claw === 20, `悲惨行者: 固定爪伤 20 (${r.props?.claw})`);
+    check(r.props.fast === true, '悲惨行者: 高速标记');
+    check(r.props.tint !== 0xffffff, `悲惨行者: 悲怆灰绿染色 (${r.props?.tint.toString(16)})`);
+    check(r.frenzy >= 1, `悲惨行者: bio 末分钟狂潮触发 ×${r.frenzy}`);
+    check(r.frenzyHp === 300, `悲惨行者: 狂潮版血量 300 (${r.frenzyHp})`);
+  }
+  // 复仇模式尸潮 = 悲惨行者
+  await goto('&mode=revenge');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      g.woz.onCorpseTide(4);
+      const tide = g.woz.tide.filter((z) => z.alive && z.name === '尸潮');
+      return { n: tide.length, fast: tide[0]?.sorrowFast, claw: tide[0]?.clawDmg, hp: tide[0]?.hp };
+    });
+    check(r.n === 4, `复仇尸潮: 4 只悲惨行者 (${r.n})`);
+    check(r.fast === true && r.claw === 20 && r.hp === 300, `复仇尸潮: 狂潮属性 速/爪20/血300 (${r.fast}/${r.claw}/${r.hp})`);
+  }
 } else if (ver === 'v48') {
   // V52 断头者：双大刀近战倍率（重击秒杀）、Minus 变身、体型染色
   await goto('&mode=infection');

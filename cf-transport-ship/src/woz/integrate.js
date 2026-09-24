@@ -166,6 +166,7 @@ export class WozManager {
     this.round++;
     this.playerClassChosen = false;
     this._evoStageSeen = {};
+    this.waveT = undefined; this.waveN = 0; this._bioFrenzy = false; // 波次/狂潮状态复位
     this.seed = (this.seed * 1103515245 + 12345) >>> 0;
     // 清理尸潮与抛射物
     for (const z of this.tide) g.renderer.scene.remove(z.soldier.root);
@@ -697,6 +698,16 @@ export class WozManager {
         g.hud.toast(`<b style="color:#ff7040">第 ${this.waveN} 波</b> 变异爬行者来袭 ×${n}！`, 2.5);
         wozAudio.tide();
       }
+      // 末分钟狂潮（V53 调研：最后 1 分钟大批 AI 变异者，HP 低每击 20HP）
+      if (!this._bioFrenzy && rules.phase === 'battle' && rules.phaseTimeLeft <= 60) {
+        this._bioFrenzy = true;
+        const n = Math.min(WOZ.sorrowFrenzyCount, Math.max(0, BIO.aiMax + 2 - alive));
+        for (let i = 0; i < n; i++) this.spawnSorrowWalker(WOZ.sorrowFrenzyHp, '狂潮行者');
+        g.slowMoT = Math.max(g.slowMoT || 0, 0.5); g.slowMoScale = 0.4;
+        g.hud.toast('<b style="color:#ff5040">末日狂潮！</b>大批悲惨行者涌入战场', 3);
+        g.hud.eventFeed(`☠ 末分钟狂潮：${n} 只悲惨行者高速突进`, 'tide', 10);
+        wozAudio.tide();
+      }
     }
     // 掉落拾取：全感染族可用（V35 补给变异体/急救包落地在感染/复仇也生效）
     for (const ev of this.pickups.update(dt)) {
@@ -757,6 +768,22 @@ export class WozManager {
     z.soldier.root.scale.setScalar(0.92);
   }
 
+  // 悲惨行者（V53）：AI 杂兵特感——低血高速固定爪伤 20（调研：对抗/爆破/复仇出没，末分钟狂潮主力）
+  spawnSorrowWalker(hp = WOZ.sorrowHp, name = '悲惨行者') {
+    const g = this.g;
+    const z = new Zombie(g, { id: 90 + this.tide.length + ((Math.random() * 90) | 0), name, team: 'BL', wozExtra: true });
+    g.actors.push(z);
+    this.tide.push(z);
+    z.spawn(this.pickSpawn('BL'));
+    this.formZombie(z, hp);
+    z.protectT = 0.4;
+    z.sorrowFast = true;
+    z.clawDmg = WOZ.sorrowDmg;
+    z.soldier.root.scale.setScalar(0.95);
+    z.soldier.material.color.setHex(0x6e7a78); // 悲怆灰绿
+    return z;
+  }
+
   // 统一：把角色落成持爪变异体形态（守卫/AI/转化共用）
   formZombie(a, hp) {
     a.hp = Math.max(1, Math.round(hp));
@@ -781,12 +808,16 @@ export class WozManager {
       this.reinforceT = Math.max(CONFRONT.reinforceMin, CONFRONT.reinforceFirst - captured * 6);
       const n = 1 + (captured >= 2 ? 1 : 0);
       for (let i = 0; i < n; i++) {
-        const z = new Zombie(g, { id: 80 + this.tide.length + ((Math.random() * 90) | 0), name: '浓雾增援', team: 'BL' });
-        g.actors.push(z);
-        this.tide.push(z);
-        z.spawn(this.pickSpawn('BL'));
-        this.formZombie(z, 1000);
-        z.protectT = 0.5;
+        // V53：增援混编悲惨行者（调研：对抗模式中出现且速度较快）
+        if (captured >= 1 && i === 0) this.spawnSorrowWalker();
+        else {
+          const z = new Zombie(g, { id: 80 + this.tide.length + ((Math.random() * 90) | 0), name: '浓雾增援', team: 'BL' });
+          g.actors.push(z);
+          this.tide.push(z);
+          z.spawn(this.pickSpawn('BL'));
+          this.formZombie(z, 1000);
+          z.protectT = 0.5;
+        }
       }
       g.hud.toast('<b style="color:#ff5040">变异者突破浓雾增援！</b>', 2);
       wozAudio.tide();
@@ -1659,16 +1690,8 @@ export class WozManager {
     const g = this.g;
     g.hud.eventFeed(`☠ <b>尸潮降临！</b>${count} 只 AI 变异者涌入战场`, 'tide', 10);
     for (let i = 0; i < count; i++) {
-      const z = new Zombie(g, { id: 100 + i, name: '尸潮', team: 'BL', wozExtra: true });
-      g.actors.push(z);
-      this.tide.push(z);
-      const sp = this.pickSpawn('BL');
-      z.spawn(sp);
-      z.hp = WOZ.childHp; z.armor = 0;
-      z.inv = [new WeaponState('claw')];
-      z.slot = 0;
-      z.soldier.setWeapon('claw');
-      z.protectT = 1;
+      // V53：尸潮改为悲惨行者（调研：末分钟大批 AI 变异者 HP 低/每击 20HP/速度快）
+      this.spawnSorrowWalker(WOZ.sorrowFrenzyHp, '尸潮');
     }
     g.hud.toast('<b style="color:#ff5040">尸潮来袭！</b>', 3);
     wozAudio.tide();

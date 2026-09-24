@@ -103,6 +103,7 @@ export class Zombie extends Actor {
     // 职业移速（疾冲由 rules 倍率体现）
     this.speedMul = rules ? rules.mutantSpeedMultiplier(this.id) : WOZ.mutantSpeed;
     if (this.supplySlow) this.speedMul *= 0.75; // 补给变异体（V35）：驮着补给跑不快
+    if (this.sorrowFast) this.speedMul *= WOZ.sorrowSpeed; // 悲惨行者（V53）：三模式中速度较快
     const turn = (9 + Math.random() * 2) * dt;
     const wrapPi = (a) => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
     this.yaw = wrapPi(this.yaw + THREE.MathUtils.clamp(wrapPi(dYaw - this.yaw), -turn, turn));

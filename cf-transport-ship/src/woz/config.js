@@ -104,6 +104,11 @@ export const WOZ = {
   headhunterSlow: 0.08,     // 比爬行者更迟缓
   headhunterLightMul: 1.75, // 双刀轻击 ×1.75（40→70）
   headhunterHeavyMul: 2.65, // 双刀重击 ×2.65（75→199）：重击近身秒杀满血人类
+  sorrowHp: 380,            // 悲惨行者：AI 杂兵特感（调研：对抗/爆破/复仇三模式中出现）
+  sorrowDmg: 20,            // 每击固定 20HP（调研：末分钟大批 AI 变异者攻击力每次 20HP）
+  sorrowSpeed: 1.3,         // 调研：三模式中速度较快
+  sorrowFrenzyHp: 300,      // 末分钟狂潮版血量（HP 低）
+  sorrowFrenzyCount: 4,     // 狂潮只数
 };
 
 // ---- 生化对抗：人类攻方占领战术据点，变异者守方 ----
