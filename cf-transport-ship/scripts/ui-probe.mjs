@@ -416,6 +416,40 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v54') {
+  // V58 噬魂者分身强化：协同索敌主人目标 + 被毁回主人充能 25%
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      rules.convertToMutant(p.id, 'souleater', false);
+      g.woz.convertNow(p, true);
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 999;
+      if (p.vel.set) p.vel.set(0, 0, 0);
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      v.pos.set(0, 0.1, 0); v.protectT = 0;
+      g.fastForward(1 / 30, 1 / 30);
+      p.updateCamera(0.016);
+      rules.tryUseSkill(p.id);
+      const clones = g.woz.tide.filter((z) => z.alive && z.cloneOwner === p);
+      // 协同：分身 pickTarget 应选主人的 lastAttacker/目标（这里给主人标记 lastAttacker=v）
+      p.lastAttacker = v;
+      for (const c of clones) c.pickTarget();
+      const coordinated = clones.length > 0 && clones.every((c) => c.target === v);
+      // 被毁回充能
+      const st0 = rules.state(p.id);
+      st0.skillCharge = 0.2;
+      g.kill(clones[0], g.actors.find((a) => a.alive && a.id < rules.playerCount && rules.state(a.id).side === 'human') || null, 'ak47', false, false, { x: 1, y: 0, z: 0 });
+      const chargeAfter = rules.state(p.id).skillCharge;
+      return { ok: true, n: clones.length, coordinated, chargeAfter };
+    });
+    check(r.ok && r.n === 2, `分身: 召唤 2 只 (${r.n})`);
+    check(r.coordinated === true, '分身: 协同索敌主人目标');
+    check(Math.abs(r.chargeAfter - 0.45) < 0.01, `分身: 被毁主人充能 +25% (${r.chargeAfter?.toFixed(2)})`);
+  }
 } else if (ver === 'v53') {
   // V57 爆头硬直通用化：普通变异者 0.35s / 爬行者 0.9s / 母体免疫
   await goto('&mode=infection');

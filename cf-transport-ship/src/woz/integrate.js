@@ -738,6 +738,7 @@ export class WozManager {
     z.soldier.root.scale.setScalar(0.85);
     z.soldier.material.color.setHex(0x7a4a8a); // 紫灰分裂体
     z.cloneExpire = g.time + 20; // 20s 后消散
+    z.cloneOwner = owner; // V58：协同索敌 + 被毁回主人充能
     return z;
   }
 
@@ -1384,6 +1385,15 @@ export class WozManager {
         this.pickups.spawnDrop({ x: victim.pos.x + 0.8, y: 0, z: victim.pos.z + 0.5 }, 'medkit');
         g.hud.toast('<b style="color:#ffd24a">补给变异体被击杀！</b>快去拾取', 2);
       } else if (this.mode === 'bio') this.pickups.randomDrop(victim.pos);
+      // V58 分身反馈：分裂体被击杀 → 主人回充能 25%（原作"复制繁殖"能量联动）
+      if (victim.cloneOwner && victim.cloneOwner.alive) {
+        const oid = victim.cloneOwner.id;
+        if (oid < rules.playerCount && rules.isMutantSide(oid)) {
+          const st = rules.state(oid);
+          st.skillCharge = Math.min(1, st.skillCharge + 0.25);
+          if (victim.cloneOwner.isPlayer) g.hud.toast('分裂体被击毁 · 充能 +25%', 1);
+        }
+      }
       return;
     } // 尸潮 AI 不进规则层
     const attId = attacker && attacker !== victim && attacker.id < rules.playerCount ? attacker.id : -1;

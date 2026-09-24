@@ -37,6 +37,13 @@ export class Zombie extends Actor {
   }
 
   pickTarget() {
+    // V58 分身协同：优先扑向主人的目标/攻击者（调研：噬魂者分身人海干扰）
+    const o = this.cloneOwner;
+    if (o?.alive) {
+      const ot = o.target?.alive && o.target.team !== this.team ? o.target
+        : o.lastAttacker?.alive && o.lastAttacker.team !== this.team ? o.lastAttacker : null;
+      if (ot) { this.target = ot; return ot; }
+    }
     let best = null, bestD = Infinity;
     for (const a of this.game.actors) {
       if (!a.alive || a.team === this.team) continue;
