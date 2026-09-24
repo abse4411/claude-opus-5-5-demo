@@ -433,7 +433,7 @@ export class WozManager {
   spawnProps() {
     const g = this.g;
     this.clearProps();
-    let barrels = 0, crates = 0;
+    let barrels = 0, crates = 0, frostBoxes = 0, ammoBoxes = 0;
     for (let i = 0; i < 60 && (barrels < 5 || crates < 4); i++) {
       const x = (Math.random() - 0.5) * 64, z = (Math.random() - 0.5) * 24;
       // 找地面：从高处向下射线，落不到地面（海面外）则跳过
@@ -443,7 +443,11 @@ export class WozManager {
       if (y < 0.2 || y > 6) continue;
       // 与已有道具保持间距
       if (this.props.some((p) => Math.hypot(p.x - x, p.z - z) < 4)) continue;
+      const roll = Math.random();
       if (barrels <= crates && barrels < 5) { this.spawnBarrel(x, y, z); barrels++; }
+      else if (roll < 0.5 && crates < 4) { this.spawnCrate(x, y, z); crates++; }
+      else if (roll < 0.75 && frostBoxes < 2) { this.spawnFrostBox(x, y, z); frostBoxes++; }
+      else if (ammoBoxes < 2) { this.spawnAmmoBox(x, y, z); ammoBoxes++; }
       else if (crates < 4) { this.spawnCrate(x, y, z); crates++; }
     }
   }
@@ -498,6 +502,32 @@ export class WozManager {
     return best ? { prop: best, t: bestT } : null;
   }
 
+  // 冰冻箱（V62）：击碎释放寒霜区域，冻缓区域内角色
+  spawnFrostBox(x, y, z) {
+    const g = this.g;
+    const grp = new THREE.Group();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), new THREE.MeshLambertMaterial({ color: 0x9ad8e8, emissive: 0x1a4a5a }));
+    const band = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.14, 0.84), new THREE.MeshLambertMaterial({ color: 0xd8f4fc, emissive: 0x2a6a7a }));
+    band.position.y = 0.18;
+    grp.add(box, band);
+    grp.position.set(x, y + 0.4, z);
+    g.renderer.scene.add(grp);
+    this.props.push({ live: true, kind: 'frostbox', grp, x, y, z, hp: 60, r: 0.5 });
+  }
+
+  // 弹药箱（V62）：击碎爆出双份弹药补给
+  spawnAmmoBox(x, y, z) {
+    const g = this.g;
+    const grp = new THREE.Group();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.6, 0.6), new THREE.MeshLambertMaterial({ color: 0x4a5a3a }));
+    const band = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.12, 0.64), new THREE.MeshLambertMaterial({ color: 0xc8b860 }));
+    band.position.y = 0.1;
+    grp.add(box, band);
+    grp.position.set(x, y + 0.3, z);
+    g.renderer.scene.add(grp);
+    this.props.push({ live: true, kind: 'ammobox', grp, x, y, z, hp: 80, r: 0.55 });
+  }
+
   damageProp(prop, dmg, shooter, silent) {
     if (!prop.live) return;
     prop.hp -= dmg;
@@ -506,6 +536,8 @@ export class WozManager {
     prop.live = false;
     this.g.renderer.scene.remove(prop.grp);
     if (prop.kind === 'barrel') this.detonateBarrel(prop, shooter);
+    else if (prop.kind === 'frostbox') this.breakFrostBox(prop, silent);
+    else if (prop.kind === 'ammobox') this.breakAmmoBox(prop, silent);
     else this.breakCrate(prop, shooter, silent);
   }
 
@@ -546,6 +578,20 @@ export class WozManager {
     if (!silent) audio.playImpact(new THREE.Vector3(prop.x, prop.y + 0.5, prop.z), 'wood');
     // 必掉一份补给
     this.pickups.randomDrop({ x: prop.x, y: 0, z: prop.z });
+  }
+
+  breakFrostBox(prop, silent) {
+    const g = this.g;
+    if (!silent) audio.playImpact(new THREE.Vector3(prop.x, prop.y + 0.5, prop.z), 'wood');
+    this.g.zones.spawn('frost', new THREE.Vector3(prop.x, 0.1, prop.z)); // 寒霜区域（V56 复用）
+    g.hud.eventFeed('❄ 冰冻箱击碎，寒霜弥漫', 'evt');
+  }
+
+  breakAmmoBox(prop, silent) {
+    const g = this.g;
+    if (!silent) audio.playImpact(new THREE.Vector3(prop.x, prop.y + 0.5, prop.z), 'wood');
+    this.pickups.spawnDrop({ x: prop.x, y: 0, z: prop.z }, 'ammo');
+    this.pickups.spawnDrop({ x: prop.x + 0.7, y: 0, z: prop.z + 0.4 }, 'ammo');
   }
 
   clearProps() {

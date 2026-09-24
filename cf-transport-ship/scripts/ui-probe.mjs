@@ -416,6 +416,32 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v58') {
+  // V62 场景道具：冰冻箱碎裂生成寒霜区域 / 弹药箱碎裂掉双弹药
+  await goto('&mode=bio');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      g.woz.props.length = 0;
+      g.woz.spawnFrostBox(2, 0, 0);
+      g.woz.spawnAmmoBox(-2, 0, 0);
+      const fb = g.woz.props[0], ab = g.woz.props[1];
+      const dropsBefore = g.woz.pickups.list ? g.woz.pickups.list.length : g.woz.pickups.drops?.length ?? 0;
+      g.woz.damageProp(fb, 999, p, false);
+      g.woz.damageProp(ab, 999, p, false);
+      g.fastForward(0.3, 1 / 30);
+      const frostZones = g.zones.list.filter((z) => z.kind === 'frost').length;
+      const pickupsList = g.woz.pickups.list || g.woz.pickups.drops || [];
+      const ammoDrops = pickupsList.filter((d) => d.kind === 'ammo').length;
+      return { ok: true, frostZones, ammoDrops, dead: !fb.live && !ab.live };
+    });
+    check(r.ok && r.dead, 'V62: 两类新道具生成并碎裂');
+    check(r.frostZones >= 1, `V62: 冰冻箱释放寒霜区域 ×${r.frostZones}`);
+    check(r.ammoDrops >= 2, `V62: 弹药箱掉落双份弹药 ×${r.ammoDrops}`);
+  }
 } else if (ver === 'v57') {
   // V61 金色武器空投：每第 3 个金色 + 拾取换稀有枪 + 雷达金星
   await goto('&mode=infection');
