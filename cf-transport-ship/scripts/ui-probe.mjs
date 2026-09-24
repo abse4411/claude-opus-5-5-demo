@@ -908,11 +908,11 @@ if (ver === 'v1') {
       const scale = p.soldier.root.scale.x;
       const tint = p.soldier.material.color.getHex();
       // 近战倍率：冻结靶子 AI 后实测 melee 重击伤害（断头者 vs 夜行者）
-      const mkVictim = () => { const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human'); if (v) { v.pos.set(3.6, 0.1, 0); v.protectT = 0; v.armor = 0; v.rootT = 999; v.staggerT = 0; if (v.vel.set) v.vel.set(0, 0, 0); } return v; };
+      const mkVictim = () => { const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human'); if (v) { v.pos.set(4.2, 0.1, 0); v.protectT = 0; v.armor = 0; v.rootT = 999; v.staggerT = 0; v.blindT = 0; if (v.vel.set) v.vel.set(0, 0, 0); } return v; };
       const mulH = g.woz.classMeleeMul(p, true), mulL = g.woz.classMeleeMul(p, false);
       const v1 = mkVictim(); if (!v1) return { ok: false };
       p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; // 已知开阔连线（v41 同款）：面向原点
-      g.fastForward(1 / 30, 1 / 30);
+      g.fastForward(2 / 30, 1 / 30); // 双帧同步骨骼位置
       const dbg = { wid: p.weapon?.id, slot: p.slot, inv0: p.inv[0]?.id, yawsin: Math.sin(p.yaw), vpos: [v1.pos.x, v1.pos.y, v1.pos.z], ppos: [p.pos.x, p.pos.y, p.pos.z] };
       const hp0 = v1.hp;
       p.slot = 0; p.readyAt = 0;
