@@ -316,6 +316,17 @@ const builders = {
     anchor(g, 'grip', 0, -0.05, 0.1); anchor(g, 'muzzle', 0, 0, -0.42);
     return g;
   },
+  flamer(m) {
+    const g = new THREE.Group();
+    part(g, CZ(0.05, 0.42, 12), m.dark, 0, 0.02, -0.16);                // 主喷管
+    part(g, CZ(0.056, 0.05, 12), m.metal, 0, 0.02, -0.38);              // 喷口箍
+    part(g, CZ(0.02, 0.14, 8), m.steel, 0, 0.05, -0.44);                // 点火嘴
+    part(g, CZ(0.07, 0.3, 12), m.metal, 0.09, -0.05, 0.02, 0, 0, 0.12); // 侧挂燃料罐
+    part(g, RB(0.04, 0.1, 0.05, 0.01), m.rubber, 0, -0.08, 0.06);       // 握把
+    part(g, RB(0.045, 0.035, 0.12, 0.008), m.rubber, 0, -0.035, -0.16); // 前护木
+    anchor(g, 'grip', 0, -0.07, 0.06); anchor(g, 'muzzle', 0, 0.02, -0.42);
+    return g;
+  },
   m79(m) {
     const g = new THREE.Group();
     part(g, CZ(0.045, 0.5, 12), m.dark, 0, 0.03, -0.18);                // 粗发射管

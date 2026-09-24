@@ -168,6 +168,14 @@ export class Actor {
     // 换弹
     if (inp.reload && w.canReload()) this.startReload();
     if (w.reloading) return;
+    if (d.type === 'flamer') {
+      // 火焰喷射器（V47）：按住持续喷射锥形火焰，短距高 DPS
+      if (inp.fire && now >= w.nextFire && w.mag > 0) {
+        w.mag--; w.nextFire = now + d.rateLight;
+        g.flameAttack(this, d);
+      }
+      return;
+    }
     if (d.type === 'melee') {
       if (d.continuous) {
         // 电锯：按住左键持续切割（无攻击间隔），右键重击必杀

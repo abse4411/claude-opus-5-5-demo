@@ -354,7 +354,7 @@ if (ver === 'v1') {
       srows: (document.querySelector('#loadCards .card')?.querySelectorAll('.srow') || []).length,
       timer: document.getElementById('loadTimer').textContent,
     }));
-    check(shop.visible && shop.cards === 21, `商店: 打开且 21 张主武器卡 (${shop.cards})`);
+    check(shop.visible && shop.cards === 22, `商店: 打开且 22 张主武器卡 (${shop.cards})`);
     check(shop.srows === 3, `商店: 属性条渲染 (${shop.srows} 行)`);
     check(shop.timer.includes('购买期'), `商店: 购买期倒计时 (${shop.timer.trim().slice(-18)})`);
     await page.waitForTimeout(200);
@@ -415,6 +415,37 @@ if (ver === 'v1') {
     await page.evaluate(() => window.__game.toggleHelp());
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
+  }
+} else if (ver === 'v43') {
+  // 火焰喷射器：持续喷射 → 锥形近距高 DPS
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st0 = rules.state(p.id);
+      if (st0.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      p.inv[0] = new (p.inv[0].constructor)('flamer');
+      p.inv[0].mag = 100; p.slot = 0; p.readyAt = 0;
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 999;
+      if (p.vel.set) p.vel.set(0, 0, 0);
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      rules.convertToMutant(v.id, 'nightrunner', false);
+      g.woz.convertNow(v, true);
+      v.pos.set(2, 0.1, 0); v.protectT = 0; v.armor = 0;
+      g.fastForward(1 / 30, 1 / 30);
+      p.updateCamera(0.016);
+      const hp0 = v.hp;
+      p.mouse.l = true; // 按住开火（真实输入路径）
+      g.fastForward(0.5, 1 / 30);
+      p.mouse.l = false;
+      return { ok: true, hp0, hpAfter: Math.round(v.hp), dmg: hp0 - v.hp, mag: p.inv[0].mag };
+    });
+    check(r.ok && r.dmg > 10 && r.dmg < 150, `喷火器: 锥形喷射有效伤害 ${r.dmg}（目标走位暴露期间）`);
+    check(r.mag < 100, `喷火器: 燃料消耗 (剩 ${r.mag})`);
   }
 } else if (ver === 'v42') {
   // 人类能量三级技能：伤害/击杀充能 → T 补弹 / F 狂热 / V 必杀
@@ -1410,7 +1441,7 @@ if (ver === 'v1') {
       aug: !!document.querySelector('#loadCards .card[data-w="aug"]'),
       p90: !!document.querySelector('#loadCards .card[data-w="p90"]'),
     }));
-    check(r.cards === 21 && r.aug && r.p90, `武器: 商店 21 张主武器卡含 AUG/P90 (${r.cards})`);
+    check(r.cards === 22 && r.aug && r.p90, `武器: 商店 22 张主武器卡含 AUG/P90 (${r.cards})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'aug', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');

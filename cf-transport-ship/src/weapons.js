@@ -214,6 +214,13 @@ export const WEAPONS = {
     speed: 1.05, sound: 'knife', hudName: 'CROWBAR', knock: 5.0, stagger: 0.24, mag: 0, reserve: 0,
   },
 
+  // ---- V47（火焰喷射器）----
+  flamer: {
+    id: 'flamer', name: '火焰喷射器', slot: 0, type: 'flamer', auto: true, continuous: true,
+    dmg: 7, range: 9, rateLight: 0.06, mag: 100, reserve: 200, reload: 4.0, draw: 0.9,
+    speed: 0.9, sound: 'grenade', hudName: 'FLAMETHROWER', knock: 0.3, stagger: 0.02, armorPen: 0.9,
+  },
+
   // ---- V40（榴弹发射器）----
   m79: {
     id: 'm79', name: 'M79 榴弹枪', slot: 0, type: 'launcher', auto: false,
@@ -256,7 +263,7 @@ export const WEAPONS = {
   },
 };
 
-export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90', 'm60', 'scarl', 'm14ebr', 'm3super', 'mac10', 'qbz95', 'xm8', 'dualuzi', 'm79'];
+export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90', 'm60', 'scarl', 'm14ebr', 'm3super', 'mac10', 'qbz95', 'xm8', 'dualuzi', 'm79', 'flamer'];
 // V19：副武器三选（沙鹰默认；R8 左轮为原作风格高伤手炮）
 export const SECONDARIES = ['deagle', 'usp', 'r8'];
 // V45：近战 selectable（电锯为复仇者/变异者专属不在列）

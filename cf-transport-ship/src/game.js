@@ -616,6 +616,32 @@ export class Game {
       },
     });
   }
+  // 火焰喷射器（V47）：锥形持续伤害 + 火焰粒子 + 点燃视觉
+  flameAttack(a, d) {
+    const eye = a.eye(new THREE.Vector3());
+    const fwd = a.forward(new THREE.Vector3());
+    const COS = Math.cos(0.24); // 约 28° 半角锥
+    for (const v of this.actors) {
+      if (!v.alive || v === a || v.team === a.team) continue;
+      const to = new THREE.Vector3(v.pos.x - eye.x, (v.pos.y + 1.0) - eye.y, v.pos.z - eye.z);
+      const dist = to.length();
+      if (dist > d.range) continue;
+      to.divideScalar(dist || 1);
+      if (to.dot(fwd) < COS) continue;
+      if (this.world.raycast(eye.x, eye.y, eye.z, to.x, to.y, to.z, dist, 'sight')) continue;
+      this.damage(v, a, d.dmg, 'chest', 'flamer', to, false, true);
+      if (Math.random() < 0.25) this.fx.impact(new THREE.Vector3(v.pos.x, v.pos.y + 1.2, v.pos.z), new THREE.Vector3(0, 1, 0), 'flesh', new THREE.Vector3(0, 1, 0));
+    }
+    // 火舌粒子：沿射向呈锥形喷出
+    const tip = eye.clone().addScaledVector(fwd, 1.2);
+    for (let i = 0; i < 6; i++) {
+      const sp = 8 + Math.random() * 8, jx = (Math.random() - 0.5) * 2.2, jy = (Math.random() - 0.3) * 2.2, jz = (Math.random() - 0.5) * 2.2;
+      this.fx.smoke.emit({ x: tip.x, y: tip.y, z: tip.z, vx: fwd.x * sp + jx, vy: fwd.y * sp + jy + 1.2, vz: fwd.z * sp + jz, life: 0, max: 0.3 + Math.random() * 0.25, s0: 0.3, s1: 1.3, r: 1.9, g: 0.9 + Math.random() * 0.5, b: 0.15, a0: 0.85, a1: 0, grav: 1.2, drag: 3 });
+    }
+    this.fx.light(tip, 7, 0.07, 0xff8030, 12);
+    if (a.isPlayer) this.fx.shake = Math.max(this.fx.shake || 0, 0.045);
+    audio.playFootstep(a.isPlayer ? null : eye, 'metal', { run: true, crouch: false }); // 喷射低鸣（复用脚步声近似）
+  }
   fireLauncher(a, w) {
     const eye = a.eye(new THREE.Vector3());
     const dir = a.forward(new THREE.Vector3());
