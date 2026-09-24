@@ -171,6 +171,7 @@ export class WozRules {
   }
 
   tickHuman(p, dt) {
+    if (p.chillT > 0) p.chillT = Math.max(0, p.chillT - dt); // 寒霜减速（V56）
     p.humanSurviveTime += dt;
     p.ultActiveT = Math.max(0, p.ultActiveT - dt);
     p.ultCooldown = Math.max(0, p.ultCooldown - dt);
@@ -437,6 +438,7 @@ export class WozRules {
     if (!p) return 1;
     let m = 1 + this.humanTier(id) * WOZ.humanSpeedPerTier;
     if (p.frenzyT > 0) m *= 1.1; // 战地狂热（V46）
+    if (p.chillT > 0) m *= WOZ.frostChill; // 寒霜减速（V56）
     if (p.isAvenger) m += WOZ.avengerSpeed - 1;
     return m;
   }

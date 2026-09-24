@@ -609,6 +609,7 @@ export class Game {
           this.fx.impact(pt, hit.dir.clone().negate(), 'flesh', hit.dir);
           audio.playKnife(heavy ? 'heavy' : 'light', 'flesh', a.isPlayer ? null : eye);
           this.damage(hit.a, a, dmg, hit.part, a.weapon?.id || 'knife', hit.dir, false, true);
+          if (a.chillOnHit) this.woz?.applyChill?.(hit.a); // 寒霜行者冰缓（V56）
         } else {
           const w = this.world.raycast(eye.x, eye.y, eye.z, base.x, base.y, base.z, range, 'bullet');
           if (w) {

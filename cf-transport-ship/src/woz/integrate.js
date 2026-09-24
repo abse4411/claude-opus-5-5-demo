@@ -696,7 +696,9 @@ export class WozManager {
         this.waveN = (this.waveN || 0) + 1;
         const n = Math.min(BIO.aiMax - alive, 1 + this.waveN);
         for (let i = 0; i < n; i++) this.spawnAiZombie();
-        g.hud.toast(`<b style="color:#ff7040">第 ${this.waveN} 波</b> 变异爬行者来袭 ×${n}！`, 2.5);
+        let frost = '';
+        if (this.waveN % 3 === 0 && alive + n < BIO.aiMax + 2) { this.spawnFrostWalker(); frost = ' <b style="color:#86c8e0">含寒霜行者！</b>'; }
+        g.hud.toast(`<b style="color:#ff7040">第 ${this.waveN} 波</b> 变异爬行者来袭 ×${n}！${frost}`, 2.5);
         wozAudio.tide();
       }
       // 末分钟狂潮（V53 调研：最后 1 分钟大批 AI 变异者，HP 低每击 20HP）
@@ -767,6 +769,31 @@ export class WozManager {
     this.formZombie(z, BIO.aiHp);
     z.protectT = 0.5;
     z.soldier.root.scale.setScalar(0.92);
+  }
+
+  // 寒霜行者（V56 末日求生）：冰霜系 AI 特感，爪击命中最速减速 3s
+  spawnFrostWalker() {
+    const g = this.g;
+    const z = new Zombie(g, { id: 95 + this.tide.length + ((Math.random() * 90) | 0), name: '寒霜行者', team: 'BL', wozExtra: true });
+    g.actors.push(z);
+    this.tide.push(z);
+    z.spawn(this.pickSpawn('BL'));
+    this.formZombie(z, WOZ.frostHp);
+    z.protectT = 0.5;
+    z.chillOnHit = true;
+    z.soldier.root.scale.setScalar(0.95);
+    z.soldier.material.color.setHex(0x86c8e0); // 寒霜冰蓝
+    return z;
+  }
+
+  // 冰缓命中（V56）：目标规则层人类减速，玩家出提示
+  applyChill(v) {
+    const rules = this.rules;
+    if (!rules || !v?.alive || v.id >= rules.playerCount) return;
+    const st = rules.state(v.id);
+    if (st.side !== 'human' || !st.alive) return;
+    st.chillT = WOZ.frostChillTime;
+    if (v.isPlayer) this.g.hud.toast('<b style="color:#86c8e0">寒霜减速！</b>移速降低 3 秒', 1.5);
   }
 
   // 悲惨行者（V53）：AI 杂兵特感——低血高速固定爪伤 20（调研：对抗/爆破/复仇出没，末分钟狂潮主力）

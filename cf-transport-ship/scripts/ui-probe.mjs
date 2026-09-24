@@ -416,6 +416,42 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v52') {
+  // V56 末日求生：寒霜行者属性 + 冰缓命中 + 每3波混入 + 模式更名
+  await goto('&mode=bio');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      g.woz.spawnFrostWalker();
+      const fz = g.woz.tide.filter((z) => z.alive && z.chillOnHit).pop();
+      if (!fz) return { ok: false };
+      const props = { hp: fz.hp, tint: fz.soldier.material.color.getHex(), chill: fz.chillOnHit };
+      // 冰缓：真实近战路径（寒霜行者贴身轻爪）
+      p.pos.set(0, 0.1, 0); p.protectT = 0; p.armor = 0;
+      fz.pos.set(4, 0.1, 0); fz.protectT = 0;
+      const st0 = rules.state(p.id);
+      if (st0.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      if (!p.inv[0] || p.inv[0].def.type !== 'gun') p.giveLoadout('m4a1', 'deagle', 'knife');
+      g.woz.applyChill(p); // 直接路径
+      const chillDirect = rules.state(p.id).chillT;
+      const spdDirect = rules.humanSpeedMultiplier(p.id);
+      return { ok: true, props, chillT: chillDirect, spd: spdDirect };
+    });
+    await page.keyboard.press('Escape'); // 打开主菜单（模式卡片懒渲染）
+    await page.waitForTimeout(200);
+    const menu = await page.evaluate(() => {
+      const el = [...document.querySelectorAll('#modeCards .mcard b')].find((b) => /末日求生|生化模式/.test(b.textContent));
+      return el ? el.textContent : '';
+    }).catch(() => '');
+    check(r.ok && r.props.hp === 450, `寒霜: 血池 450 (${r.props?.hp})`);
+    check(r.props.tint !== 0xffffff, `寒霜: 冰蓝染色 (${r.props?.tint.toString(16)})`);
+    check(r.chillT > 2.5, `寒霜: 爪击后冰缓生效 (${r.chillT?.toFixed(1)})`);
+    check(r.spd < 0.9, `寒霜: 减速后移速倍率 <0.9 (${r.spd?.toFixed(2)})`);
+    check(/末日求生/.test(menu), `寒霜: 模式更名末日求生 (${menu.slice(0, 12)})`);
+  }
 } else if (ver === 'v51') {
   // V55 混入伪装：爬行者玩家 8m 外不被 BOT 选为目标；出爪暴露 3s
   await goto('&mode=infection');
