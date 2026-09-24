@@ -90,10 +90,12 @@ function tracerTex() {
 }
 
 export class Effects {
-  constructor(scene, T, camera) {
+  constructor(scene, T, camera, quality = 'high') {
     this.scene = scene; this.camera = camera; this.T = T;
-    this.add = new Particles(scene, T.glow, true, 900);
-    this.smoke = new Particles(scene, T.puff, false, 900);
+    // V87 画质分级粒子池：低画质减半以上，控制填充率
+    const cap = quality === 'low' ? 350 : quality === 'medium' ? 600 : 900;
+    this.add = new Particles(scene, T.glow, true, cap);
+    this.smoke = new Particles(scene, T.puff, false, cap);
     this.decals = {
       metal: new Decals(scene, T.holeMetal, 160),
       wood: new Decals(scene, T.holeWood, 100),

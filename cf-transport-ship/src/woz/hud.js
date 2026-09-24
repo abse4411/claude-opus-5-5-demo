@@ -296,7 +296,8 @@ export class WozHud {
       const frenzyOn = !mutant && st.frenzyT > 0;
       const frostOn = !mutant && (st.chillT || 0) > 0;
       const venomOn = (mgr._venomT || 0) > 0;
-      const mode = ultOn ? 'red' : frenzyOn ? 'gold' : frostOn ? 'frost' : venomOn ? 'venom' : '';
+      const lowOn = !mutant && player.alive && player.hp < 30;
+      const mode = ultOn ? 'red' : frenzyOn ? 'gold' : frostOn ? 'frost' : venomOn ? 'venom' : lowOn ? 'red' : '';
       if (fx._cls !== mode) { fx.className = mode; fx._cls = mode; }
     }
     // 子体变身按钮

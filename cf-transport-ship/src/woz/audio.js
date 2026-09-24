@@ -48,6 +48,18 @@ function play(pos, build) {
 export const wozAudio = {
   mount(game) { gameRef = game; },
 
+  // V82 震撼弹耳鸣：高频正弦随致盲时长衰减
+  tinnitus(dur = 2) {
+    play(null, (c, g, t0) => {
+      const o = c.createOscillator();
+      o.type = 'sine'; o.frequency.value = 3400;
+      o.connect(g);
+      g.gain.setValueAtTime(0.12, t0);
+      g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+      o.start(t0); o.stop(t0 + dur + 0.05);
+    });
+  },
+
   // V77 玻璃碎裂：高通滤波噪声爆发
   shatter(pos) {
     play(pos, (c, g, t0, vol) => {

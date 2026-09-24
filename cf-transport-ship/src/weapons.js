@@ -6,7 +6,7 @@ export const WEAPONS = {
     dmg: 36, headMul: 4.0, limbMul: 0.78, rpm: 600, mag: 30, reserve: 90, reload: 2.45, draw: 0.85,
     speed: 0.93, range: 220, falloff: 0.985, pen: 1.2, armorPen: 0.78, knock: 2.2, stagger: 0.12,
     spread: { base: 0.0028, move: 0.045, air: 0.16, crouch: 0.6, perShot: 0.0055, max: 0.05, recover: 7 },
-    recoil: { up: 0.0105, upMax: 0.11, side: 0.0062, sideStart: 5, recover: 6.5 },
+    recoil: { up: 0.0125, upMax: 0.13, side: 0.0090, sideStart: 3, recover: 6.5 }, // V80 AK：强上跳+早横摆，需压枪（调研口径）
     sound: 'ak47', hudName: 'AK-47',
   },
   m4a1: {
@@ -14,7 +14,7 @@ export const WEAPONS = {
     dmg: 32, headMul: 4.0, limbMul: 0.8, rpm: 700, mag: 30, reserve: 90, reload: 2.3, draw: 0.8,
     speed: 0.95, range: 220, falloff: 0.985, pen: 1.0, armorPen: 0.72, knock: 2.0, stagger: 0.1,
     spread: { base: 0.0024, move: 0.04, air: 0.15, crouch: 0.6, perShot: 0.0044, max: 0.042, recover: 8 },
-    recoil: { up: 0.0082, upMax: 0.085, side: 0.0048, sideStart: 6, recover: 7 },
+    recoil: { up: 0.0082, upMax: 0.085, side: 0.0040, sideStart: 7, recover: 7.5 }, // V80 M4：弹道稳易控制（调研口径）
     sound: 'm4a1', hudName: 'M4A1',
   },
   awm: {

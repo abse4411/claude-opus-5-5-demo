@@ -80,7 +80,7 @@ export class Game {
     this.env = new Environment(this.renderer.renderer, this.renderer.scene, this.opts.quality);
     this.env.extraScenes = [this.renderer.vmScene];
     this.env.apply(this.opts.tod);
-    this.fx = new Effects(this.renderer.scene, this.T, this.renderer.camera);
+    this.fx = new Effects(this.renderer.scene, this.T, this.renderer.camera, this.opts.quality);
     this.fx.initAmbient(this.map.funnelTop);
     this.vm = new ViewModel(this.renderer.vmScene, this.T, this.opts.team);
     this.hud.loading(0.8, '计算寻路网格');
@@ -517,8 +517,8 @@ export class Game {
         const dist = bestT;
         const partMul = part === 'head' ? d.headMul : part === 'arm' || part === 'leg' ? d.limbMul : 1;
         const dmg = d.dmg * mul * Math.pow(d.falloff, dist / 10) * partMul;
-        this.fx.impact(pt, _v.copy(dir).negate(), 'flesh', dir);
-        if (part === 'head') this.fx.impact(pt, _v.copy(dir).negate(), 'flesh', dir);
+        const bloodTier = dmg > 55 ? 3 : dmg > 28 ? 2 : 1; // V85 血雾按伤害分级
+        for (let bi = 0; bi < bloodTier; bi++) this.fx.impact(pt, _v.copy(dir).negate(), 'flesh', dir);
         audio.playImpact(pt, 'flesh');
         this.damage(best, shooter, dmg, part, d.id, dir, wall);
         return pt;
@@ -700,10 +700,19 @@ export class Game {
         n.pos.set(a.pos.x, a.pos.y + 1.3, a.pos.z);
         n.mesh.position.copy(n.pos);
         n.mesh.rotation.z += dt * 3;
+        // V81 黏附状态：红灯快闪 + 加速滴滴（引信越短越急促）
+        if (!n.warn) {
+          n.warn = new THREE.PointLight(0xff3020, 3, 4);
+          n.warn.position.copy(n.pos);
+          this.renderer.scene.add(n.warn);
+        } else { n.warn.position.copy(n.pos); n.warn.intensity = 1.5 + Math.abs(Math.sin(n.fuse * 22)) * 3; }
+        n.beepT = (n.beepT || 0) - dt;
+        if (n.beepT <= 0) { n.beepT = Math.max(0.1, n.fuse * 0.25); wozAudio.beep(n.pos.clone(), 1200, 0.05); }
         if (n.fuse <= 0) {
           this.explode(n.pos.clone(), n.owner, 'sticky');
           if (a.alive) this.fx.bloodBurst(a.pos, new THREE.Vector3(0, 0, 1));
           this.renderer.scene.remove(n.mesh);
+          if (n.warn) this.renderer.scene.remove(n.warn);
           return false;
         }
         return true;
@@ -748,7 +757,10 @@ export class Game {
         if (this.world.raycast(p.x, p.y + 0.2, p.z, dir.x, dir.y, dir.z, Math.max(0, L - 0.3), 'sight')) continue;
         const k = 1 - dist / d.radius;
         a.blindT = Math.max(a.blindT || 0, d.blind * k);
-        if (a.isPlayer) { this.dmgFlash = Math.max(this.dmgFlash || 0, 0.8); this.fx.shake = Math.max(this.fx.shake, 0.6); }
+        if (a.isPlayer) {
+          this.dmgFlash = Math.max(this.dmgFlash || 0, 0.8); this.fx.shake = Math.max(this.fx.shake, 0.6);
+          wozAudio.tinnitus(d.blind * k); // V82 耳鸣：高频衰减正弦
+        }
         if (dist < 2.5) this.damage(a, owner, d.dmg, 'chest', 'flash', dir, false);
       }
       return;
@@ -851,7 +863,12 @@ export class Game {
   kill(v, att, wid, hs, wall, dir) {
     v.alive = false; v.hp = 0; v.deadT = 0; v.respawnT = 4.0; v.stats.d++;
     v.scoped = 0; v.dmgBuff = 1; v.streak = 0;
-    v.soldier.die(dir.x, dir.z, hs);
+    // V72 毒云等无方向伤害：dir 可为 null（修复 e2e2 demol 毒云击杀崩溃）
+    v.soldier.die(dir ? dir.x : 0, dir ? dir.z : 1, hs);
+    if (v.wozHeavy) {
+      // V84 变异者死亡溶解：躯体上升的暗红雾团
+      for (let i = 0; i < 8; i++) this.fx.smoke.emit({ x: v.pos.x + (Math.random() - 0.5) * 0.6, y: v.pos.y + 0.4 + Math.random() * 1.2, z: v.pos.z + (Math.random() - 0.5) * 0.6, vx: 0, vy: 0.9 + Math.random() * 0.8, vz: 0, life: 0, max: 0.9 + Math.random() * 0.5, s0: 0.3, s1: 0.9, r: 0.75, g: 0.16, b: 0.1, a0: 0.5, a1: 0, drag: 0.8 });
+    }
     audio.playDeath(v.soldier.chestWorld(new THREE.Vector3()));
     const p = this.player;
     if (att && att !== v) {

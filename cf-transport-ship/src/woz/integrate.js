@@ -758,6 +758,12 @@ export class WozManager {
       }
       if (a.alive && a.staggerT > 0) a.speedMul = (a.speedMul || 1) * 0.45; // 命中暂缓减速
     }
+    // V86 低血心跳：玩家 HP<30 动态开启心跳音（离开低血自动关闭）
+    {
+      const pl = g.player;
+      const low = !!(pl && pl.alive && pl.team === 'GR' && pl.hp < 30 && pl.hp > 0);
+      if (low !== this._lowHeart) { this._lowHeart = low; g.audio.setLowHealth(low); }
+    }
     this.devourAndSkills(dt);
     this.ambientGrowl(dt);
     this.tickMedkit(dt);

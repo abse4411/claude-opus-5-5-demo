@@ -180,7 +180,9 @@ export class Player extends Actor {
     cam.position.z += -sy * bx;
     this.camRoll += ((this.keys.has('KeyA') ? 0.008 : 0) - (this.keys.has('KeyD') ? 0.008 : 0) - this.camRoll) * Math.min(1, dt * 6);
     cam.rotation.order = 'YXZ';
-    cam.rotation.set(this.pitch + this.punchP * 0.75 + this.aimPunch, this.yaw + this.punchY * 0.75, this.camRoll);
+    // V83 狙击开镜呼吸摇摆：镜内缓慢正弦起伏
+    const breath = this.scoped ? Math.sin(this.game.time * 1.7) * 0.0013 : 0;
+    cam.rotation.set(this.pitch + this.punchP * 0.75 + this.aimPunch + breath, this.yaw + this.punchY * 0.75, this.camRoll);
     // FOV：狙击镜
     const w = this.weapon;
     let fov = g.opts.fov;
