@@ -90,7 +90,7 @@ await page.evaluate(() => window.__game.fastForward(260, 1 / 30));
     g.damage(z, g.player, 20, 'chest', 'awm', { x: 0, z: -1 }, false);
     return {
       ok: true,
-      knockApplied: Math.abs(z.vel.z + 7.5 * 0.35) < 0.8, // AWM 击退 7.5 × 重躯体 0.35
+      knockApplied: Math.abs(z.vel.z + 7.5 * 0.12) < 0.5, // AWM 击退 7.5 × 重躯体 0.12（V47 调整：连发不再推着变异者走）
       stagger: z.staggerT > 0,
       damaged: z.hp < hpBefore,
       infoLen: (document.getElementById('modeInfo')?.innerHTML || '').length,

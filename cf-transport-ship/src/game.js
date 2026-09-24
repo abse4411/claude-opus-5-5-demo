@@ -27,6 +27,17 @@ const MULTI_CN = ['', '', '双杀', '三杀', '四杀', '五杀', '六杀！', '
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3(), _d = new THREE.Vector3();
 const dir0 = { x: 0, z: 1 };
 
+// 全部地图定义（含寻路网格边界）
+const MAPS = {
+  ship: { name: '运输船', build: buildMap, nav: [-36.2, -12.1, 36.2, 12.1] },
+  city: { name: '死亡城市', build: buildCityMap, nav: [-36, -11.5, 36, 11.5] },
+  lab: { name: '生化实验室', build: buildLabMap, nav: [-36, -11.5, 36, 11.5] },
+  plaza: { name: '都会广场', build: buildPlazaMap, nav: [-36, -11.5, 36, 11.5] },
+  harbor: { name: '雾港', build: buildHarborMap, nav: [-36, -11.5, 36, 11.5] },
+  hospital: { name: '废弃医院', build: buildHospitalMap, nav: [-38.5, -13.5, 38.5, 13.5] },
+  subway: { name: '地铁绝境', build: buildSubwayMap, nav: [-40.5, -12.5, 40.5, 12.5] },
+};
+
 export class Game {
   constructor() {
     this.time = 0; this.frame = 0;
@@ -56,15 +67,7 @@ export class Game {
     this.hud.loading(0.55, '搭建运输船');
     await nextFrame();
     this.world = new World();
-    const MAPS = {
-      ship: { name: '运输船', build: buildMap },
-      city: { name: '死亡城市', build: buildCityMap },
-      lab: { name: '生化实验室', build: buildLabMap },
-      plaza: { name: '都会广场', build: buildPlazaMap },
-      harbor: { name: '雾港', build: buildHarborMap },
-      hospital: { name: '废弃医院', build: buildHospitalMap },
-      subway: { name: '地铁绝境', build: buildSubwayMap },
-    };
+    this._builtMap = this.opts.map;
     const mapDef = MAPS[this.opts.map] || MAPS.ship;
     this.mapName = mapDef.name;
     document.querySelector('#radarWrap .lbl').textContent = mapDef.name;
@@ -81,7 +84,8 @@ export class Game {
     this.vm = new ViewModel(this.renderer.vmScene, this.T, this.opts.team);
     this.hud.loading(0.8, '计算寻路网格');
     await nextFrame();
-    this.nav = new NavGrid(this.world, -36.2, -12.1, 36.2, 12.1, 0.5, 0.42);
+    const nav = (MAPS[this._builtMap] || MAPS.ship).nav;
+    this.nav = new NavGrid(this.world, nav[0], nav[1], nav[2], nav[3], 0.5, 0.42);
     this.hud.buildRadar(this.world);
     this.hud.loading(0.88, '武器图标 / 预编译着色器');
     await nextFrame();
@@ -108,12 +112,34 @@ export class Game {
     if (this.map?.fogDensity && this.renderer.scene.fog) this.renderer.scene.fog.density = this.map.fogDensity;
   }
   lampLights() {
-    // 管道内的少量真实点光源
+    // 管道内的少量真实点光源（换图时先移除旧的）
+    if (this._lamps) for (const l of this._lamps) this.renderer.scene.remove(l);
+    this._lamps = [];
     for (const p of this.map.lampSpots.slice(0, this.opts.quality === 'low' ? 0 : 4)) {
       const l = new THREE.PointLight(0xffd9a0, 5, 9, 1.8);
       l.position.copy(p);
       this.renderer.scene.add(l);
+      this._lamps.push(l);
     }
+  }
+
+  // 切换地图（V46 修复③：主菜单选图即时生效，无需刷新网页）
+  ensureMap(key) {
+    if (this._builtMap === key && this.map) return;
+    const def = MAPS[key] || MAPS.ship;
+    if (this.map) for (const m of this.map.meshes || []) this.renderer.scene.remove(m);
+    this.world = new World();
+    this.map = def.build(this.renderer.scene, this.T, this.world);
+    this.world.build();
+    this.mapName = def.name;
+    this._builtMap = key;
+    document.querySelector('#radarWrap .lbl').textContent = def.name;
+    this.applyFogOverride();
+    if (this.fx) this.fx.initAmbient(this.map.funnelTop);
+    const nav = def.nav;
+    this.nav = new NavGrid(this.world, nav[0], nav[1], nav[2], nav[3], 0.5, 0.42);
+    this.hud.buildRadar(this.world);
+    this.lampLights();
   }
   makeIcons() {
     const r = this.renderer.renderer;
@@ -155,6 +181,7 @@ export class Game {
   // ================= 流程 =================
   startMatch() {
     const o = this.opts;
+    this.ensureMap(o.map); // 修复③：主菜单改选地图后开局即时切换（此前只在刷新页面时生效）
     if (o.mode && o.mode !== 'tdm') {
       if (!this.woz) this.woz = new WozManager(this);
       this.woz.startMatch();
@@ -741,8 +768,14 @@ export class Game {
     // WOZ 打击反馈：击退冲量 + 命中暂缓（变异者躯体重，击退衰减但暂缓吃满）
     if (dir && v.alive) {
       const kdef = WEAPONS[wid] || {};
-      const heavy = v.wozHeavy ? 0.35 : 1;
-      if (kdef.knock) { v.vel.x += dir.x * kdef.knock * heavy; v.vel.z += dir.z * kdef.knock * heavy; }
+      const heavy = v.wozHeavy ? 0.12 : 1; // 变异者质量大：子弹击退大幅衰减（修复：原 0.35 连发累积会把变异者推着走）
+      if (kdef.knock) {
+        v.vel.x += dir.x * kdef.knock * heavy; v.vel.z += dir.z * kdef.knock * heavy;
+        if (v.wozHeavy) { // 变异者击退速度上限 2.6m/s
+          const hs = Math.hypot(v.vel.x, v.vel.z);
+          if (hs > 2.6) { v.vel.x *= 2.6 / hs; v.vel.z *= 2.6 / hs; }
+        }
+      }
       if (kdef.stagger) v.staggerT = Math.max(v.staggerT || 0, kdef.stagger);
     }
     v.lastAttacker = att; v.lastHurt = this.time;

@@ -265,6 +265,8 @@ export function buildPlazaMap(scene, T, world) {
   }
   const fg = new THREE.PlaneGeometry(76, 26); fg.rotateX(-Math.PI / 2);
   put('plaza', fg, 0, 0, 0);
+  // 地面碰撞（V46 修复：此前缺失 → 开局反复坠落无法移动）
+  world.add({ x: 0, y: -0.5, z: 0, sx: 80, sy: 1, sz: 30, yaw: 0, mat: 'concrete', surface: 'metal' });
   // 边界
   solid(0, -12.6, 76, 1, 3.2); put('dark', BX(76, 3.2, 1), 0, 1.6, -12.6);
   solid(0, 12.6, 76, 1, 3.2); put('dark', BX(76, 3.2, 1), 0, 1.6, 12.6);

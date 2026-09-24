@@ -416,6 +416,58 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v39') {
+  // 三 bug 回归：逐图地面稳定 / 变异者击退衰减 / 菜单选图即时生效
+  {
+    // ① 逐图排查：开局 2 秒后必须站在地面且稳定（修复前：都会广场无地面碰撞反复坠落）
+    const maps = ['ship', 'city', 'lab', 'plaza', 'harbor', 'hospital', 'subway'];
+    for (const m of maps) {
+      await goto('&mode=infection&map=' + m);
+      const r = await page.evaluate(() => {
+        const g = window.__game, p = g.player;
+        g.fastForward(2, 1 / 30);
+        const y1 = p.pos.y, g1 = p.onGround;
+        g.fastForward(1, 1 / 30);
+        return { y: +y1.toFixed(2), g: g1, y2: +p.pos.y.toFixed(2), stable: Math.abs(p.pos.y - y1) < 0.6 };
+      });
+      check(r.g && r.y > -0.5 && r.y < 6 && r.stable, `地面[${m}]: 站稳不坠落 (y=${r.y} onGround=${r.g})`);
+    }
+    // ② 变异者击退：连中 10 发位移极小
+    await goto('&mode=infection');
+    const kb = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      rules.convertToMutant(v.id, 'devourer', false);
+      g.woz.convertNow(v, true);
+      v.pos.set(0, 0.1, 0); v.protectT = 0; v.armor = 0;
+      const x0 = v.pos.x;
+      for (let i = 0; i < 10; i++) { g.damage(v, p, 25, 'chest', 'ak47', { x: 1, z: 0 }, false); v.pos.x = 0; v.pos.z = 0; v.vel.x = 0; v.vel.z = 0; }
+      const drift = Math.abs(v.pos.x) + Math.abs(v.vel.x);
+      return { ok: true, drift: +drift.toFixed(2), alive: v.hp > 0 };
+    });
+    check(kb.ok && kb.drift < 1.0, `击退: 连中 10 发位移 <1m (${kb.drift})`);
+    // ③ 菜单选图：默认页（船图）改选地图后开局即时切换
+    await goto('');
+    await page.evaluate(() => { const g = window.__game; g.opts.map = 'city'; g.opts.mode = 'infection'; g.startMatch(); });
+    await page.waitForFunction(() => window.__game && window.__game.playing, null, { timeout: 60000 });
+    await page.waitForTimeout(500);
+    const c = await page.evaluate(() => {
+      const g = window.__game;
+      g.fastForward(2, 1 / 30);
+      return { name: g.mapName, built: g._builtMap, y: +g.player.pos.y.toFixed(2), g: g.player.onGround };
+    });
+    check(c.name === '死亡城市' && c.built === 'city', `选图: 菜单改选死亡城市即时生效 [${c.name}]`);
+    check(c.g && c.y > -0.5, `选图: 新地图地面正常 (y=${c.y})`);
+    await page.evaluate(() => { const g = window.__game; g.opts.map = 'subway'; g.startMatch(); });
+    await page.waitForFunction(() => window.__game && window.__game.playing, null, { timeout: 60000 });
+    await page.waitForTimeout(400);
+    const s2 = await page.evaluate(() => window.__game.mapName);
+    check(s2 === '地铁绝境', `选图: 再改选地铁绝境同样即时生效 [${s2}]`);
+  }
 } else if (ver === 'v38') {
   // 连杀奖励：3 杀补弹 / 5 杀回血 / 8 杀狂怒
   await goto('&mode=infection');
