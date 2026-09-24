@@ -48,6 +48,18 @@ function play(pos, build) {
 export const wozAudio = {
   mount(game) { gameRef = game; },
 
+  // V75 引信滴滴声：短促方波蜂鸣（freq Hz，pos 可选做距离衰减）
+  beep(pos, freq = 880, dur = 0.07) {
+    play(pos, (c, g, t0, vol) => {
+      const o = c.createOscillator();
+      o.type = 'square'; o.frequency.value = freq;
+      o.connect(g);
+      env(g, t0, 0.005, 0.22 * vol, dur);
+      o.start(t0); o.stop(t0 + dur + 0.05);
+    });
+  },
+
+
   // 变异嘶吼：锯齿低吼 + 呼吸噪声
   growl(pos) {
     play(pos, (c, g, t0, v) => {

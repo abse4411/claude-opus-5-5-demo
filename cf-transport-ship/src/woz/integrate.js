@@ -31,6 +31,7 @@ export class WozManager {
     this.growlT = 2;
     this.disguiseReveal = WOZ.disguiseReveal; // V55 混入伪装识破距离（bots.js 读取）
     this.rings = [];                  // V67 技能冲击波环
+    this.ghosts = [];                 // V74 疾冲残影
     // 目标物模式（对抗 / 爆破）
     this.points = [];
     this.bomb = null;
@@ -224,6 +225,7 @@ export class WozManager {
     this.tickFuses(dt);
     this.tickAirdrops(dt);
     this.tickRings(dt);
+    this.tickGhosts(dt);
     // 购买期结束自动关闭武器商店
     if (this.rules) {
       if (this.rules.phase === 'buy') this._buyOpen = true;
@@ -387,7 +389,11 @@ export class WozManager {
       new THREE.MeshBasicMaterial({ color: 0xff3020, transparent: true, opacity: 0.55, depthWrite: false }),
     );
     g.renderer.scene.add(core);
-    this.fuses.push({ live: true, a, t: WOZ.selfDestructFuse, core });
+    // V75 地面红色爆炸半径预警圈（跟随引信者）
+    const ring = new THREE.Mesh(new THREE.RingGeometry(WOZ.selfDestructRadius - 0.25, WOZ.selfDestructRadius, 40), new THREE.MeshBasicMaterial({ color: 0xff3020, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.1;
+    g.renderer.scene.add(ring);
+    this.fuses.push({ live: true, a, t: WOZ.selfDestructFuse, core, ring, beepT: 0 });
     wozAudio.fuse(a.isPlayer ? null : a.pos.clone());
     if (a.isPlayer) g.hud.toast('<b style="color:#ff5040">自爆引信已点燃！</b>冲进人堆！', 1.5);
     else g.hud.eventFeed(`${a.name} 点燃了自爆引信！`, 'avg');
@@ -405,6 +411,11 @@ export class WozManager {
       const pulse = 0.35 + 0.45 * Math.abs(Math.sin(f.t * 18));
       f.core.material.opacity = pulse;
       f.core.scale.setScalar(1 + (WOZ.selfDestructFuse - f.t) * 0.8);
+      // V75 预警圈跟随 + 加速期滴滴声
+      f.ring.position.x = f.a.pos.x; f.ring.position.z = f.a.pos.z;
+      f.ring.material.opacity = 0.35 + 0.35 * Math.abs(Math.sin(f.t * 12));
+      f.beepT -= dt;
+      if (f.beepT <= 0) { f.beepT = Math.max(0.12, f.t * 0.22); wozAudio.beep(f.a.isPlayer ? null : f.a.pos.clone(), 880); }
       if (f.t <= 0) {
         f.live = false;
         f.a.rushBoost = null; // 引信结束清除冲锋加速
@@ -422,15 +433,17 @@ export class WozManager {
           g.damage(v, owner, dmg, 'chest', 'claw', dir, false); // claw 标签 → 击杀感染链
         }
         g.damage(owner, null, 99999, 'chest', 'claw', new THREE.Vector3(0, 1, 0), false); // 自爆阵亡
+        f.ring.geometry.dispose(); f.ring.material.dispose();
       }
     }
-    for (const f of this.fuses) if (!f.live) g.renderer.scene.remove(f.core);
+    for (const f of this.fuses) if (!f.live) { g.renderer.scene.remove(f.core); if (f.ring) g.renderer.scene.remove(f.ring); }
     this.fuses = this.fuses.filter((f) => f.live);
   }
 
   clearFuses() {
-    for (const f of this.fuses) this.g.renderer.scene.remove(f.core);
+    for (const f of this.fuses) { this.g.renderer.scene.remove(f.core); if (f.ring) g_removeRing(f); }
     this.fuses = [];
+    function g_removeRing(f) { f.ring && f.ring.parent && f.ring.parent.remove(f.ring); }
   }
 
   // ---- 场景道具（V39）：爆炸油桶 + 可破坏木箱（射击/近战/爆炸均可破坏，油桶殉爆） ----
@@ -1673,6 +1686,31 @@ export class WozManager {
     this.rings.push({ ring, t: 0, maxR });
   }
 
+  // V74 残影：半透明人形胶囊渐隐（生命 0.28s）
+  spawnGhost(pos, life = 0.3) {
+    const g = this.g;
+    const m = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 0.85, 3, 8), new THREE.MeshBasicMaterial({ color: 0xff8a50, transparent: true, opacity: 0.42, depthWrite: false, blending: THREE.AdditiveBlending }));
+    m.position.copy(pos).setY(pos.y + 0.95);
+    g.renderer.scene.add(m);
+    this.ghosts.push({ m, t: 0, life });
+  }
+
+  tickGhosts(dt) {
+    for (let i = this.ghosts.length - 1; i >= 0; i--) {
+      const gh = this.ghosts[i];
+      gh.t += dt;
+      const k = gh.t / gh.life;
+      if (k >= 1) {
+        this.g.renderer.scene.remove(gh.m);
+        gh.m.geometry.dispose(); gh.m.material.dispose();
+        this.ghosts.splice(i, 1);
+        continue;
+      }
+      gh.m.material.opacity = 0.42 * (1 - k);
+      gh.m.scale.setScalar(1 - k * 0.25);
+    }
+  }
+
   tickRings(dt) {
     const g = this.g;
     for (let i = this.rings.length - 1; i >= 0; i--) {
@@ -1736,6 +1774,7 @@ export class WozManager {
     a.soldier.root.scale.setScalar(scale);
     if (cls === MutantClass.Crawler) a.soldier.material.color.setHex(0x9cc08a); // 蜥蜴沼泽绿
     else if (cls === MutantClass.Headhunter) a.soldier.material.color.setHex(0xaab2c0); // 断头者：冷钢灰蓝
+    else if (cls === MutantClass.Devourer) a.soldier.material.color.setHex(0xd86048); // V73 猎食者：嗜血红（调研：嗜血红色/对血味敏感）
     else a.soldier.material.color.setHex(0xffffff);
     this.applyClassAttachments(a);
   }
@@ -1768,10 +1807,10 @@ export class WozManager {
       const g = spine(), m = mat(0x8a2a1a, 0x551108, 0.5);
       for (let i = 0; i < 5; i++) add(g, cone(0.045, 0.28 + (i % 3) * 0.1), m, (i - 2) * 0.075, 0.16 - Math.abs(i - 2) * 0.04, -0.14 - (i % 2) * 0.05, -2.2 + (i - 2) * 0.14);
     } else if (cls === MutantClass.Devourer) {
-      // 背负巨斧：投掷用战斧（调研：掷巨斧/体形厚实）
-      const g = spine(), wood = mat(0x4a3420), steel = mat(0x828a92, 0x14181d, 0.7);
-      add(g, box(0.05, 0.92, 0.05), wood, 0.02, 0.1, -0.18, 0.25, 0, 0.18);
-      add(g, box(0.3, 0.17, 0.04), steel, 0.12, 0.5, -0.25, 0.25, 0, 0.18);
+      // 手持战斧（V73 对齐调研：猎食者"手持斧头"，挂手骨随挥击摆动）
+      const g = mk(S.B.handR), wood = mat(0x4a3420), steel = mat(0x828a92, 0x14181d, 0.7);
+      add(g, box(0.05, 0.6, 0.05), wood, 0, -0.1, -0.05, 0.5);
+      add(g, box(0.26, 0.16, 0.04), steel, 0.09, 0.2, -0.09, 0.5);
     } else if (cls === MutantClass.Bomber) {
       // 矿工帽 + 背后炸药包（调研：原为矿工，手握炸药包）
       const cap = head(), lampM = mat(0xfff2c0, 0xffe080, 1.6), capM = mat(0xc8a020), tnt = mat(0x8a2018), rope = mat(0xd8c8a0);
@@ -1848,8 +1887,9 @@ export class WozManager {
       a.forward(_fwd);
       a.vel.x += _fwd.x * 11; a.vel.z += _fwd.z * 11;
       a.vel.y = Math.max(a.vel.y, 3.2);
-      // V67 疾冲残影尘土：沿途 4 处冲击尘
+      // V74 疾冲残影拖尾：沿途 4 个渐隐幽灵 + 冲击尘
       for (let i = 1; i <= 4; i++) {
+        this.spawnGhost(a.pos.clone().addScaledVector(_fwd, -i * 1.1), 0.3 + i * 0.06);
         g.fx.impact(a.pos.clone().addScaledVector(_fwd, -i * 0.8).setY(0.15), new THREE.Vector3(0, 1, 0), 'dust', new THREE.Vector3(0, 1, 0));
       }
       wozAudio.dash(a.isPlayer ? null : a.pos.clone());

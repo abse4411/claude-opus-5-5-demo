@@ -416,6 +416,48 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v63') {
+  // V73-V75：猎食者嗜血红+手持斧 / 疾冲残影 / 自爆预警圈+滴滴
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      rules.convertToMutant(p.id, 'devourer', false); g.woz.convertNow(p, true);
+      p.protectT = 999;
+      const tint = p.soldier.material.color.getHex();
+      const axeOnHand = !!(p.soldier._deco && p.soldier._deco.some((d) => d.anchor === p.soldier.B.handR));
+      // 疾冲残影
+      rules.setMutantClass(p.id, 'nightrunner');
+      p.pos.set(0, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0;
+      g.fastForward(1 / 30, 1 / 30); p.updateCamera(0.016);
+      rules.tryUseSkill(p.id);
+      const ghosts = g.woz.ghosts.length;
+      g.fastForward(0.6, 1 / 30);
+      const ghostsGone = g.woz.ghosts.length;
+      // 自爆预警圈
+      rules.setMutantClass(p.id, 'bomber');
+      const stB = rules.state(p.id);
+      stB.skillCharge = 1; stB.skillActive = false; stB.skillTimeLeft = 0;
+      rules.tryUseSkill(p.id);
+      const f = g.woz.fuses[g.woz.fuses.length - 1];
+      const ringOk = !!(f && f.ring);
+      let beeped = 0;
+      for (let i = 0; i < 20; i++) { const b0 = f.beepT; g.woz.tick(0.016); if (f.beepT <= b0 - 0.001 || f.beepT !== b0) beeped++; }
+      g.fastForward(1.4, 1 / 30);
+      const ringGone = g.woz.fuses.length === 0;
+      return { ok: true, tint, axeOnHand, ghosts, ghostsGone, ringOk, ringGone, beeped };
+    });
+    check(r.ok && r.tint !== 0xffffff, `V73: 猎食者嗜血红皮 (${r.tint.toString(16)})`);
+    check(r.axeOnHand === true, 'V73: 斧头挂手骨随挥动');
+    check(r.ghosts === 4, `V74: 疾冲残影 ×4 (${r.ghosts})`);
+    check(r.ghostsGone === 0, 'V74: 残影 0.4s 内消散');
+    check(r.ringOk === true, 'V75: 自爆地面红色预警圈');
+    check(r.beeped > 0, 'V75: 引信滴滴计时推进');
+    check(r.ringGone === true, 'V75: 爆炸后预警圈清除');
+  }
 } else if (ver === 'v62') {
   // V72 六技能真实 case 全量验证：效果落地+数值与描述一致+冷却制+BOT 用技表
   const setup62 = async () => {
