@@ -19,6 +19,10 @@ const PANEL_CSS = `
 #wozPanel .bar i{display:block;height:100%;border-radius:5px;transition:width .12s}
 #wozPanel .row{display:flex;justify-content:space-between;align-items:center;margin-top:5px;font-size:12px;color:#cfd6dd}
 #wozPanel .skillReady{color:#ffd24a;font-weight:700}
+#wozBig .stagebar,#wozPanel .ultbar{position:relative;height:9px;background:rgba(255,255,255,.13);border-radius:5px;overflow:hidden;margin-top:5px}
+#wozBig .stagebar i{display:block;height:100%;background:linear-gradient(90deg,#ff8a3c,#ffd24a);width:0%}
+#wozPanel .ultbar i{display:block;height:100%;background:linear-gradient(90deg,#4fa0ff,#8cc8ff);width:0%}
+#wozBig .stagebar small,#wozPanel .ultbar small{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:600 8px/1 "Microsoft YaHei",sans-serif;color:#fff;text-shadow:0 1px 2px #000;letter-spacing:1px}
 #wozTop{position:absolute;top:110px;left:50%;transform:translateX(-50%);font:600 13px "PingFang SC","Microsoft YaHei",sans-serif;color:#dfe6ec;text-shadow:0 1px 3px #000;pointer-events:none;white-space:nowrap;background:rgba(8,10,14,.55);padding:3px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.14)}
 #wozBlind{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .15s}
 #wozClasses{position:absolute;right:14px;bottom:120px;display:flex;flex-direction:column;gap:8px;pointer-events:auto}
@@ -97,12 +101,14 @@ export class WozHud {
           <div id="wzHpWrap"><div class="bar"><i id="wzHp" style="width:100%;background:#8cc8ff"></i></div></div>
           <div class="row"><span id="wzHpTxt">100 HP</span><span id="wzTier"></span></div>
           <div class="row"><span id="wzEvo"></span><span id="wzDevour" style="color:#ffd24a"></span></div>
+          <div class="ultbar"><i id="wzUltFill"></i><small id="wzUltTxt"></small></div>
         </div>
       </div>
       <div id="wozBig" class="off">
         <div class="role" id="wzBigRole">变异者</div>
         <div class="hpwrap"><i id="wzBigHp"></i><div class="hpnum" id="wzBigNum"></div></div>
         <div class="sub"><span class="devour" id="wzBigDevour"></span><span id="wzBigEvo"></span></div>
+        <div class="stagebar"><i id="wzStageFill"></i><small id="wzStageTxt">基础形态</small></div>
         <div class="ringwrap"><div class="ring" id="wzRing"><div class="in"><span id="wzRingChar">?</span><small id="wzRingTxt">0%</small></div></div></div>
       </div>
       <div id="wozClasses"></div>
@@ -140,6 +146,10 @@ export class WozHud {
       bigHp: document.getElementById('wzBigHp'),
       bigNum: document.getElementById('wzBigNum'),
       bigDevour: document.getElementById('wzBigDevour'),
+      stageFill: document.getElementById('wzStageFill'),
+      stageTxt: document.getElementById('wzStageTxt'),
+      ultFill: document.getElementById('wzUltFill'),
+      ultTxt: document.getElementById('wzUltTxt'),
       bigEvo: document.getElementById('wzBigEvo'),
       ring: document.getElementById('wzRing'),
       ringChar: document.getElementById('wzRingChar'),
@@ -189,6 +199,15 @@ export class WozHud {
         : corpse >= 0 ? '[E] 吞噬尸体' : '';
       this.el.bigEvo.textContent = avenger ? '被复仇者击杀的变异者无法复活'
         : `进化 ${st.evoPoints} 点 · 吞噬 ${st.devourCount} 次 · ${['基础形态', '一阶·攻击强化', '二阶·防御强化', '三阶·特殊进化'][rules.evoStage(st)]}`;
+      // 阶段进度条（吞噬数向下一阶段）
+      {
+        const ks = WOZ.evoStageDevours, stage = rules.evoStage(st);
+        const prev = stage === 0 ? 0 : ks[stage - 1];
+        const next = stage < ks.length ? ks[stage] : null;
+        const prog = next === null ? 1 : Math.max(0, Math.min(1, (st.devourCount - prev) / (next - prev)));
+        this.el.stageFill.style.width = `${prog * 100}%`;
+        this.el.stageTxt.textContent = next === null ? '特殊进化 · 满阶' : `下一阶还需吞噬 ${next - st.devourCount} 次`;
+      }
       if (avenger) {
         this.el.ringChar.textContent = '⚡';
         this.el.ringTxt.textContent = '电锯';
@@ -217,6 +236,24 @@ export class WozHud {
         + (ultSt.ultActiveT > 0 ? ' · <b style="color:#ffd24a">必杀技生效中！</b>'
           : tier >= WOZ.humanMaxTier ? (ultSt.ultCooldown > 0 ? ` · 必杀技冷却 ${Math.ceil(ultSt.ultCooldown)}s` : ' · <b style="color:#ffd24a">[V] 必杀技就绪</b>')
           : '');
+      // 必杀技充能条（未满档=进化进度；满档=冷却/就绪）
+      {
+        const fill = this.el.ultFill, txt = this.el.ultTxt;
+        if (ultSt.ultActiveT > 0) {
+          fill.style.width = `${(ultSt.ultActiveT / WOZ.humanUltDuration) * 100}%`;
+          fill.style.background = 'linear-gradient(90deg,#ffd24a,#fff0a0)';
+          txt.textContent = '狂暴中';
+        } else if (tier >= WOZ.humanMaxTier) {
+          const cool = ultSt.ultCooldown / WOZ.humanUltCooldown;
+          fill.style.width = `${(1 - cool) * 100}%`;
+          fill.style.background = 'linear-gradient(90deg,#ffd24a,#ffe080)';
+          txt.textContent = ultSt.ultCooldown > 0 ? '冷却中' : '[V] 就绪';
+        } else {
+          fill.style.width = `${Math.min(1, tier / WOZ.humanMaxTier) * 100}%`;
+          fill.style.background = 'linear-gradient(90deg,#4fa0ff,#8cc8ff)';
+          txt.textContent = `进化 ${tier}/${WOZ.humanMaxTier} 档解锁必杀技`;
+        }
+      }
       this.el.evo.textContent = this.g.opts.mode === 'revenge' ? '濒败时觉醒复仇者' : `击杀 ${player.stats.k}`;
       this.el.devour.textContent = '';
     }

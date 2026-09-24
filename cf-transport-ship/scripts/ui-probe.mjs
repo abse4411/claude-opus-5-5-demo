@@ -416,6 +416,39 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v26') {
+  // 成长 HUD：变异者阶段进度条 + 人类必杀技充能条
+  await goto('&mode=infection');
+  {
+    const mut = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      rules.convertToMutant(p.id, 'devourer', false);
+      g.woz.convertNow(p, true);
+      const st = rules.state(p.id);
+      st.devourCount = 4; // 一阶与二阶之间：4/6
+      g.fastForward(0.3, 1 / 30);
+      return {
+        fill: document.getElementById('wzStageFill').style.width,
+        txt: document.getElementById('wzStageTxt').textContent,
+      };
+    });
+    check(mut.fill !== '' && mut.fill !== '0%' && mut.txt.includes('2'), `成长: 阶段进度条 (${mut.fill} ${mut.txt})`);
+    const hum = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      rules.convertToHumanForTest?.();
+      const st = rules.state(p.id);
+      st.side = 'human'; st.alive = true; p.team = 'GR'; p.alive = true;
+      st.humanSurviveTime = 45 * 2; // 二档
+      g.fastForward(0.3, 1 / 30);
+      return {
+        fill: document.getElementById('wzUltFill').style.width,
+        txt: document.getElementById('wzUltTxt').textContent,
+      };
+    });
+    check(hum.fill !== '' && hum.txt.includes('2'), `成长: 必杀技充能条 (${hum.fill} ${hum.txt})`);
+  }
 } else if (ver === 'v25') {
   // BOT 变异者职业化用技：决策表逐职业断言 + 爆破者实弹链路
   await goto('&mode=infection');
