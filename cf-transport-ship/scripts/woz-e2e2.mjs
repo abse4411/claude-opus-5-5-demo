@@ -198,6 +198,7 @@ await page.evaluate(() => {
     woz.spawnAiZombie(); // 确定性：主动刷一只 AI 怪物
     const ai = woz.tide.find((z) => z.alive);
     if (!ai) return { ok: false, why: 'no ai alive' };
+    ai.protectT = 0; // 清出生保护（新刷的怪有 0.5s 保护会吞掉这次伤害）
     // 回合可能已全员感染：合成一名存活人类做拾取验证
     let human = g.actors.find((a) => a.team === 'GR' && a.alive);
     if (!human) {
