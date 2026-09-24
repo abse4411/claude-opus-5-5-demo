@@ -97,6 +97,8 @@ export class Game {
     this.touch = new TouchControls(this);
     this.touchMode = this.touch.enabled;
     this.last = performance.now();
+    this.hitStopT = 0;             // 打击感顿帧（V31）：重击/击杀瞬间时间变慢
+    this.slowMoT = 0; this.slowMoScale = 0.35; // 慢动作时刻（V32）
     this.loop = this.loop.bind(this);
     requestAnimationFrame(this.loop);
     if (this.qs.has('autostart')) setTimeout(() => this.startMatch(), 300);
@@ -527,6 +529,7 @@ export class Game {
     }
     // 隔墙不可命中（变异者爪击/军刀均受视线遮挡约束）
     if (hit && this.world.raycast(eye.x, eye.y, eye.z, hit.dir.x, hit.dir.y, hit.dir.z, hit.t - 0.05, 'sight')) hit = null;
+    if (a.isPlayer) this.fx.shake = Math.max(this.fx.shake || 0, heavy ? 0.3 : 0.12); // 近战出手/命中震屏（V32）
     const delay = heavy ? 0.33 : 0.1;
     this.timers.push({
       t: this.time + delay, fn: () => {
@@ -668,6 +671,12 @@ export class Game {
     v.lastAttacker = att; v.lastHurt = this.time;
     const killed = v.hp <= 0;
     if (att && att !== v) att.stats.hits++;
+    // 打击感（V31）：受击者红闪；重击/爆头/爆炸击杀触发顿帧
+    if (v.soldier && !v.isPlayer) v.soldier.hitFlash(Math.min(1, 0.35 + hpD / 80) + (part === 'head' ? 0.25 : 0));
+    if (killed && att && att !== v) {
+      const heavyKill = melee || part === 'head' || wid === 'he' || wid === 'chainsaw';
+      if (heavyKill) this.hitStopT = Math.max(this.hitStopT, 0.07);
+    }
     if (v.isPlayer) {
       if (att && att !== v) this.hud.damageFrom(Math.atan2(-(att.pos.x - v.pos.x), -(att.pos.z - v.pos.z)));
       v.aimPunch += Math.min(0.05, hpD * 0.0012);
@@ -716,7 +725,8 @@ export class Game {
       const wn = WEAPONS[wid]?.name || wid;
       this.killedBy = att && att !== v ? `被 <span style="color:${att.team === 'BL' ? '#ff9b70' : '#8cc8ff'}">${att.name}</span> 用 ${wn}${hs ? ' <span style="color:#ff5040">爆头</span>' : ''}击杀` : '你阵亡了';
     }
-    this.fx.bloodSplat(v.pos);
+    this.fx.bloodBurst(v.pos, dir);
+    if (att === p && v !== p && p.multi >= 2) this.hitStopT = Math.max(this.hitStopT, 0.1); // 多杀顿帧更强
     if (this.woz) { this.woz.onKill(v, att); return; }
     if (this.score.BL >= this.goal || this.score.GR >= this.goal) setTimeout(() => { if (this.playing) this.endMatch(); }, 1200);
   }
@@ -755,6 +765,10 @@ export class Game {
     let dt = (now - this.last) / 1000; this.last = now;
     if (dt > 0.1) dt = 0.1;
     if (dt <= 0) return;
+    let scale = 1;
+    if (this.hitStopT > 0) { this.hitStopT -= dt; scale = Math.min(scale, 0.22); } // 顿帧：22% 慢速流逝
+    if (this.slowMoT > 0) { this.slowMoT -= dt; scale = Math.min(scale, this.slowMoScale); } // 慢动作时刻
+    dt *= scale;
     const R = this.renderer, cam = R.camera;
     this.realTime = (this.realTime || 0) + dt;
     const active = this.playing && !this.paused && !this.testFreeze; // testFreeze: e2e 冻结真实帧，仅 fastForward 驱动

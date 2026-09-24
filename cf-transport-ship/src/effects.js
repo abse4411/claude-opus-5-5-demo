@@ -172,6 +172,19 @@ export class Effects {
     for (let i = 0; i < 3; i++) this.smoke.emit({ x: p.x + nx * 0.05, y: p.y + ny * 0.05, z: p.z + nz * 0.05, vx: nx * (0.5 + Math.random()) + (Math.random() - 0.5) * 0.4, vy: ny * 0.8 + 0.3, vz: nz * (0.5 + Math.random()) + (Math.random() - 0.5) * 0.4, life: 0, max: 0.8 + Math.random() * 0.6, s0: 0.12, s1: 0.6, r: dust[0], g: dust[1], b: dust[2], a0: 0.35, a1: 0, grav: -0.2, drag: 2.5 });
   }
   bloodSplat(p) { this.decals.blood.add(p, new THREE.Vector3(0, 1, 0), 0.5 + Math.random() * 0.4); }
+  // 击杀血爆（V31 打击感）：定向喷溅 + 地面血泊
+  bloodBurst(p, dir) {
+    const d = dir ? new THREE.Vector3(dir.x || 0, dir.y || 0, dir.z || 0).setY(0).normalize() : new THREE.Vector3(0, 0, 1);
+    for (let i = 0; i < 3; i++) {
+      const j = new THREE.Vector3((Math.random() - 0.5) * 0.5, Math.random() * 0.5, (Math.random() - 0.5) * 0.5);
+      this.impact(p.clone().addScaledVector(d, 0.2 * i), d.clone().negate(), 'flesh', d);
+      void j;
+    }
+    for (let i = 0; i < 2; i++) {
+      const a = Math.random() * Math.PI * 2, r = 0.4 + Math.random() * 0.8;
+      this.bloodSplat({ x: p.x + Math.cos(a) * r, y: 0, z: p.z + Math.sin(a) * r });
+    }
+  }
   explosion(p) {
     this.light(p, 60, 0.35, 0xff9040, 22);
     this.add.emit({ x: p.x, y: p.y + 0.3, z: p.z, vx: 0, vy: 0, vz: 0, life: 0, max: 0.18, s0: 2, s1: 7, r: 2.2, g: 1.6, b: 0.9, a0: 1, a1: 0, grav: 0, drag: 0 });

@@ -416,6 +416,33 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v28') {
+  // 打击感：受击红闪 / 击杀血爆 / 顿帧 / 命中标记
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      rules.convertToMutant(v.id, 'nightrunner', false);
+      g.woz.convertNow(v, true); // 转变异者靶（规避友伤抑制）
+      v.protectT = 0; v.armor = 0;
+      // 普通伤害：受击红闪
+      g.damage(v, p, 30, 'chest', 'ak47', { x: 1, z: 0 }, false);
+      const flash = v.soldier._flash;
+      const hm1 = g.hud.hitT;
+      // 爆头击杀：顿帧触发
+      g.damage(v, p, 99999, 'head', 'ak47', { x: 1, z: 0 }, false);
+      const hs = g.hitStopT;
+      return { ok: true, flash: +flash.toFixed(2), hm1: +hm1.toFixed(2), hitStop: +hs.toFixed(2) };
+    });
+    check(r.ok && r.flash > 0.3, `打击: 受击红闪触发 (${r.flash})`);
+    check(r.hm1 > 0, `打击: 玩家命中标记 (${r.hm1})`);
+    check(r.hitStop >= 0.07, `打击: 爆头击杀顿帧 (${r.hitStop})`);
+  }
 } else if (ver === 'v27') {
   // 击杀播报与结算增强：WOZ 武器徽章 + killFeed 中文名 + 结算成长统计
   await goto('&mode=infection');

@@ -679,6 +679,7 @@ export class WozManager {
 
   // 目标物模式回合/对局结算
   endObjectives(winner, msg) {
+    this.g.slowMoT = 0.8; this.g.slowMoScale = 0.35; // 决胜慢动作（V32）
     const g = this.g;
     this.score[winner]++;
     this.hud.showBanner(
@@ -1244,6 +1245,7 @@ export class WozManager {
 
   onAvengerTransformed(id) {
     const g = this.g, a = g.actors[id], st = this.rules.state(id);
+    g.slowMoT = 0.9; g.slowMoScale = 0.35; // 复仇者觉醒慢动作（V32）
     if (a.team !== 'GR') {
       g.renderer.scene.remove(a.soldier.root);
       a.soldier = new Soldier('AVG');
@@ -1324,6 +1326,7 @@ export class WozManager {
   }
 
   onCorpseTide(count) {
+    this.g.slowMoT = 0.7; this.g.slowMoScale = 0.4; // 尸潮降临慢动作（V32）
     const g = this.g;
     g.hud.eventFeed(`☠ <b>尸潮降临！</b>${count} 只 AI 变异者涌入战场`, 'tide', 10);
     for (let i = 0; i < count; i++) {
@@ -1355,6 +1358,7 @@ export class WozManager {
 
   endMatch() {
     const g = this.g;
+    g.slowMoT = 0.8; g.slowMoScale = 0.35; // 感染族决胜慢动作（V32）
     g.ended = true; g.playing = false;
     this.disposeObjectives();
     const win = this.score.GR === this.score.BL ? null : this.score.GR > this.score.BL;

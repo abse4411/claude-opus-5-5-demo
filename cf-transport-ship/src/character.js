@@ -211,6 +211,7 @@ const DOWN = new THREE.Vector3(0, -1, 0);
 export class Soldier {
   constructor(team) {
     this.team = team;
+    this._flash = 0;
     this.root = new THREE.Group();
     const geo = buildGeometry(team);
     this.material = new THREE.MeshStandardMaterial({ vertexColors: true, map: atlas(), roughness: 0.82, metalness: 0.05 });
@@ -274,8 +275,17 @@ export class Soldier {
     fore.quaternion.copy(pq.invert().multiply(new THREE.Quaternion().setFromUnitVectors(DOWN, fdir)));
   }
   // st: {speed, fwd, side, crouch, pitch, onGround, dead, t}
+  // 受击红闪（V31 打击感）：命中瞬间皮肤泛红衰减
+  hitFlash(k = 1) {
+    this._flash = Math.min(1, this._flash + k);
+  }
   update(dt, st) {
     const B = this.B;
+    if (this._flash > 0) {
+      this._flash = Math.max(0, this._flash - dt * 5);
+      const e = this._flash * 0.55;
+      this.material.emissive.setRGB(e, e * 0.1, e * 0.05);
+    }
     if (this.deadT >= 0) { this.updateDeath(dt); return; }
     this.crouchK += ((st.crouch ? 1 : 0) - this.crouchK) * Math.min(1, dt * 10);
     const ck = this.crouchK;
