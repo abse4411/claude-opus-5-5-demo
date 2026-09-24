@@ -1520,17 +1520,21 @@ export class WozManager {
   }
 
   // ================= 规则层回调 =================
-  // V51 爬行者部位伤害：躯体 0.6 / 爆头 1.5 并定身 0.9s（原作：抗击打，爆头停止移动）
+  // 部位伤害：V51 爬行者（躯体 0.6 / 爆头 1.5 定身 0.9s）；V57 通用化——全变异者爆头硬直 0.35s（母体免疫）
   classPartDamage(v, part) {
     const rules = this.rules;
     if (!rules || !v || v.id >= rules.playerCount) return 1;
     const st = rules.state(v.id);
-    if (st.side !== 'mutant' || st.cls !== MutantClass.Crawler) return 1;
+    if (st.side !== 'mutant') return 1;
     if (part === 'head') {
-      if (v.alive) v.rootT = Math.max(v.rootT || 0, WOZ.crawlerHeadStop);
-      return WOZ.crawlerHeadMul;
+      if (st.cls === MutantClass.Crawler) {
+        if (v.alive) v.rootT = Math.max(v.rootT || 0, WOZ.crawlerHeadStop);
+        return WOZ.crawlerHeadMul;
+      }
+      if (v.alive && !st.isMother) v.rootT = Math.max(v.rootT || 0, WOZ.headStopAll);
+      return 1;
     }
-    return WOZ.crawlerBodyArmor;
+    return st.cls === MutantClass.Crawler ? WOZ.crawlerBodyArmor : 1;
   }
 
   isClass(v, key) {

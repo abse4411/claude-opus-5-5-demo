@@ -114,6 +114,7 @@ export const WOZ = {
   frostHp: 450,             // 寒霜行者（V56 末日求生）：冰霜系 AI 特感
   frostChill: 0.72,         // 命中减速倍率
   frostChillTime: 3,        // 减速持续
+  headStopAll: 0.35,        // 爆头硬直（V57 通用化）：全变异者爆头短暂停顿，母体免疫
 };
 
 // ---- 生化对抗：人类攻方占领战术据点，变异者守方 ----

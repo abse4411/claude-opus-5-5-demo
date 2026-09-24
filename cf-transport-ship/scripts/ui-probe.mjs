@@ -416,6 +416,37 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v53') {
+  // V57 爆头硬直通用化：普通变异者 0.35s / 爬行者 0.9s / 母体免疫
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const att = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!att) return { ok: false };
+      att.pos.set(-5, 0.1, 0); att.protectT = 0;
+      const hit = (part) => { p.rootT = 0; g.damage(p, att, 100, part, 'ak47', { x: 1, y: 0, z: 0 }, false, false); return p.rootT; };
+      if (rules.state(p.id).side !== 'mutant') { rules.convertToMutant(p.id, 'souleater', false); g.woz.convertNow(p, true); }
+      p.protectT = 0; p.pos.set(0, 0.1, 0);
+      g.fastForward(1 / 30, 1 / 30);
+      const seHead = hit('head');
+      const seBody = hit('body');
+      rules.setMutantClass(p.id, 'crawler'); g.woz.applyClassVisual(p);
+      const crHead = hit('head');
+      rules.convertToMutant(p.id, 'mother', true); g.woz.convertNow(p, true); // 母体需 convertToMutant（setMutantClass 拒绝母体）
+      p.protectT = 0;
+      const moHead = hit('head');
+      return { ok: true, seHead, seBody, crHead, moHead };
+    });
+    check(r.ok, '爆头硬直: 场景搭建');
+    check(Math.abs(r.seHead - 0.35) < 0.01, `爆头硬直: 噬魂者爆头 0.35s (${r.seHead?.toFixed(2)})`);
+    check(r.seBody === 0, `爆头硬直: 躯体不定身 (${r.seBody})`);
+    check(Math.abs(r.crHead - 0.9) < 0.01, `爆头硬直: 爬行者特化 0.9s (${r.crHead?.toFixed(2)})`);
+    check(r.moHead === 0, `爆头硬直: 母体免疫 (${r.moHead})`);
+  }
 } else if (ver === 'v52') {
   // V56 末日求生：寒霜行者属性 + 冰缓命中 + 每3波混入 + 模式更名
   await goto('&mode=bio');
