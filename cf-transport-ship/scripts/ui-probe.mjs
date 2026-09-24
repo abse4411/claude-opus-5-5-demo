@@ -436,7 +436,10 @@ if (ver === 'v1') {
     const g = window.__game, rules = g.woz.rules, p = g.player;
     g.fastForward(20, 1 / 30);
     rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
-    const prim = p.inv[0].id, mel = p.inv[2].id;
+    // 玩家若已死亡/被感染：拉回人类并重发配装（否则 inv 单槽读到 undefined）
+    const st0 = rules.state(p.id);
+    if (st0.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+    const prim = p.inv[0]?.id, mel = p.inv[2]?.id;
     // 撬棍实劈：变异者靶
     if (!p.alive) { p.alive = true; p.hp = 100; p.soldier.reset(); p.respawnT = 0; } // 保活
     const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
