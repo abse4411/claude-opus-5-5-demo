@@ -510,6 +510,41 @@ if (ver === 'v1') {
     });
     check(fkey.ok && fRes.fired, `技能键: F 键释放缠绕 (charge=${fkey.charge})`);
   }
+  {
+    // ⑧ 独立冷却（全新页面排除前序状态干扰）：缠绕 7s 可再放；噬魂者 5s 回充 20%
+    await goto('&mode=infection');
+    const cd = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      rules.convertToMutant(p.id, 'tangler', false);
+      g.woz.convertNow(p, true);
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 999;
+      if (p.vel.set) p.vel.set(0, 0, 0);
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      v.pos.set(0, 0.1, 0); v.protectT = 0;
+      g.fastForward(1 / 30, 1 / 30);
+      p.updateCamera(0.016);
+      rules.tryUseSkill(p.id); // 用掉缠绕（charge 1→0）
+      g.fastForward(7, 1 / 30); // 缠绕冷却 6s（+0.3s 技能动画期）
+      const tReady = rules.state(p.id).skillCharge >= 1;
+      const refired = rules.tryUseSkill(p.id);
+      // 噬魂者：测回充速率（25s 冷却：越过 3s 尖啸后 5s 应回充 5/25=20%）
+      rules.convertToMutant(p.id, 'souleater', false);
+      g.woz.convertNow(p, true);
+      const fin = rules.finishRound; rules.finishRound = () => {};
+      rules.tryUseSkill(p.id);
+      g.fastForward(3.4, 1 / 30);
+      const c1 = rules.state(p.id).skillCharge;
+      g.fastForward(5, 1 / 30);
+      const c2 = rules.state(p.id).skillCharge;
+      rules.finishRound = fin;
+      return { ok: true, tReady, refired, seRate: +(c2 - c1).toFixed(2) };
+    });
+    check(cd.ok && cd.tReady && cd.refired, `冷却: 缠绕 7s 冷却结束后可再释放 (ready=${cd.tReady} refire=${cd.refired})`);
+    check(cd.seRate > 0.15 && cd.seRate < 0.25, `冷却: 噬魂者 5s 回充 ${Math.round(cd.seRate * 100)}%（25s 冷却制，旧 45s 仅 11%）`);
+  }
 } else if (ver === 'v40') {
   // ① M79 连发回归：三发依次发射，不再第一发后卡死
   await goto('&mode=infection');

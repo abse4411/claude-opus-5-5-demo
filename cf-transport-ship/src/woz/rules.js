@@ -1,6 +1,6 @@
 // WOZ 规则状态机：纯逻辑、零渲染依赖，可在 node 下直接断言测试。
 // 阵营约定：人类侧 = 'GR'（保卫者），变异者侧 = 'BL'（潜伏者）。
-import { WOZ, MutantClass, skillOf, skillDuration } from './config.js';
+import { WOZ, MutantClass, skillOf, skillDuration , skillCooldownSec } from './config.js';
 
 // xorshift32 确定性随机（同种子同结果，供测试与回放）
 export class WozRng {
@@ -161,7 +161,7 @@ export class WozRules {
   tickMutant(p, dt) {
     p.devourCooldown = Math.max(0, p.devourCooldown - dt);
     if (!p.skillActive) {
-      p.skillCharge = Math.min(1, p.skillCharge + dt / WOZ.skillChargeSeconds);
+      p.skillCharge = Math.min(1, p.skillCharge + dt / skillCooldownSec(p.cls)); // 各技能独立冷却
     } else {
       p.skillTimeLeft -= dt;
       if (p.skillTimeLeft <= 0) p.skillActive = false;

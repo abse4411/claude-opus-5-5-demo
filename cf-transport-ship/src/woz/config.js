@@ -22,7 +22,6 @@ export const WOZ = {
   clawRate: 0.55,           // 爪击间隔（秒）
 
   // 技能
-  skillChargeSeconds: 45,
   skillChargePerDamage: 1 / 900,
   dashSpeed: 2.6,           // 疾冲期间额外移速倍率
   dashDuration: 0.6,
@@ -191,6 +190,21 @@ export function skillOf(cls) {
   if (cls === MutantClass.Tangler) return MutantSkill.Entangle;
   if (cls === MutantClass.Bomber) return MutantSkill.SelfDestruct;
   return MutantSkill.None;
+}
+
+// 技能冷却（秒）：各技能独立（调研：缠绕者原作"不需要等待能量槽聚集，可随时使用"→最短；
+// 自爆/咆哮属战略级→最长。官方精确数值已随停运失传，此为按时代同类标准的重建值）
+const SKILL_COOLDOWNS = {
+  [MutantClass.Nightrunner]: 15,  // 疾冲：机动技
+  [MutantClass.Souleater]: 25,    // 致盲尖啸：开团技
+  [MutantClass.Devourer]: 20,     // 投掷斧头：输出技
+  [MutantClass.Tangler]: 6,       // 缠绕：原作"可随时使用"
+  [MutantClass.Bomber]: 30,       // 自爆：战略级
+  [MutantClass.Mother]: 30,       // 狂暴咆哮：战略级
+};
+
+export function skillCooldownSec(cls) {
+  return SKILL_COOLDOWNS[cls] || 25;
 }
 
 export function skillDuration(cls) {
