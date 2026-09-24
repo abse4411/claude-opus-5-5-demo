@@ -110,6 +110,7 @@ export const WOZ = {
   sorrowFrenzyHp: 300,      // 末分钟狂潮版血量（HP 低）
   sorrowFrenzyCount: 4,     // 狂潮只数
   disguiseReveal: 8,        // 混入伪装（V55）：人类 8m 内识破附身爬行者
+  morphDuration: 1.2,       // V93 尸变演出：战斗中被感染 → 倒地冒黑雾 → 爬起为变异者
   disguiseBreak: 3,         // 出爪后暴露时长
   frostHp: 450,             // 寒霜行者（V56 末日求生）：冰霜系 AI 特感
   frostChill: 0.72,         // 命中减速倍率

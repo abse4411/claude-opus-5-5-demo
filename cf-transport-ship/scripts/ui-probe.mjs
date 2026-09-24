@@ -2842,6 +2842,55 @@ if (ver === 'v1') {
     check(r.hitAny, `斧头: 命中前方人类并触发感染链 (hitAny=${r.hitAny})`);
     check(r.charge < 1, `斧头: 技能充能已消耗 (${r.charge})`);
   }
+} else if (ver === 'v67') {
+  // V93 感染模式精修：尸变演出 + 爆发播报
+  let toasts = [];
+  await page.goto(base + '&mode=infection');
+  await page.waitForFunction(() => window.__game && window.__game.playing, null, { timeout: 60000 });
+  await page.waitForTimeout(500);
+  await page.evaluate(() => { const g = window.__game; g.woz.rules.phase = 'buy'; g.woz.rules.phaseTimeLeft = 0.6; });
+  await page.evaluate(() => {
+    const g = window.__game;
+    window.__toasts = [];
+    const orig = g.hud.toast.bind(g.hud);
+    g.hud.toast = (m, d) => { window.__toasts.push(String(m)); return orig(m, d); };
+    g.fastForward(1.0);
+  });
+  const r = await page.evaluate(() => {
+    const g = window.__game, rules = g.woz.rules;
+    const mother = g.actors.find((a) => a.id < rules.playerCount && rules.state(a.id).isMother);
+    const victim = g.actors.find((a) => a.id < rules.playerCount && rules.state(a.id).side === 'human' && !a.isPlayer);
+    const killer = mother || victim;
+    g.kill(victim, killer, 'claw', false, false, { x: 1, y: 0, z: 0 });
+    victim.respawnT = 0.01;
+    g.fastForward(0.1);
+    const t0 = victim.morphT || 0;
+    const locked = victim.speedMul;
+    // 尸变中出爪应被拦截
+    const tgt = g.actors.find((a) => a.alive && a.team !== victim.team && !a.isPlayer);
+    const before = tgt ? tgt.hp : -1;
+    g.melee(victim, false);
+    const meleeBlocked = tgt ? tgt.hp === before : true;
+    g.fastForward(1.4);
+    return {
+      motherMorph: mother ? (mother.morphT || 0) : -1,
+      t0, locked, meleeBlocked,
+      tEnd: victim.morphT || 0,
+      speedEnd: victim.speedMul,
+      weapon: victim.soldier && victim.soldier.weapon ? victim.soldier.weapon.id : (victim.inv ? victim.inv[0].id : '?'),
+      side: rules.state(victim.id).side,
+    };
+  });
+  toasts = await page.evaluate(() => window.__toasts || []);
+  check(r.t0 > 0.9, `尸变: 转化瞬间进入 1.2s 演出 (morphT=${r.t0.toFixed(2)})`);
+  check(r.t0 <= 1.2, `尸变: 计时不超配值 (${r.t0.toFixed(2)})`);
+  check(r.locked === 0, `尸变: 期间移速锁定为 0 (${r.locked})`);
+  check(r.meleeBlocked, `尸变: 期间出爪被拦截`);
+  check(r.tEnd === 0 && r.speedEnd > 0, `尸变: 结束后爬起并恢复移速 (t=${r.tEnd} v=${r.speedEnd})`);
+  check(r.weapon === 'claw', `尸变: 爬起后持爪 (${r.weapon})`);
+  check(r.side === 'mutant', `尸变: 阵营已变异 (${r.side})`);
+  check(r.motherMorph === 0 || r.motherMorph === -1, `母体: 爆发落地不走尸变 (${r.motherMorph})`);
+  check(toasts.some((t) => t.includes('病毒爆发')), `播报: 爆发全场警报已触发 (${toasts.length} 条)`);
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

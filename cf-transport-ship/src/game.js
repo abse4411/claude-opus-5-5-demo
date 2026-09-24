@@ -560,6 +560,7 @@ export class Game {
     audio.playKnife('light', 'flesh', a.isPlayer ? null : eye);
   }
   melee(a, heavy) {
+    if (a.morphT > 0) return; // V93 尸变中不可出爪
     this.woz?.breakDisguise?.(a); // V55 伪装：出爪暴露
     const d = WEAPONS[a.weapon?.id] || WEAPONS.knife;
     const range = heavy ? d.rangeHeavy : d.rangeLight;

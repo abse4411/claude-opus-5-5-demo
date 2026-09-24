@@ -741,6 +741,16 @@ export class WozManager {
       if (st.side === 'mutant' && st.alive && a.alive) st.hp = a.hp;
     }
     rules.tick(dt);
+    // V93 爆发播报（原作：购买期结束全场警报，母体现身）
+    if (rules.phase !== this._lastPhase) {
+      if (rules.phase === 'outbreak' && this.cat() === 'infection') {
+        g.hud.toast('<b style="color:#ff4030">⚠ 生化病毒爆发！</b>变异母体已经出现', 3);
+        g.hud.eventFeed('☣ 生化病毒爆发，母体出现', 'inf');
+        wozAudio.tide();
+        g.fx.shake = Math.max(g.fx.shake || 0, 0.4);
+      }
+      this._lastPhase = rules.phase;
+    }
     // 规则层治疗 → 引擎血量；同步移速与尸体状态
     for (let i = 0; i < rules.playerCount; i++) {
       const a = g.actors[i], st = rules.state(i);
@@ -757,6 +767,19 @@ export class WozManager {
         a.speedMul = rules.humanSpeedMultiplier(i);
       }
       if (a.alive && a.staggerT > 0) a.speedMul = (a.speedMul || 1) * 0.45; // 命中暂缓减速
+      // V93 尸变演出推进：转化期间锁移动；结束时爬起（复位动画+职业外观+低吼+黑雾爆散）
+      if (a.morphT > 0) {
+        a.morphT -= dt;
+        a.speedMul = 0;
+        if (Math.random() < 2.5 * dt) this.morphFog(a, 1);
+        if (a.morphT <= 0) {
+          a.morphT = 0;
+          if (!a.isPlayer) { a.soldier.reset(); a.soldier.setWeapon('claw'); }
+          this.applyClassVisual(a);
+          wozAudio.growl(a.isPlayer ? null : a.pos.clone());
+          this.morphFog(a, 6);
+        }
+      }
     }
     // V86 低血心跳：玩家 HP<30 动态开启心跳音（离开低血自动关闭）
     {
@@ -1564,6 +1587,8 @@ export class WozManager {
     }
     if (this.pendingConvert.has(a.id)) {
       this.pendingConvert.delete(a.id);
+      // V93 尸变演出：真实对局中战斗期的首次感染走此路径 → 标记起身后进入倒地→爬起演出
+      if (!st.isMother && st.rebirths === 0 && rules.phase === 'battle') a._morphRise = true;
       this.convertNow(a, true); // 原地变身（对齐原作：感染后在原地转化，不去复活点）
       return;
     }
@@ -1616,7 +1641,23 @@ export class WozManager {
       wozAudio.convert(a.pos.clone());
     } else wozAudio.convert(a.pos.clone());
     if ((a instanceof Bot) && !a.isZombie) toZombieAI(a);
-    wozAudio.growl(a.isPlayer ? null : a.pos.clone());
+    // V93 尸变演出（原作标志性瞬间）：战斗中被感染的子体不即时站起——保持倒地姿态
+    // 冒黑雾 1.2s 后爬起。母体（爆发落地）/再变异（复仇即时重生）不走此流程。
+    if (a._morphRise) {
+      a._morphRise = false;
+      a.morphT = WOZ.morphDuration;
+      if (!a.isPlayer) a.soldier.die(0, 1, false);
+      this.morphFog(a, 10);
+      if (a.isPlayer) g.hud.toast('<b style="color:#ff5040">尸变中…</b>病毒正在重塑你的身体', WOZ.morphDuration);
+    } else wozAudio.growl(a.isPlayer ? null : a.pos.clone());
+  }
+
+  // V93 尸变黑雾：感染者躯体周围升腾的暗色病毒雾
+  morphFog(a, n) {
+    const g = this.g;
+    for (let i = 0; i < n; i++) {
+      g.fx.smoke.emit({ x: a.pos.x + (Math.random() - 0.5) * 0.8, y: a.pos.y + 0.15 + Math.random() * 1.1, z: a.pos.z + (Math.random() - 0.5) * 0.8, vx: 0, vy: 0.5 + Math.random() * 0.4, vz: 0, life: 0, max: 1.2 + Math.random() * 0.5, s0: 0.12, s1: 0.5, r: 0.08, g: 0.08, b: 0.1, a0: 0.55, a1: 0, grav: -0.2, drag: 1.2 });
+    }
   }
 
   pickSpawn(team) {
