@@ -28,6 +28,7 @@ export class WozManager {
     this.tide = [];                   // 尸潮 / AI 怪物
     this.hud = new WozHud(game);
     wozAudio.mount(game);
+    if (typeof window !== 'undefined') window.__wozAudio = wozAudio; // 探针可观测（V96）
     this.growlT = 2;
     this.disguiseReveal = WOZ.disguiseReveal; // V55 混入伪装识破距离（bots.js 读取）
     this.rings = [];                  // V67 技能冲击波环
@@ -1050,9 +1051,48 @@ export class WozManager {
     } else if (ev === 'detonated') {
       g.fx.explosion(this.bomb.pos.clone());
       g.fx.shake = 2;
+      // V96 引爆终结演出：慢动作 + 蘑菇状烟尘柱 + 冲地尘环
+      g.slowMoT = 0.8; g.slowMoScale = 0.35;
+      const bp = this.bomb.pos.clone();
+      for (let i = 0; i < 22; i++) {
+        g.fx.smoke.emit({ x: bp.x + (Math.random() - 0.5) * 1.4, y: bp.y + Math.random() * 0.5, z: bp.z + (Math.random() - 0.5) * 1.4, vx: 0, vy: 5 + Math.random() * 4, vz: 0, life: 0, max: 1.4 + Math.random() * 0.8, s0: 0.4, s1: 1.6, r: 0.5, g: 0.42, b: 0.36, a0: 0.6, a1: 0, grav: -1.2, drag: 0.4 });
+      }
+      for (let i = 0; i < 16; i++) {
+        const ang = (i / 16) * Math.PI * 2;
+        g.fx.smoke.emit({ x: bp.x, y: bp.y + 0.1, z: bp.z, vx: Math.cos(ang) * 7, vy: 0.6, vz: Math.sin(ang) * 7, life: 0, max: 0.8, s0: 0.3, s1: 0.9, r: 0.55, g: 0.5, b: 0.42, a0: 0.5, a1: 0, grav: -0.4, drag: 2.2 });
+      }
+      wozAudio.shatter(bp.clone());
+      wozAudio.tide();
       return this.endObjectives('GR', '核弹引爆，变异者巢穴覆灭！');
     } else if (ev === 'destroyed') {
+      // V96 摧毁演出：金属火花四溅 + 变异者欢呼
+      const bp = this.bomb.pos.clone();
+      for (let i = 0; i < 18; i++) {
+        g.fx.add.emit({ x: bp.x, y: bp.y + 0.5, z: bp.z, vx: (Math.random() - 0.5) * 8, vy: 2 + Math.random() * 4, vz: (Math.random() - 0.5) * 8, life: 0, max: 0.5 + Math.random() * 0.3, s0: 0.06, s1: 0.02, r: 1.8, g: 1.2, b: 0.4, a0: 1, a1: 0, grav: 9, drag: 0.8 });
+      }
+      wozAudio.shatter(bp.clone());
+      g.hud.toast('<b style="color:#8cff8c">核弹装置被摧毁！</b>变异者守住了巢穴', 3);
       return this.endObjectives('BL', '核弹被变异者摧毁！');
+    }
+    // V96 倒计时蜂鸣（原作拆除玩法手感）：越接近引爆越急促；10s 全场警告
+    if (this.bomb.state === 'planted' || this.bomb.state === 'destroying') {
+      const t = this.bomb.timer;
+      this._bombBeepT = (this._bombBeepT ?? 0.5) - dt;
+      if (this._bombBeepT <= 0) {
+        const urgent = t <= 10;
+        this._bombBeepT = urgent ? 0.18 : Math.max(0.22, Math.min(1.0, t / 40));
+        wozAudio.beep(this.bomb.pos.clone(), urgent ? 1500 : 1100, 0.06);
+      }
+      if (t <= 10 && !this._bombWarned) {
+        this._bombWarned = true;
+        g.hud.toast('<b style="color:#ff4030">⚠ 核弹即将引爆！</b>变异者抓紧摧毁', 2.5);
+      }
+    } else if (this.bomb.state === 'planting') {
+      // 安放吟唱：每 25% 进度一记确认音
+      const p25 = Math.floor(this.bomb.progress * 4);
+      if (p25 !== this._plantTick) { this._plantTick = p25; wozAudio.beep(this.bomb.pos.clone(), 700 + p25 * 150, 0.07); }
+    } else {
+      this._bombWarned = false;
     }
     // V64 感染爆点：核弹安放后持续释放生化毒云，近距人类持续掉血
     if (this.bomb.state === 'planted' || this.bomb.state === 'destroying') {

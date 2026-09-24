@@ -2969,6 +2969,56 @@ if (ver === 'v1') {
     check(r.fog2 > r.fog0 * 1.4, `浓雾: 占领2点后密度加大 (${r.fog0.toFixed(4)}→${r.fog2.toFixed(4)})`);
     check(Math.abs(r.reinforcing - 18) < 0.01, `增援: 占2点后波间隔收缩至 18s (${r.reinforcing.toFixed(1)}s)`);
   }
+} else if (ver === 'v70') {
+  // V96 爆破模式精修：安放吟唱音 / 倒计时蜂鸣加速 / 10s 警告 / 引爆蘑菇柱
+  await page.goto(base + '&mode=demol');
+  await page.waitForFunction(() => window.__game && window.__game.playing, null, { timeout: 60000 });
+  await page.waitForTimeout(500);
+  const r = await page.evaluate(() => {
+    const g = window.__game, woz = g.woz, bomb = woz.bomb;
+    const beeps = [];
+    const wozAudio = window.__wozAudio;
+    const orig = wozAudio.beep.bind(wozAudio);
+    wozAudio.beep = (pos, f, d) => { beeps.push(f); return orig(pos, f, d); };
+    const toasts = [];
+    const origT = g.hud.toast.bind(g.hud);
+    g.hud.toast = (m, d) => { toasts.push(String(m)); return origT(m, d); };
+    // 直接驱动 tickDemol：安放吟唱（E 键）→ 已安放 → 倒计时
+    const human = g.actors.find((a) => a.alive && a.team === 'GR' && !a.isPlayer) || g.actors.find((a) => a.alive && a.team === 'GR');
+    bomb.state = 'idle';
+    bomb.pos.set(human.pos.x, 0.4, human.pos.z);
+    bomb.def = { x: human.pos.x, z: human.pos.z, r: 99, name: 'site' }; // 全图站点便于站内
+    human.keys = human.keys || new Set();
+    human.keys.add('KeyE');
+    let plantBeeps = 0;
+    for (let i = 0; i < 150; i++) { woz.tickDemol(1 / 30); if (bomb.state === 'planting') plantBeeps = beeps.length; if (bomb.state === 'planted' && bomb.timer > 40) break; }
+    const plantedOk = bomb.state === 'planted';
+    // 倒计时蜂鸣：44s→间隔长；9s→急促且警告 toast
+    bomb.timer = 44;
+    const b0 = beeps.length;
+    for (let i = 0; i < 30; i++) woz.tickDemol(1 / 30);
+    const midBeeps = beeps.length - b0;
+    bomb.timer = 9.5;
+    const b1 = beeps.length;
+    for (let i = 0; i < 30; i++) woz.tickDemol(1 / 30);
+    const urgentBeeps = beeps.length - b1;
+    const warned = toasts.some((t) => t.includes('即将引爆'));
+    // 引爆演出：蘑菇柱粒子 + 慢动作
+    let smokes = 0;
+    const origS = g.fx.smoke.emit.bind(g.fx.smoke);
+    g.fx.smoke.emit = (o) => { smokes++; return origS(o); };
+    bomb.state = 'planted'; bomb.timer = 0.01;
+    woz.tickDemol(0.05);
+    g.fx.smoke.emit = origS;
+    wozAudio.beep = orig;
+    return { plantedOk, plantBeeps, midBeeps, urgentBeeps, warned, smokes, slowMo: g.slowMoT || 0, ended: g.ended || woz.ended };
+  });
+  check(r.plantedOk, `安放: 吟唱完成进入倒计时 (${r.plantedOk})`);
+  check(r.plantBeeps >= 2, `安放: 吟唱确认音 (n=${r.plantBeeps})`);
+  check(r.midBeeps >= 1 && r.urgentBeeps > r.midBeeps, `蜂鸣: 后段更急促 (mid=${r.midBeeps} urgent=${r.urgentBeeps})`);
+  check(r.warned, `警告: 10s 全场警告 (${r.warned})`);
+  check(r.smokes >= 30, `引爆: 蘑菇烟尘柱粒子 (n=${r.smokes})`);
+  check(r.slowMo, `引爆: 慢动作演出 (${r.slowMo.toFixed(2)}s)`);
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }
