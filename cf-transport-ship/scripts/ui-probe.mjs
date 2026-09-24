@@ -354,7 +354,7 @@ if (ver === 'v1') {
       srows: (document.querySelector('#loadCards .card')?.querySelectorAll('.srow') || []).length,
       timer: document.getElementById('loadTimer').textContent,
     }));
-    check(shop.visible && shop.cards === 24, `商店: 打开且 24 张主武器卡 (${shop.cards})`);
+    check(shop.visible && shop.cards === 26, `商店: 打开且 24 张主武器卡 (${shop.cards})`);
     check(shop.srows === 3, `商店: 属性条渲染 (${shop.srows} 行)`);
     check(shop.timer.includes('购买期'), `商店: 购买期倒计时 (${shop.timer.trim().slice(-18)})`);
     await page.waitForTimeout(200);
@@ -415,6 +415,52 @@ if (ver === 'v1') {
     await page.evaluate(() => window.__game.toggleHelp());
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
+  }
+} else if (ver === 'v56') {
+  // V60 武器批次2：温彻斯特/龙息霰弹/毒液手雷 卡片+实弹/毒液区域
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st = rules.state(p.id);
+      if (st.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      p.protectT = 999;
+      p.giveLoadout('winchester', 'deagle', 'knife');
+      // 温彻斯特实弹
+      p.inv[0] = new (p.inv[0].constructor)('winchester');
+      p.inv[0].mag = 8; p.inv[0].reserve = 32;
+      p.slot = 0; p.readyAt = 0; p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2;
+      g.fastForward(0.5, 1 / 30);
+      const m0 = p.inv[0].mag;
+      p.weaponUpdate(0.016, { fire: false, firePressed: true, alt: false, altPressed: false, reload: false, sw: null });
+      const winFired = p.inv[0].mag < m0;
+      // 龙息霰弹
+      p.inv[0] = new (p.inv[0].constructor)('dragonsbreath');
+      p.inv[0].mag = 6; p.inv[0].reserve = 24;
+      p.slot = 0; p.readyAt = 0;
+      g.fastForward(0.5, 1 / 30);
+      const d0 = p.inv[0].mag;
+      p.weaponUpdate(0.016, { fire: false, firePressed: true, alt: false, altPressed: false, reload: false, sw: null });
+      const dragonFired = p.inv[0].mag < d0;
+      // 毒液手雷：投掷引爆后生成毒液区域
+      // 直接构造毒液手雷投掷（throwGrenade 读当前武器 id）
+      const WS = p.inv[0].constructor;
+      const cur = p.slot;
+      p.inv[cur] = new WS('venom'); p.inv[cur].mag = 1;
+      p.slot = cur; p.readyAt = 0; p.pos.set(0, 0.1, 0);
+      g.fastForward(0.3, 1 / 30);
+      g.throwGrenade(p);
+      g.fastForward(2.5, 1 / 30);
+      const venomZones = g.zones.list.filter((z) => z.kind === 'venom').length;
+      return { ok: true, winFired, dragonFired, venomZones };
+    });
+    check(r.ok, 'V60: 场景搭建');
+    check(r.winFired === true, 'V60: 温彻斯特可开火');
+    check(r.dragonFired === true, 'V60: 龙息霰弹可开火');
+    check(r.venomZones >= 1, `V60: 毒液手雷生成毒液区域 ×${r.venomZones}`);
   }
 } else if (ver === 'v55') {
   // V59 武器批次1：波波沙/双持沙鹰/军用铁锹 卡片+实弹
@@ -1524,7 +1570,7 @@ if (ver === 'v1') {
       b: !!document.querySelector('#loadCards .card[data-w="xm8"]'),
       c: !!document.querySelector('#loadCards .card[data-w="dualuzi"]'),
     }));
-    check(r.cards === 24 && r.a && r.b && r.c, `武器B: 24 张卡片含 95式/XM8/双持乌兹 (${r.cards})`);
+    check(r.cards === 26 && r.a && r.b && r.c, `武器B: 24 张卡片含 95式/XM8/双持乌兹 (${r.cards})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'qbz95', melee: 'crowbar', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');
@@ -1567,7 +1613,7 @@ if (ver === 'v1') {
       c: !!document.querySelector('#loadCards .card[data-w="m3super"]'),
       d: !!document.querySelector('#loadCards .card[data-w="mac10"]'),
     }));
-    check(r.cards === 24 && r.a && r.b && r.c && r.d, `武器A: 23 张卡片含四新枪 (${r.cards})`);
+    check(r.cards === 26 && r.a && r.b && r.c && r.d, `武器A: 23 张卡片含四新枪 (${r.cards})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'm14ebr', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');
@@ -1855,7 +1901,7 @@ if (ver === 'v1') {
       flash: !!document.querySelector('#nadeCards .card[data-g="flash"]'),
     }));
     check(cards.meleeSeg, '近战: 菜单消防斧选项存在');
-    check(cards.nades === 6 && cards.flash, `投掷: 6 种投掷物含震撼弹/黏性炸弹 (${cards.nades})`);
+    check(cards.nades === 7 && cards.flash, `投掷: 7 种投掷物含震撼弹/黏性炸弹 (${cards.nades})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', melee: 'axe', grenade: 'flash', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');
@@ -1904,7 +1950,7 @@ if (ver === 'v1') {
       m60: !!document.querySelector('#loadCards .card[data-w="m60"]'),
       prim: document.querySelectorAll('#loadCards .card').length,
     }));
-    check(r.prim === 24 && r.m60, `武器: 商店 24 张主武器卡含 M60 (${r.prim})`);
+    check(r.prim === 26 && r.m60, `武器: 商店 24 张主武器卡含 M60 (${r.prim})`);
     check(r.sec === 4 && r.r8, `副武器: 四张副武器卡含 R8 左轮 (${r.sec})`);
     await page.evaluate(() => {
       const g = window.__game, p = g.player;
@@ -1932,7 +1978,7 @@ if (ver === 'v1') {
       aug: !!document.querySelector('#loadCards .card[data-w="aug"]'),
       p90: !!document.querySelector('#loadCards .card[data-w="p90"]'),
     }));
-    check(r.cards === 24 && r.aug && r.p90, `武器: 商店 24 张主武器卡含 AUG/P90 (${r.cards})`);
+    check(r.cards === 26 && r.aug && r.p90, `武器: 商店 24 张主武器卡含 AUG/P90 (${r.cards})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'aug', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');

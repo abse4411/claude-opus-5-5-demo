@@ -208,6 +208,22 @@ export const WEAPONS = {
     recoil: { up: 0.0032, upMax: 0.05, side: 0.0055, sideStart: 6, recover: 8 },
     sound: 'mp5', hudName: 'PPSH',
   },
+  winchester: {
+    id: 'winchester', name: '温彻斯特', slot: 0, type: 'sniper', auto: false,
+    dmg: 78, headMul: 3.6, limbMul: 0.85, rpm: 46, mag: 8, reserve: 32, reload: 3.6, draw: 0.9, bolt: 0.55,
+    speed: 0.95, range: 220, falloff: 0.99, pen: 1.6, armorPen: 0.9, knock: 4.5, stagger: 0.3,
+    spread: { base: 0.002, move: 0.05, air: 0.24, crouch: 0.6, perShot: 0.03, max: 0.08, recover: 5 },
+    recoil: { up: 0.03, upMax: 0.1, side: 0.007, sideStart: 1, recover: 6 },
+    sound: 'awm', hudName: 'WINCHESTER',
+  },
+  dragonsbreath: {
+    id: 'dragonsbreath', name: '龙息霰弹', slot: 0, type: 'shotgun', auto: false,
+    dmg: 11, pellets: 10, pelletSpread: 0.07, headMul: 2.0, limbMul: 0.9, rpm: 80, mag: 6, reserve: 24, reload: 3.4, draw: 0.95,
+    speed: 0.9, range: 34, falloff: 0.86, pen: 0.3, armorPen: 0.55, knock: 1.6, stagger: 0.16, scorch: true,
+    spread: { base: 0.012, move: 0.024, air: 0.11, crouch: 0.7, perShot: 0, max: 0.03, recover: 5 },
+    recoil: { up: 0.055, upMax: 0.06, side: 0.007, sideStart: 0, recover: 5 },
+    sound: 'deagle', hudName: "DRAGON'S BREATH",
+  },
   dualdeagle: {
     id: 'dualdeagle', name: '双持沙鹰', slot: 1, type: 'pistol', auto: false,
     dmg: 48, headMul: 3.4, limbMul: 0.75, rpm: 400, mag: 14, reserve: 56, reload: 2.6, draw: 0.6,
@@ -288,13 +304,17 @@ export const WEAPONS = {
     id: 'gas', name: '毒气弹', slot: 3, type: 'grenade', auto: false,
     dmg: 9, radius: 3.6, fuse: 2.2, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'GAS GRENADE', mag: 1, reserve: 0,
   },
+  venom: {
+    id: 'venom', name: '毒液手雷', slot: 3, type: 'grenade', auto: false,
+    dmg: 20, radius: 3.0, fuse: 1.8, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'VENOM', mag: 1, reserve: 0,
+  },
   he: {
     id: 'he', name: '手雷', slot: 3, type: 'grenade', auto: false,
     dmg: 108, radius: 7.2, fuse: 2.6, knock: 9, stagger: 0.5, count: 1, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'HE GRENADE', mag: 1, reserve: 0,
   },
 };
 
-export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90', 'm60', 'scarl', 'm14ebr', 'm3super', 'mac10', 'qbz95', 'xm8', 'dualuzi', 'ppsh', 'm79', 'flamer', 'crossbow'];
+export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90', 'm60', 'scarl', 'm14ebr', 'm3super', 'mac10', 'qbz95', 'xm8', 'dualuzi', 'ppsh', 'winchester', 'dragonsbreath', 'm79', 'flamer', 'crossbow'];
 // V19：副武器三选（沙鹰默认；R8 左轮为原作风格高伤手炮）
 export const SECONDARIES = ['deagle', 'usp', 'r8', 'dualdeagle'];
 // V45：近战 selectable（电锯为复仇者/变异者专属不在列）

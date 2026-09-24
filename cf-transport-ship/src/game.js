@@ -752,7 +752,7 @@ export class Game {
       }
       return;
     }
-    if (wid === 'molotov' || wid === 'frost' || wid === 'gas') {
+    if (wid === 'molotov' || wid === 'frost' || wid === 'gas' || wid === 'venom') {
       this.zones.spawn(wid === 'molotov' ? 'fire' : wid, p.clone());
       this.fx.explosion(p);
       audio.playExplosion(p);
@@ -760,7 +760,7 @@ export class Game {
       for (const a of this.actors) {
         if (!a.alive) continue;
         const c = a.soldier.chestWorld(new THREE.Vector3());
-        if (c.distanceTo(p) <= 2.2) this.damage(a, owner, wid === 'frost' ? 6 : 14, 'chest', wid, dir0, false);
+        if (c.distanceTo(p) <= 2.2) this.damage(a, owner, wid === 'frost' ? 6 : wid === 'venom' ? 18 : 14, 'chest', wid, dir0, false);
       }
       return;
     }

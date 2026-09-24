@@ -4,6 +4,7 @@ import * as THREE from 'three';
 const KINDS = {
   fire: { r: 3.2, life: 5, dps: 14, color: 0xff5a1a, label: '火海' },
   gas: { r: 3.6, life: 6, dps: 9, color: 0x6ae05a, label: '毒雾' },
+  venom: { r: 3.0, life: 5, dps: 22, color: 0xa4e02a, label: '毒液' },
   frost: { r: 4.6, life: 4, dps: 0, color: 0x9adfff, label: '寒爆' },
 };
 

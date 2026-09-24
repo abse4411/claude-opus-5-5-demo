@@ -557,9 +557,9 @@ const SEC_CARDS = SECONDARIES.map((id) => {
   return `<div class="card" data-s="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
 }).join('');
 
-const NADE_CARDS = ['he', 'molotov', 'frost', 'gas', 'flash', 'sticky'].map((id) => {
+const NADE_CARDS = ['he', 'molotov', 'frost', 'gas', 'venom', 'flash', 'sticky'].map((id) => {
   const d = WEAPONS[id];
-  const sub = { he: '高爆 · 范围杀伤', molotov: '火海 · 持续灼烧', frost: '寒爆 · 大幅冻缓', gas: '毒雾 · 持续毒伤', flash: '强光 · 致盲扫点', sticky: '黏附必中 · 反丧尸神器' }[id];
+  const sub = { he: '高爆 · 范围杀伤', molotov: '火海 · 持续灼烧', frost: '寒爆 · 大幅冻缓', gas: '毒雾 · 持续毒伤', venom: '毒液 · 高蚀速杀伤', flash: '强光 · 致盲扫点', sticky: '黏附必中 · 反丧尸神器' }[id];
   return `<div class="card" data-g="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
 }).join('');
 
@@ -663,7 +663,7 @@ const TEMPLATE = `
     <button data-t="loadCards" class="on">主武器（${PRIMARIES.length}）</button>
     <button data-t="secCards">副武器（${SECONDARIES.length}）</button>
     <button data-t="meleeCards">近战（${MELEES.length}）</button>
-    <button data-t="nadeCards">投掷（${['he', 'molotov', 'frost', 'gas', 'flash', 'sticky'].length}）</button>
+    <button data-t="nadeCards">投掷（${['he', 'molotov', 'frost', 'gas', 'venom', 'flash', 'sticky'].length}）</button>
   </div>
   <div class="cards tabPanel" id="loadCards">${PRIM_CARDS}</div>
   <div class="cards tabPanel hidden" id="secCards">${SEC_CARDS}</div>

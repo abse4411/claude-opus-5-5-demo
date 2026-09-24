@@ -405,6 +405,37 @@ const builders = {
     anchor(g, 'grip', 0, -0.06, 0.08); anchor(g, 'muzzle', 0, 0.02, -0.52);
     return g;
   },
+  winchester(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.04, 0.055, 0.3, 0.01), m.metal, 0, 0, -0.04);            // 机匣
+    part(g, RB(0.03, 0.024, 0.34, 0.008), m.metal, 0, 0.055, -0.2);       // 顶管
+    part(g, CZ(0.012, 0.12), m.metal, 0, 0.02, -0.5);                     // 枪管
+    part(g, RB(0.03, 0.05, 0.2, 0.01), m.wood, 0, -0.03, -0.34);          // 前护木（杠杆护手）
+    part(g, RB(0.036, 0.09, 0.05, 0.01), m.wood, 0, -0.06, 0.06);         // 握把
+    part(g, RB(0.04, 0.055, 0.22, 0.012), m.wood, 0, 0.01, 0.24);         // 枪托
+    anchor(g, 'grip', 0, -0.06, 0.05); anchor(g, 'muzzle', 0, 0.02, -0.56);
+    return g;
+  },
+  dragonsbreath(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.05, 0.075, 0.26, 0.012), m.dark, 0, 0, -0.03);           // 机匣
+    part(g, CZ(0.017, 0.24), m.metal, 0, 0.02, -0.3);                     // 粗枪管
+    part(g, CZ(0.022, 0.05), m.steel, 0, 0.02, -0.43);                    // 消焰器
+    part(g, RB(0.028, 0.05, 0.05), m.metal, 0, 0.055, -0.1);              // 导轨
+    part(g, RB(0.03, 0.11, 0.05, 0.01), m.rubber, 0, -0.06, 0.06);        // 握把
+    part(g, RB(0.032, 0.12, 0.05, 0.01), m.dark, 0, -0.09, -0.12);        // 弹仓
+    part(g, RB(0.035, 0.05, 0.16, 0.01), m.wood, 0, -0.01, 0.18);         // 枪托
+    anchor(g, 'grip', 0, -0.06, 0.05); anchor(g, 'muzzle', 0, 0.02, -0.46);
+    return g;
+  },
+  venom(m) {
+    const g = new THREE.Group();
+    part(g, new THREE.SphereGeometry(0.055, 12, 10), m.olive, 0, 0, 0);   // 球形瓶体
+    part(g, RB(0.024, 0.035, 0.024, 0.006), m.metal, 0, 0.065, 0);        // 引信座
+    part(g, RB(0.012, 0.04, 0.012, 0.004), m.rubber, 0, 0.095, 0);        // 拉杆
+    anchor(g, 'grip', 0, -0.05, 0); anchor(g, 'muzzle', 0, 0.1, 0);
+    return g;
+  },
   dualdeagle(m) {
     const g = new THREE.Group();
     for (const sx of [-1, 1]) {
