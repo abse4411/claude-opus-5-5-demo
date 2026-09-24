@@ -1,5 +1,5 @@
 // HUD 与菜单（DOM）
-import { WEAPONS, PRIMARIES, SECONDARIES } from './weapons.js';
+import { WEAPONS, PRIMARIES, SECONDARIES, MELEES } from './weapons.js';
 
 const TEAM_CN = { BL: '潜伏者', GR: '保卫者' };
 // WOZ 原作两大阵营（搜狗百科）：GR=保卫军，BL=原罪军；TDM 保留 CF 命名
@@ -133,6 +133,22 @@ export class HUD {
         for (const x of this.root.querySelectorAll('#secCards .card')) x.classList.toggle('on', x === c);
       });
     }
+    for (const c of this.root.querySelectorAll('#meleeCards .card')) {
+      c.addEventListener('click', () => {
+        this.g.chooseMelee?.(c.dataset.m);
+        for (const x of this.root.querySelectorAll('#meleeCards .card')) x.classList.toggle('on', x === c);
+      });
+    }
+    // 分栏切换（V45）：一次只显示一个面板，避免内容溢出截断
+    for (const b of this.root.querySelectorAll('#loadTabs button')) {
+      b.addEventListener('click', () => {
+        for (const x of this.root.querySelectorAll('#loadTabs button')) x.classList.toggle('on', x === b);
+        for (const panel of ['loadCards', 'secCards', 'meleeCards', 'nadeCards']) {
+          this.root.getElementById ? null : null;
+          document.getElementById(panel).classList.toggle('hidden', panel !== b.dataset.t);
+        }
+      });
+    }
     $('#btnLoadClose').addEventListener('click', () => this.g.closeLoadout());
     $('#btnHelpClose').addEventListener('click', () => this.g.toggleHelp());
     if (matchMedia('(pointer:coarse)').matches) $('#touchNote').classList.remove('hidden');
@@ -143,6 +159,7 @@ export class HUD {
     this.icons = icons;
     for (const c of this.root.querySelectorAll('#loadCards .card')) c.querySelector('img').src = icons[c.dataset.w] || '';
     for (const c of this.root.querySelectorAll('#secCards .card')) c.querySelector('img').src = icons[c.dataset.s] || '';
+    for (const c of this.root.querySelectorAll('#meleeCards .card')) c.querySelector('img').src = icons[c.dataset.m] || '';
     for (const c of this.root.querySelectorAll('#nadeCards .card')) c.querySelector('img').src = icons[c.dataset.g] || '';
   }
   syncControls() {
@@ -150,6 +167,7 @@ export class HUD {
     for (const s of this.root.querySelectorAll('.seg[data-k]')) for (const b of s.querySelectorAll('button')) b.classList.toggle('on', String(o[s.dataset.k]) === b.dataset.v);
     for (const c of this.root.querySelectorAll('#loadCards .card')) c.classList.toggle('on', String(o.primary) === c.dataset.w);
     for (const c of this.root.querySelectorAll('#secCards .card')) c.classList.toggle('on', String(o.secondary) === c.dataset.s);
+    for (const c of this.root.querySelectorAll('#meleeCards .card')) c.classList.toggle('on', String(o.melee) === c.dataset.m);
     for (const c of this.root.querySelectorAll('#modeCards .mcard')) c.classList.toggle('on', String(o.mode) === c.dataset.v);
     for (const sl of this.root.querySelectorAll('.slider[data-k]')) {
       const k = sl.dataset.k; sl.querySelector('input').value = o[k]; sl.querySelector('span').textContent = (+o[k]).toFixed(k === 'fov' ? 0 : 2);
@@ -527,6 +545,12 @@ const PRIM_CARDS = PRIMARIES.map((id) => {
   </div>`;
 }).join('');
 
+const MELEE_CARDS = MELEES.map((id) => {
+  const d = WEAPONS[id];
+  const sub = { knife: '军刀 · 快速均衡', axe: '消防斧 · 重劈高伤', crowbar: '撬棍 · 极速连击' }[id] || '';
+  return `<div class="card" data-m="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
+}).join('');
+
 const SEC_CARDS = SECONDARIES.map((id) => {
   const d = WEAPONS[id];
   const sub = { deagle: '高伤手炮 · 默认', usp: '稳健精准 · 消音', r8: '左轮重炮 · 一击致命' }[id] || '';
@@ -634,12 +658,17 @@ const TEMPLATE = `
   <button class="go" id="btnResume">继 续</button><button class="go sec" id="btnQuit" style="margin-top:10px">退出到主菜单</button>
 </div></div>
 
-<div id="loadout" class="screen hidden"><div class="loadBox"><h2>武器商店 · 装备配置</h2><div class="sub">复活时生效；在出生点内立即生效。军刀、手雷自动配备。<span id="loadTimer"></span></div>
-  <div class="cards" id="loadCards">${PRIM_CARDS}</div>
-    <div class="opt"><div class="lab">副武器</div></div>
-    <div class="cards" id="secCards">${SEC_CARDS}</div>
-    <div class="opt"><div class="lab">投掷武器</div></div>
-    <div class="cards" id="nadeCards">${NADE_CARDS}</div>
+<div id="loadout" class="screen hidden"><div class="loadBox"><h2>武器商店 · 装备配置</h2><div class="sub">复活时生效；在出生点内立即生效。<span id="loadTimer"></span></div>
+  <div class="ltabs" id="loadTabs">
+    <button data-t="loadCards" class="on">主武器（${PRIMARIES.length}）</button>
+    <button data-t="secCards">副武器（${SECONDARIES.length}）</button>
+    <button data-t="meleeCards">近战（${MELEES.length}）</button>
+    <button data-t="nadeCards">投掷（${['he', 'molotov', 'frost', 'gas', 'flash', 'sticky'].length}）</button>
+  </div>
+  <div class="cards tabPanel" id="loadCards">${PRIM_CARDS}</div>
+  <div class="cards tabPanel hidden" id="secCards">${SEC_CARDS}</div>
+  <div class="cards tabPanel hidden" id="meleeCards">${MELEE_CARDS}</div>
+  <div class="cards tabPanel hidden" id="nadeCards">${NADE_CARDS}</div>
   <button class="go sec" id="btnLoadClose" style="margin-top:14px">确 定（B）</button>
 </div></div>
 

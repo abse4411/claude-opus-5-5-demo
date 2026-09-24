@@ -416,6 +416,57 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v40') {
+  // ① M79 连发回归：三发依次发射，不再第一发后卡死
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st0 = rules.state(p.id);
+      if (st0.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      p.inv[0] = new (p.inv[0].constructor)('m79');
+      p.inv[0].mag = 4; p.slot = 0; p.readyAt = 0; p.protectT = 999;
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0.02;
+      g.fastForward(1 / 30, 1 / 30);
+      p.updateCamera(0.016);
+      const shots = [];
+      for (let i = 0; i < 3; i++) {
+        p.weaponUpdate(0.016, { firePressed: true, fire: false, alt: false, altPressed: false, reload: false, sw: null });
+        shots.push(g.nades.length);
+        g.fastForward(1.5, 1 / 30); // 越过射速间隔（45rpm=1.33s）
+      }
+      return { shots, mag: p.inv[0].mag };
+    });
+    check(r.shots[0] === 1 && r.mag === 1, `M79: 连续三发全部发射（弹仓 4→${r.mag}，场上榴弹 ${r.shots.join('→')} 含先期爆炸移除）`);
+  }
+  // ② 购买页分栏 UI：四 Tab / 单面板显示 / 近战换装 / 不截断
+  await goto('&mode=infection');
+  {
+    const tabs = await page.evaluate(() => {
+      const t = [...document.querySelectorAll('#loadTabs button')].map((b) => b.dataset.t);
+      const vis = (id) => !document.getElementById(id).classList.contains('hidden');
+      return { t, prim: vis('loadCards'), sec: vis('secCards'), melee: vis('meleeCards'), nade: vis('nadeCards') };
+    });
+    check(tabs.t.join(',') === 'loadCards,secCards,meleeCards,nadeCards' && tabs.prim && !tabs.sec && !tabs.melee && !tabs.nade, '购买页: 四分栏 Tab（默认主武器面板）');
+    await page.evaluate(() => { window.__game.toggleLoadout(); }); // 打开商店（面板在关闭状态下 page.click 不可见）
+    await page.waitForTimeout(200);
+    await page.evaluate(() => document.querySelector('#loadTabs button[data-t="meleeCards"]').click());
+    await page.click('#meleeCards .card[data-m="axe"]');
+    const mel = await page.evaluate(() => {
+      const g = window.__game;
+      const meleeVis = !document.getElementById('meleeCards').classList.contains('hidden');
+      const primVis = !document.getElementById('loadCards').classList.contains('hidden');
+      const box = document.querySelector('.loadBox');
+      const fits = box.scrollHeight - box.clientHeight < 40; // 内容不溢出截断（可滚动余量内）
+      return { meleeVis, primVis, fits, melee: g.opts.melee, inv2: g.player.inv[2].id, ovf: getComputedStyle(box).overflowY };
+    });
+    check(mel.meleeVis && !mel.primVis, '购买页: Tab 切换单面板显示');
+    check(mel.melee === 'axe' && mel.inv2 === 'axe', `购买页: 近战 Tab 选消防斧即时换装 (${mel.inv2})`);
+    check(mel.fits && mel.ovf === 'auto', `购买页: 内容限高滚动不截断 (overflow=${mel.ovf})`);
+  }
 } else if (ver === 'v39') {
   // 三 bug 回归：逐图地面稳定 / 变异者击退衰减 / 菜单选图即时生效
   {
@@ -960,9 +1011,15 @@ if (ver === 'v1') {
   {
     const r = await page.evaluate(() => {
       const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
       g.fastForward(20, 1 / 30);
       rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st0 = rules.state(p.id);
+      if (st0.side === 'mutant' || !p.alive || !p.inv.find((x) => x && x.def.type !== 'melee' && x.def.type !== 'grenade')) {
+        g.woz.restoreHuman(p, true); // 玩家可能被感染/阵亡（inv 残留单槽）
+      }
       const w = p.inv.find((x) => x && x.def.type !== 'melee' && x.def.type !== 'grenade');
+      if (!w) return { ok: false };
       w.mag = 1; w.reserve = 1; // 掏空验证补给
       p.hp = 40;
       g.woz.dropT = 0.01;
@@ -1278,6 +1335,10 @@ if (ver === 'v1') {
       rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
       const st = rules.state(p.id);
       if (st.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true); // 玩家可能已被感染/阵亡
+      if (!p.inv.find((w) => w && w.def.type !== 'melee' && w.def.type !== 'grenade')) {
+        p.giveLoadout(); // 兜底：无论如何保证有枪（inv 残留单槽 claw 的极端态）
+      }
+      st.side = 'human'; st.alive = true;
       st.humanSurviveTime = WOZ_H(); // 45s × 4 档
       function WOZ_H() { return 45 * 4; }
       g.fastForward(0.25, 1 / 30);
