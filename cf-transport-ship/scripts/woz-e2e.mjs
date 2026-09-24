@@ -159,8 +159,8 @@ await page.evaluate(() => window.__game.fastForward(125, 1 / 30));
       const st = rules.state(i), a = g.actors[i];
       if (st.side === 'human' && st.alive && a.alive) { a.protectT = 0; g.damage(a, null, 9999, 'chest', 'he', dir, false); }
     }
-    for (let i = 0; i < 2; i++) {
-      const st = rules.state(i), a = g.actors[i];
+    { // V94 对齐原作：只有【最后一名】幸存者进化 → 仅保活 0 号
+      const st = rules.state(0), a = g.actors[0];
       st.side = 'human'; st.alive = true; st.reviveTimer = 0;
       if (a) { a.team = 'GR'; a.alive = true; a.protectT = 0; }
     }

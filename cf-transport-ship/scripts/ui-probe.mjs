@@ -2891,6 +2891,45 @@ if (ver === 'v1') {
   check(r.side === 'mutant', `尸变: 阵营已变异 (${r.side})`);
   check(r.motherMorph === 0 || r.motherMorph === -1, `母体: 爆发落地不走尸变 (${r.motherMorph})`);
   check(toasts.some((t) => t.includes('病毒爆发')), `播报: 爆发全场警报已触发 (${toasts.length} 条)`);
+} else if (ver === 'v68') {
+  // V94 复仇模式精修：最后幸存者触发阈值 / 觉醒光柱 / 人类升档播报
+  await goto('&mode=revenge');
+  const r = await page.evaluate(() => {
+    const g = window.__game, rules = g.woz.rules, p = g.player;
+    g.fastForward(20, 1 / 30);
+    rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+    // 场景 A：两名幸存者并存 → 不触发（原作：最后的幸存者，单数）
+    rules.avengerUsed = false;
+    for (const i of [0, 1]) {
+      const st = rules.state(i), a = g.actors[i];
+      st.side = 'human'; st.alive = true; st.isAvenger = false; st.reviveTimer = 0;
+      if (a) { a.team = 'GR'; a.alive = true; a.protectT = 0; }
+    }
+    for (let i = 2; i < rules.playerCount; i++) {
+      const st = rules.state(i), a = g.actors[i];
+      if (st.side === 'human' && st.alive && a && a.alive) { a.protectT = 0; g.damage(a, null, 9999, 'chest', 'he', { x: 0.6, z: 0.8 }, false); }
+    }
+    rules.tryTriggerAvenger();
+    const noTriggerAtTwo = rules.avengerId() < 0;
+    // 场景 B：仅剩最后一人 → 触发 + 金色光柱粒子
+    let emits = 0;
+    const origEmit = g.fx.add.emit.bind(g.fx.add);
+    g.fx.add.emit = (o) => { emits++; return origEmit(o); };
+    const st1 = rules.state(1), a1 = g.actors[1];
+    st1.alive = false; if (a1) a1.alive = false;
+    rules.tryTriggerAvenger();
+    g.fx.add.emit = origEmit;
+    const av = rules.avengerId();
+    // 场景 C：人类升档 → 备弹奖励（已有）+ 播报不崩溃
+    const reserve0 = p.inv[0] && p.inv[0].def.type !== 'melee' ? p.inv[0].reserve : -1;
+    g.woz.onHumanTierUp(p.id, 1);
+    const reserve1 = p.inv[0] && p.inv[0].def.type !== 'melee' ? p.inv[0].reserve : -1;
+    return { noTriggerAtTwo, triggered: av === 0, emits, reserveGain: reserve1 - reserve0, isAvg: rules.isAvenger(0) };
+  });
+  check(r.noTriggerAtTwo, `阈值: 两名幸存者不触发 (${r.noTriggerAtTwo})`);
+  check(r.triggered && r.isAvg, `阈值: 最后一名幸存者觉醒 (av=${r.triggered} avg=${r.isAvg})`);
+  check(r.emits >= 30, `觉醒: 金色光柱粒子 (emits=${r.emits})`);
+  check(r.reserveGain > 0 || r.reserve0 === -1, `升档: 备弹奖励 (${r.reserve0}→+${r.reserveGain})`);
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

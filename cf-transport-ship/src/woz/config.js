@@ -74,7 +74,7 @@ export const WOZ = {
   avengerSpeed: 1.2,
   avengerDef: 0.3,          // 复仇者防御被动（原作：超越人类体能极限的防御力）
   avengerSpinRadius: 2.8,   // 旋转清场半径（原作：被包围时原地旋转清除近身敌人）
-  avengerHumanThreshold: 2,
+  avengerHumanThreshold: 1, // V94 对齐原作：人类【最后的幸存者】（单数）进化为复仇者
   avengerTimeThreshold: 45,
   mutantRevives: 1,
   mutantReviveDelay: 5,

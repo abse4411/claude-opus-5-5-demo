@@ -325,6 +325,10 @@ export class WozRules {
       }
     }
 
+    // V94 原作语义：第二到最后一名人类倒下的【瞬间】，最后的幸存者立即觉醒（不等下一 tick）
+    if (this.mode === 'revenge' && !this.avengerUsed && this.result === null && this.humansAlive() === 1) {
+      this.tryTriggerAvenger();
+    }
     if (this.humansAlive() === 0 && this.result === null) this.finishRound('allInfected');
   }
 

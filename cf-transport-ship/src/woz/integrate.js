@@ -2010,6 +2010,14 @@ export class WozManager {
     wozAudio.avenger(a.isPlayer ? null : a.pos.clone());
     g.hud.eventFeed(`⚡ ${a.name} 觉醒为<b>生化复仇者</b>！`, 'avg', 10);
     this.hud.avengerBanner(a.name);
+    // V94 觉醒光柱：冲天金色能量束 + 地面光环（原作：全场可见的英雄降临演出）
+    for (let i = 0; i < 26; i++) {
+      g.fx.add.emit({ x: a.pos.x + (Math.random() - 0.5) * 0.7, y: a.pos.y + 0.1 + Math.random() * 0.4, z: a.pos.z + (Math.random() - 0.5) * 0.7, vx: 0, vy: 6 + Math.random() * 5, vz: 0, life: 0, max: 0.5 + Math.random() * 0.35, s0: 0.09, s1: 0.03, r: 1.4, g: 1.5, b: 2.2, a0: 0.95, a1: 0, grav: 0, drag: 0.2 });
+    }
+    for (let i = 0; i < 14; i++) {
+      const ang = (i / 14) * Math.PI * 2;
+      g.fx.add.emit({ x: a.pos.x + Math.cos(ang) * 1.3, y: a.pos.y + 0.06, z: a.pos.z + Math.sin(ang) * 1.3, vx: Math.cos(ang) * 2.2, vy: 0.3, vz: Math.sin(ang) * 2.2, life: 0, max: 0.55, s0: 0.07, s1: 0.02, r: 1.2, g: 1.4, b: 2.0, a0: 0.9, a1: 0, grav: 0, drag: 1.4 });
+    }
   }
 
   onDevoured(mutantId, corpseId) {
@@ -2053,6 +2061,8 @@ export class WozManager {
       const d = w.def;
       if (d.type !== 'melee' && d.type !== 'grenade') w.reserve += d.mag;
     }
+    wozAudio.beep(a.isPlayer ? null : a.pos.clone(), 880 + tier * 160, 0.12); // V94 升档音（音高随档位上升）
+    g.hud.eventFeed(`${a.name} 人类进化 Lv.${tier}（速度/弹药/威力）`, 'evo'); // V94 原作：随时间与击杀升级全队可见
     if (a.isPlayer) g.hud.toast(`人类进化 <b style="color:#8cc8ff">Lv.${tier}</b>：移速提升 · 备弹增加 · 减伤提升`, 2.5);
   }
 

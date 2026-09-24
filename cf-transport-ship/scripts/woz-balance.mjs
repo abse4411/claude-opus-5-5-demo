@@ -21,6 +21,10 @@ for (let m = 1; m <= matches; m++) {
   const r = await page.evaluate(async () => {
     const g = window.__game;
     let rounds = 0, humanWins = 0, mutantWins = 0, avengerSeen = false, tideSeen = 0;
+    // V94：复仇者觉醒可能整个落在一次 fastForward 内 → 挂宿主回调可靠捕获（轮询会漏）
+    const woz = g.woz;
+    const origAT = woz.onAvengerTransformed.bind(woz);
+    woz.onAvengerTransformed = (id) => { avengerSeen = true; return origAT(id); };
     const t0 = performance.now();
     while (g.playing && performance.now() - t0 < 60000) {
       const before = g.woz.round;
