@@ -547,13 +547,13 @@ const PRIM_CARDS = PRIMARIES.map((id) => {
 
 const MELEE_CARDS = MELEES.map((id) => {
   const d = WEAPONS[id];
-  const sub = { knife: '军刀 · 快速均衡', axe: '消防斧 · 重劈高伤', crowbar: '撬棍 · 极速连击' }[id] || '';
+  const sub = { knife: '军刀 · 快速均衡', axe: '消防斧 · 重劈高伤', crowbar: '撬棍 · 极速连击', shovel: '铁锹 · 重击开路' }[id] || '';
   return `<div class="card" data-m="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
 }).join('');
 
 const SEC_CARDS = SECONDARIES.map((id) => {
   const d = WEAPONS[id];
-  const sub = { deagle: '高伤手炮 · 默认', usp: '稳健精准 · 消音', r8: '左轮重炮 · 一击致命' }[id] || '';
+  const sub = { deagle: '高伤手炮 · 默认', usp: '稳健精准 · 消音', r8: '左轮重炮 · 一击致命', dualdeagle: '双持手炮 · 火力翻倍' }[id] || '';
   return `<div class="card" data-s="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
 }).join('');
 

@@ -200,6 +200,22 @@ export const WEAPONS = {
     recoil: { up: 0.005, upMax: 0.05, side: 0.0036, sideStart: 5, recover: 9 },
     sound: 'mp5', hudName: 'XM8',
   },
+  ppsh: {
+    id: 'ppsh', name: '波波沙', slot: 0, type: 'smg', auto: true,
+    dmg: 21, headMul: 3.0, limbMul: 0.88, rpm: 900, mag: 71, reserve: 142, reload: 3.4, draw: 0.7,
+    speed: 1.0, range: 85, falloff: 0.94, pen: 0.55, armorPen: 0.5, knock: 1.2, stagger: 0.06,
+    spread: { base: 0.0075, move: 0.028, air: 0.14, crouch: 0.72, perShot: 0.002, max: 0.055, recover: 8 },
+    recoil: { up: 0.0032, upMax: 0.05, side: 0.0055, sideStart: 6, recover: 8 },
+    sound: 'mp5', hudName: 'PPSH',
+  },
+  dualdeagle: {
+    id: 'dualdeagle', name: '双持沙鹰', slot: 1, type: 'pistol', auto: false,
+    dmg: 48, headMul: 3.4, limbMul: 0.75, rpm: 400, mag: 14, reserve: 56, reload: 2.6, draw: 0.6,
+    speed: 0.98, range: 140, falloff: 0.97, pen: 1.0, armorPen: 0.78, knock: 3.0, stagger: 0.18,
+    spread: { base: 0.005, move: 0.055, air: 0.2, crouch: 0.7, perShot: 0.026, max: 0.08, recover: 5 },
+    recoil: { up: 0.026, upMax: 0.1, side: 0.009, sideStart: 1, recover: 5 },
+    sound: 'deagle', hudName: 'D.EAGLE×2',
+  },
   dualuzi: {
     id: 'dualuzi', name: '双持乌兹', slot: 0, type: 'smg', auto: true,
     dmg: 17, headMul: 3.0, limbMul: 0.86, rpm: 1200, mag: 64, reserve: 128, reload: 3.0, draw: 0.6,
@@ -212,6 +228,11 @@ export const WEAPONS = {
     id: 'crowbar', name: '撬棍', slot: 2, type: 'melee', auto: true,
     dmgLight: 60, dmgHeavy: 110, rangeLight: 2.0, rangeHeavy: 1.7, rateLight: 0.38, rateHeavy: 1.0, draw: 0.4,
     speed: 1.05, sound: 'knife', hudName: 'CROWBAR', knock: 5.0, stagger: 0.24, mag: 0, reserve: 0,
+  },
+  shovel: {
+    id: 'shovel', name: '军用铁锹', slot: 2, type: 'melee', auto: true,
+    dmgLight: 70, dmgHeavy: 130, rangeLight: 2.15, rangeHeavy: 1.85, rateLight: 0.45, rateHeavy: 1.1, draw: 0.45,
+    speed: 1.0, sound: 'knife', hudName: 'SHOVEL', knock: 5.5, stagger: 0.28, mag: 0, reserve: 0,
   },
 
   // ---- V48（十字弩）----
@@ -273,11 +294,11 @@ export const WEAPONS = {
   },
 };
 
-export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90', 'm60', 'scarl', 'm14ebr', 'm3super', 'mac10', 'qbz95', 'xm8', 'dualuzi', 'm79', 'flamer', 'crossbow'];
+export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90', 'm60', 'scarl', 'm14ebr', 'm3super', 'mac10', 'qbz95', 'xm8', 'dualuzi', 'ppsh', 'm79', 'flamer', 'crossbow'];
 // V19：副武器三选（沙鹰默认；R8 左轮为原作风格高伤手炮）
-export const SECONDARIES = ['deagle', 'usp', 'r8'];
+export const SECONDARIES = ['deagle', 'usp', 'r8', 'dualdeagle'];
 // V45：近战 selectable（电锯为复仇者/变异者专属不在列）
-export const MELEES = ['knife', 'axe', 'crowbar'];
+export const MELEES = ['knife', 'axe', 'crowbar', 'shovel'];
 
 export class WeaponState {
   constructor(id) {

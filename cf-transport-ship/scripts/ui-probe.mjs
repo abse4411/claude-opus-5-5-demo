@@ -354,7 +354,7 @@ if (ver === 'v1') {
       srows: (document.querySelector('#loadCards .card')?.querySelectorAll('.srow') || []).length,
       timer: document.getElementById('loadTimer').textContent,
     }));
-    check(shop.visible && shop.cards === 23, `商店: 打开且 23 张主武器卡 (${shop.cards})`);
+    check(shop.visible && shop.cards === 24, `商店: 打开且 24 张主武器卡 (${shop.cards})`);
     check(shop.srows === 3, `商店: 属性条渲染 (${shop.srows} 行)`);
     check(shop.timer.includes('购买期'), `商店: 购买期倒计时 (${shop.timer.trim().slice(-18)})`);
     await page.waitForTimeout(200);
@@ -415,6 +415,52 @@ if (ver === 'v1') {
     await page.evaluate(() => window.__game.toggleHelp());
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
+  }
+} else if (ver === 'v55') {
+  // V59 武器批次1：波波沙/双持沙鹰/军用铁锹 卡片+实弹
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st = rules.state(p.id);
+      if (st.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      p.giveLoadout('ppsh', 'dualdeagle', 'shovel'); // 强制换装测试三件新武器
+      p.protectT = 999;
+      const cards = {
+        ppsh: !!document.querySelector('#loadCards .card[data-w="ppsh"]'),
+        dde: !!document.querySelector('#secCards .card[data-s="dualdeagle"]'),
+        shv: !!document.querySelector('#meleeCards .card[data-m="shovel"]'),
+      };
+      // 波波沙实弹
+      p.inv[0] = new (p.inv[0].constructor)('ppsh');
+      p.inv[0].mag = 71; p.inv[0].reserve = 142;
+      p.slot = 0; p.readyAt = 0;
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0;
+      g.fastForward(0.5, 1 / 30);
+      const m0 = p.inv[0].mag;
+      p.weaponUpdate(0.016, { fire: true, firePressed: true, alt: false, altPressed: false, reload: false, sw: null });
+      const ppshFired = p.inv[0].mag < m0 || p.weapon.lastShot > 0;
+      // 双持沙鹰实弹
+      p.inv[1] = new (p.inv[1].constructor)('dualdeagle');
+      p.inv[1].mag = 14; p.inv[1].reserve = 56;
+      p.slot = 1; p.readyAt = 0;
+      g.fastForward(0.4, 1 / 30);
+      const d0 = p.inv[1].mag;
+      p.weaponUpdate(0.016, { fire: false, firePressed: true, alt: false, altPressed: false, reload: false, sw: null });
+      const ddeFired = p.inv[1].mag < d0;
+      // 铁锹近战
+      p.slot = 2; p.soldier.setWeapon('shovel'); p.readyAt = 0;
+      const shvOk = p.inv[2]?.id === 'shovel' && p.inv[2].def.dmgHeavy === 130;
+      return { ok: true, cards, ppshFired, ddeFired, shvOk };
+    });
+    check(r.ok, 'V59: 场景搭建');
+    check(r.cards.ppsh && r.cards.dde && r.cards.shv, `V59: 三卡齐全 (${JSON.stringify(r.cards)})`);
+    check(r.ppshFired === true, 'V59: 波波沙可连发');
+    check(r.ddeFired === true, 'V59: 双持沙鹰可开火');
+    check(r.shvOk === true, 'V59: 铁锹近战字段正确');
   }
 } else if (ver === 'v54') {
   // V58 噬魂者分身强化：协同索敌主人目标 + 被毁回主人充能 25%
@@ -1478,7 +1524,7 @@ if (ver === 'v1') {
       b: !!document.querySelector('#loadCards .card[data-w="xm8"]'),
       c: !!document.querySelector('#loadCards .card[data-w="dualuzi"]'),
     }));
-    check(r.cards === 23 && r.a && r.b && r.c, `武器B: 23 张卡片含 95式/XM8/双持乌兹 (${r.cards})`);
+    check(r.cards === 24 && r.a && r.b && r.c, `武器B: 24 张卡片含 95式/XM8/双持乌兹 (${r.cards})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'qbz95', melee: 'crowbar', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');
@@ -1521,7 +1567,7 @@ if (ver === 'v1') {
       c: !!document.querySelector('#loadCards .card[data-w="m3super"]'),
       d: !!document.querySelector('#loadCards .card[data-w="mac10"]'),
     }));
-    check(r.cards === 23 && r.a && r.b && r.c && r.d, `武器A: 23 张卡片含四新枪 (${r.cards})`);
+    check(r.cards === 24 && r.a && r.b && r.c && r.d, `武器A: 23 张卡片含四新枪 (${r.cards})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'm14ebr', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');
@@ -1858,8 +1904,8 @@ if (ver === 'v1') {
       m60: !!document.querySelector('#loadCards .card[data-w="m60"]'),
       prim: document.querySelectorAll('#loadCards .card').length,
     }));
-    check(r.prim === 23 && r.m60, `武器: 商店 23 张主武器卡含 M60 (${r.prim})`);
-    check(r.sec === 3 && r.r8, `副武器: 三张副武器卡含 R8 左轮 (${r.sec})`);
+    check(r.prim === 24 && r.m60, `武器: 商店 24 张主武器卡含 M60 (${r.prim})`);
+    check(r.sec === 4 && r.r8, `副武器: 四张副武器卡含 R8 左轮 (${r.sec})`);
     await page.evaluate(() => {
       const g = window.__game, p = g.player;
       g.chooseSecondary('r8');
@@ -1886,7 +1932,7 @@ if (ver === 'v1') {
       aug: !!document.querySelector('#loadCards .card[data-w="aug"]'),
       p90: !!document.querySelector('#loadCards .card[data-w="p90"]'),
     }));
-    check(r.cards === 23 && r.aug && r.p90, `武器: 商店 23 张主武器卡含 AUG/P90 (${r.cards})`);
+    check(r.cards === 24 && r.aug && r.p90, `武器: 商店 24 张主武器卡含 AUG/P90 (${r.cards})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'aug', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');

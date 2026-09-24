@@ -384,6 +384,38 @@ const builders = {
     anchor(g, 'grip', 0, -0.05, 0.09); anchor(g, 'muzzle', 0, 0.028, -0.26);
     return g;
   },
+  shovel(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.03, 0.62, 0.03, 0.012), m.metal, 0, 0, 0);                 // 锹柄
+    part(g, RB(0.034, 0.1, 0.036, 0.012), m.wood, 0, -0.26, 0);             // 柄尾握套
+    part(g, RB(0.11, 0.16, 0.016, 0.01), m.steel, 0, 0.36, 0);              // 锹头
+    part(g, RB(0.09, 0.05, 0.02, 0.008), m.metal, 0, 0.27, 0);              // 连接颈
+    anchor(g, 'grip', 0, -0.24, 0); anchor(g, 'muzzle', 0, 0.42, 0);
+    return g;
+  },
+  ppsh(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.042, 0.075, 0.3, 0.01), m.metal, 0, 0, -0.05);             // 机匣
+    part(g, RB(0.034, 0.03, 0.22, 0.008), m.wood, 0, -0.005, -0.28);        // 上木护木
+    part(g, CZ(0.011, 0.1), m.metal, 0, 0.02, -0.46);                       // 枪管
+    part(g, RB(0.026, 0.05, 0.05, 0.008), m.dark, 0, 0.052, -0.06);         // 照门座
+    part(g, RB(0.055, 0.12, 0.09, 0.014), m.steel, 0, -0.1, -0.02);         // 弹鼓
+    part(g, RB(0.03, 0.11, 0.05, 0.01), m.wood, 0, -0.06, 0.1);             // 握把
+    part(g, RB(0.035, 0.05, 0.14, 0.01), m.wood, 0, -0.02, 0.22);           // 枪托
+    anchor(g, 'grip', 0, -0.06, 0.08); anchor(g, 'muzzle', 0, 0.02, -0.52);
+    return g;
+  },
+  dualdeagle(m) {
+    const g = new THREE.Group();
+    for (const sx of [-1, 1]) {
+      part(g, RB(0.03, 0.07, 0.13, 0.008), m.metal, sx * 0.045, 0, -0.01);   // 双套筒
+      part(g, CZ(0.01, 0.06), m.steel, sx * 0.045, 0.02, -0.1);              // 双枪管
+      part(g, RB(0.026, 0.1, 0.042, 0.008), m.rubber, sx * 0.045, -0.065, 0.02); // 双握把
+    }
+    part(g, RB(0.02, 0.02, 0.09, 0.006), m.dark, 0, 0.045, -0.02);           // 连接桥
+    anchor(g, 'grip', 0, -0.06, 0.05); anchor(g, 'muzzle', 0, 0.02, -0.16);
+    return g;
+  },
   crowbar(m) {
     const g = new THREE.Group();
     part(g, RB(0.03, 0.5, 0.032, 0.012), m.metal, 0, 0, 0);             // 主杆
