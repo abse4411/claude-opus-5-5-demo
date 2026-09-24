@@ -416,6 +416,68 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v59') {
+  // V63-V65 模式改版：B点回血+全占反扑 / 感染爆点毒云 / 二次尸潮+复仇者光环
+  await goto('&mode=confront');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, p = g.player;
+      g.fastForward(20, 1 / 30);
+      g.woz.rules = null;
+      p.protectT = 0; p.armor = 0;
+      // 全占领反扑（直接触发方法）
+      for (const pt of g.woz.points) pt.owner = 'GR';
+      const fired = g.woz.mutantCounterAttack();
+      const counter = g.woz.tide.filter((z) => z.alive && z.sorrowFast).length;
+      // B 点回血（固定增援计时防干扰）
+      g.woz.reinforceT = 999;
+      p.hp = 50;
+      for (const pt of g.woz.points) if (pt.def.name === 'B') pt.owner = 'GR';
+      g.woz.supplyT = 0.001;
+      g.woz.tickConfront(0.02);
+      const healed = p.hp >= 75;
+      return { ok: true, counter, healed, fired };
+    });
+    check(r.ok, 'V63: 场景搭建');
+    check(r.counter >= 3 && r.fired === true, `V63: 全占领触发反扑 ×${r.counter}`);
+    check(r.healed === true, 'V63: B 点补给回血');
+  }
+  await goto('&mode=demol');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, p = g.player;
+      p.protectT = 0; p.armor = 0; p.hp = 100;
+      p.pos.set(g.woz.bomb.def.x + 3, 0.1, g.woz.bomb.def.z);
+      g.woz.bomb.state = 'planted';
+      g.woz.bomb.timer = 999;
+      g.woz.bomb.pos = p.pos.clone();
+      const hp0 = p.hp;
+      g.woz._cloudT = 0.001;
+      g.woz.tickDemol(0.016);
+      g.woz._cloudT = 0.001;
+      g.woz.tickDemol(0.016);
+      return { ok: true, lost: hp0 - p.hp, st: g.woz.bomb.state };
+    });
+    check(r.ok && r.lost >= 12, `V64: 感染爆点毒云掉血 ×2 (${r.lost?.toFixed(0)}) st=${r.st}`);
+  }
+  await goto('&mode=revenge');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      // 复仇者光环：把玩家设为复仇者，旁边人类 bot 移速提升
+      const st = rules.state(p.id);
+      st.side = 'human'; st.isAvenger = true;
+      const bot = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!bot) return { ok: false };
+      bot.pos.set(p.pos.x + 2, 0.1, p.pos.z);
+      g.woz.tickInfection(0.016);
+      const auraSet = rules.state(bot.id).avengerAuraT > 0;
+      return { ok: true, auraSet };
+    });
+    check(r.ok && r.auraSet === true, 'V65: 复仇者士气光环生效');
+  }
 } else if (ver === 'v58') {
   // V62 场景道具：冰冻箱碎裂生成寒霜区域 / 弹药箱碎裂掉双弹药
   await goto('&mode=bio');

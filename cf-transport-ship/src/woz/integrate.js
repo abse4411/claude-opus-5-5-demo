@@ -167,7 +167,7 @@ export class WozManager {
     this.round++;
     this.playerClassChosen = false;
     this._evoStageSeen = {};
-    this.waveT = undefined; this.waveN = 0; this._bioFrenzy = false; // 波次/狂潮状态复位
+    this.waveT = undefined; this.waveN = 0; this._bioFrenzy = false; this._counterAtk = false; this._tide2 = false; // 波次/狂潮状态复位
     this.seed = (this.seed * 1103515245 + 12345) >>> 0;
     // 清理尸潮与抛射物
     for (const z of this.tide) g.renderer.scene.remove(z.soldier.root);
@@ -784,6 +784,24 @@ export class WozManager {
         wozAudio.tide();
       }
     }
+    // V65 复仇模式：二次尸潮 + 复仇者士气光环
+    if (this.mode === 'revenge' && rules.phase === 'battle') {
+      if (!this._tide2 && rules.phaseTimeLeft <= 30 && rules.tideSpawned && this.tide.filter((z) => z.alive).length === 0) {
+        this._tide2 = true;
+        for (let i = 0; i < 3; i++) this.spawnSorrowWalker(WOZ.sorrowFrenzyHp, '尸潮');
+        g.slowMoT = Math.max(g.slowMoT || 0, 0.5); g.slowMoScale = 0.4;
+        g.hud.toast('<b style="color:#ff5040">第二波尸潮！</b>悲惨行者再度来袭', 3);
+        wozAudio.tide();
+      }
+      const av = g.actors.find((a) => a.alive && a.id < rules.playerCount && rules.state(a.id)?.isAvenger);
+      if (av) {
+        for (const a of g.actors) {
+          if (!a.alive || a.id >= rules.playerCount) continue;
+          const st = rules.state(a.id);
+          if (st.side === 'human' && st.alive && a.pos.distanceTo(av.pos) < 8) st.avengerAuraT = 0.5;
+        }
+      }
+    }
     // 掉落拾取：全感染族可用（V35 补给变异体/急救包落地在感染/复仇也生效）
     for (const ev of this.pickups.update(dt)) {
       if (ev.actor.isPlayer) wozAudio.devour(null);
@@ -939,14 +957,17 @@ export class WozManager {
       for (const a of g.actors) {
         if (!a.alive || a.team !== 'GR') continue;
         for (const w of a.inv) { const d = w.def; if (d.type !== 'melee' && d.type !== 'grenade') w.reserve += Math.ceil(d.mag / 2); }
+        a.hp = Math.min(a.wozMaxHp || 100, a.hp + 25); // V63：B 点补给附带 +25 回血
       }
-      if (g.player.alive) g.hud.toast('据点 B 弹药补给已下发', 1.5);
+      if (g.player.alive) g.hud.toast('据点 B 补给已下发 · 弹药 +半弹匣 · 回血 +25', 1.5);
     }
     for (const p of this.points) {
       const ev = p.update(dt);
       if (ev === 'captured') {
         g.hud.toast(`据点 <b style="color:#8cc8ff">${p.def.name}</b> 已占领！`, 2);
         wozAudio.avenger(null);
+        // V63 全占领反扑：人类拿下全部据点 → 变异者绝望反扑（3 只悲惨行者）
+        this.mutantCounterAttack();
       }
     }
     for (const a of g.actors) if (a.alive && a.team === 'GR') a.speedMul = 1 + (this.buffSpeed ? 0.08 : 0);
@@ -981,6 +1002,18 @@ export class WozManager {
       return this.endObjectives('GR', '核弹引爆，变异者巢穴覆灭！');
     } else if (ev === 'destroyed') {
       return this.endObjectives('BL', '核弹被变异者摧毁！');
+    }
+    // V64 感染爆点：核弹安放后持续释放生化毒云，近距人类持续掉血
+    if (this.bomb.state === 'planted' || this.bomb.state === 'destroying') {
+      this._cloudT = (this._cloudT ?? 1.5) - dt;
+      if (this._cloudT <= 0) {
+        this._cloudT = 1.5;
+        const bp = this.bomb.pos || new THREE.Vector3(this.bomb.def.x, 0, this.bomb.def.z);
+        for (const a of g.actors) {
+          if (!a.alive || a.team !== 'GR') continue;
+          if (a.pos.distanceTo(bp) < 10) g.damage(a, null, 6, 'chest', 'venom', null, false);
+        }
+      }
     }
     // 安放前人类全灭 → 变异者胜
     if ((this.bomb.state === 'idle' || this.bomb.state === 'planting') && !g.actors.some((a) => a.alive && a.team === 'GR')) {
@@ -1623,6 +1656,17 @@ export class WozManager {
     const rules = this.rules;
     if (!rules || !v || v.id >= rules.playerCount) return false;
     return rules.state(v.id).cls === key;
+  }
+
+  // V63 全占领反扑：人类拿下全部据点 → 变异者绝望反扑（3 只悲惨行者）
+  mutantCounterAttack() {
+    const g = this.g;
+    if (!this.points.every((q) => q.owner === 'GR') || this._counterAtk) return false;
+    this._counterAtk = true;
+    for (let i = 0; i < 3; i++) this.spawnSorrowWalker();
+    g.hud.toast('<b style="color:#ff5040">变异者绝望反扑！</b>悲惨行者倾巢而出', 3);
+    wozAudio.tide();
+    return true;
   }
 
   // V55 混入伪装：附身爬行者的玩家混入 AI 变异者群（调研：伺机对人类发动闪电突袭）
