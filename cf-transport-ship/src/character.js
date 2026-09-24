@@ -279,6 +279,17 @@ export class Soldier {
   hitFlash(k = 1) {
     this._flash = Math.min(1, this._flash + k);
   }
+  // V99 受击踉跄：按来袭方向计算侧向/前后晃动（躯干扭转+头部甩动，0.22s 衰减）
+  hitFlinch(dirX, dirZ, k = 1) {
+    if (this.deadT >= 0) return;
+    const fwdX = -Math.sin(this.root.rotation.y), fwdZ = -Math.cos(this.root.rotation.y);
+    const side = fwdX * dirZ - fwdZ * dirX;      // 叉积：撞击来自哪一侧
+    const front = fwdX * dirX + fwdZ * dirZ;     // 点积：迎面/背后
+    this.flinchT = 1;
+    this.flinchSide = side >= 0 ? 1 : -1;
+    this.flinchFwd = front > 0 ? 1 : -0.6;
+    this.flinchK = Math.min(1.5, k);
+  }
   update(dt, st) {
     const B = this.B;
     if (this._flash > 0) {
@@ -322,6 +333,14 @@ export class Soldier {
     B.spine.rotation.set(pitch * 0.3 + ck * 0.15, -B.hips.rotation.y - 0.25, 0);
     B.chest.rotation.set(pitch * 0.45 - this.recoilK * 0.08, -0.12, 0);
     B.neck.rotation.set(pitch * 0.2, 0.3, 0);
+    // V99 受击踉跄叠加：躯干侧扭 + 迎面后仰 + 头部甩动
+    if (this.flinchT > 0) {
+      this.flinchT = Math.max(0, this.flinchT - dt * 4.5);
+      const fk = this.flinchT * this.flinchT * this.flinchK;
+      B.spine.rotation.z += this.flinchSide * 0.16 * fk;
+      B.chest.rotation.x -= 0.1 * fk * this.flinchFwd;
+      B.neck.rotation.z += this.flinchSide * 0.2 * fk;
+    }
     B.head.rotation.set(0, 0.05, 0);
     this.recoilK *= Math.exp(-dt * 12);
     // V98 近战挥砍：起手-发力-收势包络；期间持械臂走关键帧（跳过 IK）

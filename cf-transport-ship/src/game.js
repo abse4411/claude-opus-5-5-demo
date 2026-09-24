@@ -844,7 +844,11 @@ export class Game {
     if (att && att !== v) att.stats.hits++;
     if (this.woz) this.woz.reportDamage(att, v, Math.min(hpD, amt * 2)); // 伤害上报（充能/能量）
     // 打击感（V31）：受击者红闪；重击/爆头/爆炸击杀触发顿帧
-    if (v.soldier && !v.isPlayer) v.soldier.hitFlash(Math.min(1, 0.35 + hpD / 80) + (part === 'head' ? 0.25 : 0));
+    if (v.soldier && !v.isPlayer) {
+      v.soldier.hitFlash(Math.min(1, 0.35 + hpD / 80) + (part === 'head' ? 0.25 : 0));
+      // V99 受击踉跄：爆头甩动更猛（打击感）
+      if (dir) v.soldier.hitFlinch(dir.x, dir.z, Math.min(1, 0.5 + hpD / 60) + (part === 'head' ? 0.35 : 0));
+    }
     if (killed && att && att !== v) {
       const heavyKill = melee || part === 'head' || wid === 'he' || wid === 'chainsaw';
       if (heavyKill) this.hitStopT = Math.max(this.hitStopT, 0.07);

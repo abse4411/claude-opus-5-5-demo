@@ -3094,6 +3094,46 @@ if (ver === 'v1') {
   check(r.tEnd === 0, `轻击: 0.3s 后收势 (t=${r.tEnd})`);
   check(r.heavy1 === true, `重击: 过顶劈标记 (${r.heavy1})`);
   check(r.heavyStill > 0 && r.heavyEnd === 0, `重击: 0.5s 时长 (${r.heavyStill.toFixed(2)}→${r.heavyEnd})`);
+} else if (ver === 'v73') {
+  // V99 受击踉跄：方向性躯干扭转/后仰/甩头，衰减归零
+  await goto('&mode=infection');
+  const r = await page.evaluate(() => {
+    const g = window.__game, rules = g.woz.rules, p = g.player;
+    (function keepHuman() { if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+    g.fastForward(20, 1 / 30);
+    rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+    const st0 = rules.state(p.id);
+    if (st0.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+    const bot = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+    rules.convertToMutant(bot.id, 'nightrunner', false); g.woz.convertNow(bot, true); // 直调不触发尸变；转 BL 才可被玩家伤害
+    bot.protectT = 0; bot.armor = 0; bot.hp = 500; bot.morphT = 0; bot.rootT = 999; // 冻结 AI 朝向
+    g.fastForward(1 / 30, 1 / 30);
+    const S = bot.soldier;
+    bot.yaw = 0; S.root.rotation.y = 0; // 紧贴伤害前定向：面向 -z
+    g.damage(bot, p, 40, 'chest', 'ak47', { x: 0, y: 0, z: -1 }, false);
+    const f0 = { t: S.flinchT, side: S.flinchSide, fwd: S.flinchFwd, k: S.flinchK };
+    g.fastForward(0.08, 1 / 30);
+    bot.yaw = 0; S.root.rotation.y = 0;
+    const spineZ = S.B.spine.rotation.z, chestX = S.B.chest.rotation.x;
+    S.flinchT = 0; g.fastForward(1 / 30, 1 / 30); bot.yaw = 0; S.root.rotation.y = 0;
+    const chestX2 = S.B.chest.rotation.x; // 摘除踉跄项 → 差值即踉跄贡献
+    g.fastForward(0.3, 1 / 30);
+    const tEnd = S.flinchT;
+    bot.yaw = 0; S.root.rotation.y = 0;
+    g.damage(bot, p, 40, 'chest', 'ak47', { x: 0, y: 0, z: 1 }, false); // 背后
+    const fBack = { t: S.flinchT, fwd: S.flinchFwd };
+    g.fastForward(0.4, 1 / 30);
+    bot.yaw = 0; S.root.rotation.y = 0;
+    g.damage(bot, p, 40, 'head', 'ak47', { x: 0, y: 0, z: -1 }, false); // 爆头
+    const kHead = S.flinchK;
+    return { f0, spineZ, chestX, chestX2, tEnd, fBack, kHead };
+  });
+  check(r.f0.t === 1 && r.f0.side === 1 && r.f0.fwd === 1, `受击: 迎面击中进入踉跄态 (t=${r.f0.t} side=${r.f0.side} fwd=${r.f0.fwd})`);
+  check(Math.abs(r.spineZ) > 0.02, `受击: 躯干侧扭 (${r.spineZ.toFixed(3)})`);
+  check(r.chestX < r.chestX2 - 0.02, `受击: 迎面后仰 (踉跄贡献 ${(r.chestX - r.chestX2).toFixed(3)})`);
+  check(r.tEnd === 0, `受击: 0.4s 内衰减归零 (${r.tEnd})`);
+  check(r.fBack.fwd === -0.6 && r.fBack.t === 1, `受击: 背后来袭方向翻转 (${r.fBack.fwd})`);
+  check(r.kHead > 1, `受击: 爆头甩动加成 (k=${r.kHead.toFixed(2)})`);
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }
