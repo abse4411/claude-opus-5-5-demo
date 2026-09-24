@@ -877,6 +877,12 @@ export class Game {
       const wn = WEAPONS[wid]?.name || wid;
       this.killedBy = att && att !== v ? `被 <span style="color:${att.team === 'BL' ? '#ff9b70' : '#8cc8ff'}">${att.name}</span> 用 ${wn}${hs ? ' <span style="color:#ff5040">爆头</span>' : ''}击杀` : '你阵亡了';
     }
+    // 爆头击杀：头部血爆 + 更强顿帧（V49）
+    if (hs) {
+      const head = v.soldier.headWorld ? v.soldier.headWorld(new THREE.Vector3()) : v.pos.clone().setY(v.pos.y + 1.6);
+      this.fx.bloodBurst(head, dir);
+      if (att === p) this.hitStopT = Math.max(this.hitStopT, 0.09);
+    }
     this.fx.bloodBurst(v.pos, dir);
     if (att === p && v !== p && p.multi >= 2) this.hitStopT = Math.max(this.hitStopT, 0.1); // 多杀顿帧更强
     if (this.woz) { this.woz.onKill(v, att); return; }
