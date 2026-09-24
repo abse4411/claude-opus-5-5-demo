@@ -130,6 +130,7 @@ await page.evaluate(() => window.__game.fastForward(125, 1 / 30));
     g.woz.tide.forEach((z) => g.renderer.scene.remove(z.soldier.root));
     g.actors = g.actors.filter((a) => !g.woz.tide.includes(a));
     g.woz.tide = [];
+    g.woz.supplyT = 999; // 固定补给变异体计时（V53 后它也进 tide，会污染 4 只计数）
     // 保底双方各留活口，防全灭提前结算抢在尸潮触发之前
     const mut = g.actors.find((a) => a.alive && a.id < rules.playerCount && rules.isMutantSide(a.id));
     if (!mut) {
