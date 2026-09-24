@@ -95,6 +95,8 @@ export const WOZ = {
 export const CONFRONT = {
   battleTime: 240,
   captureRate: 100 / 10,   // 单人无阻占领 10 秒
+  reinforceFirst: 30,      // 首波浓雾增援（原作：占领越深变异者增援越猛）
+  reinforceMin: 12,
   points: [
     { name: 'A', x: 12, z: 0, r: 5 },
     { name: 'B', x: -2, z: 0, r: 5 },
@@ -126,6 +128,8 @@ export const DEMOL = {
 export const BIO = {
   aiInterval: 12,
   aiMax: 8,
+  waveFirst: 8,            // 首波 AI 怪物波次（V23 波次化）
+  waveInterval: 40,
   aiHp: 300,
   dropHeal: 50,
   dropAmmoMags: 1,

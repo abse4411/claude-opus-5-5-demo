@@ -416,6 +416,34 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v23') {
+  // 对抗模式浓雾增援 + 生化模式 AI 波次
+  {
+    await goto('&mode=confront&map=hospital');
+    const c = await page.evaluate(() => {
+      const g = window.__game, w = g.woz;
+      g.fastForward(4, 1 / 30);
+      w.points.forEach((p) => { p.owner = 'GR'; p.progress = 100; }); // 压满占领进度
+      const before = w.tide.length;
+      w.reinforceT = 0.01; // 立即触发增援
+      g.fastForward(0.5, 1 / 30);
+      return { before, after: w.tide.length, fog: +g.renderer.scene.fog.density.toFixed(4) };
+    });
+    check(c.after > c.before, `对抗: 浓雾增援已抵达 (${c.before} → ${c.after})`);
+    check(c.fog > 0, `对抗: 雾密度随占领加浓 (${c.fog})`);
+  }
+  {
+    await goto('&mode=bio');
+    const b = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules;
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      g.woz.waveT = 0.01;
+      g.fastForward(1.5, 1 / 30);
+      return { waveN: g.woz.waveN || 0, tide: g.woz.tide.filter((z) => z.alive).length };
+    });
+    check(b.waveN >= 1 && b.tide >= 2, `生化: AI 波次来袭 (第${b.waveN}波, ${b.tide}只)`);
+  }
 } else if (ver === 'v22') {
   // 新地图「地铁绝境」：加载/命名/雷达/目标点兼容
   await goto('&mode=infection&map=subway');

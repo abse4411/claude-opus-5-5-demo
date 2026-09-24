@@ -444,13 +444,17 @@ export class WozManager {
     }
     this.devourAndSkills(dt);
     this.ambientGrowl(dt);
-    // 生化模式：AI 怪物刷新 + 掉落拾取
+    // 生化模式：AI 怪物波次刷新（原作尸潮感）+ 掉落拾取
     if (this.mode === 'bio') {
-      this.aiT -= dt;
+      this.waveT = (this.waveT ?? BIO.waveFirst) - dt;
       const alive = this.tide.filter((z) => z.alive).length;
-      if (this.aiT <= 0 && alive < BIO.aiMax && rules.phase === 'battle') {
-        this.aiT = BIO.aiInterval;
-        this.spawnAiZombie();
+      if (this.waveT <= 0 && alive < BIO.aiMax && rules.phase === 'battle') {
+        this.waveT = BIO.waveInterval;
+        this.waveN = (this.waveN || 0) + 1;
+        const n = Math.min(BIO.aiMax - alive, 1 + this.waveN);
+        for (let i = 0; i < n; i++) this.spawnAiZombie();
+        g.hud.toast(`<b style="color:#ff7040">第 ${this.waveN} 波</b> 变异爬行者来袭 ×${n}！`, 2.5);
+        wozAudio.tide();
       }
       for (const ev of this.pickups.update(dt)) {
         if (ev.actor.isPlayer) wozAudio.devour(null);
@@ -494,6 +498,29 @@ export class WozManager {
   // ---- 生化对抗：占领据点 ----
   tickConfront(dt) {
     const g = this.g;
+    // 浓雾增援（原作死亡城市机制）：占领进度越深，变异者增援越频繁越凶
+    const captured = this.points.filter((p) => p.owner === 'GR').length;
+    this.reinforceT = (this.reinforceT ?? CONFRONT.reinforceFirst) - dt;
+    if (this.reinforceT <= 0) {
+      this.reinforceT = Math.max(CONFRONT.reinforceMin, CONFRONT.reinforceFirst - captured * 6);
+      const n = 1 + (captured >= 2 ? 1 : 0);
+      for (let i = 0; i < n; i++) {
+        const z = new Zombie(g, { id: 80 + this.tide.length + ((Math.random() * 90) | 0), name: '浓雾增援', team: 'BL' });
+        g.actors.push(z);
+        this.tide.push(z);
+        z.spawn(this.pickSpawn('BL'));
+        this.formZombie(z, 1000);
+        z.protectT = 0.5;
+      }
+      g.hud.toast('<b style="color:#ff5040">变异者突破浓雾增援！</b>', 2);
+      wozAudio.tide();
+    }
+    // 雾密度随占领进度加浓
+    const fog = g.renderer.scene.fog;
+    if (fog) {
+      if (this._baseFog === undefined) this._baseFog = fog.density;
+      if (this._baseFog > 0) fog.density = this._baseFog * (1 + captured * 0.25);
+    }
     // 据点增益：A=攻击+10%，B=弹药补给（每 10s），C=移速+8%
     const owned = (n) => this.points.find((p) => p.def.name === n)?.owner === 'GR';
     this.buffAtk = owned('A');
