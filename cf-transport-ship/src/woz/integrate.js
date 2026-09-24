@@ -398,19 +398,21 @@ export class WozManager {
     for (const f of this.fuses) {
       if (!f.live) continue;
       f.t -= dt;
-      if (!f.a.alive) { f.live = false; continue; }
-      // 冲锋加速 + 红色脉冲预警
-      f.a.speedMul = (f.a.speedMul || 1) * WOZ.selfDestructSpeed;
+      if (!f.a.alive) { f.live = false; f.a.rushBoost = null; continue; }
+      // 冲锋加速（V72 修复：改 rushBoost 标记，由移速同步层应用——直接乘 speedMul 会被每帧同步覆盖）+ 红色脉冲预警
+      f.a.rushBoost = WOZ.selfDestructSpeed;
       f.core.position.copy(f.a.pos); f.core.position.y += 1.2;
       const pulse = 0.35 + 0.45 * Math.abs(Math.sin(f.t * 18));
       f.core.material.opacity = pulse;
       f.core.scale.setScalar(1 + (WOZ.selfDestructFuse - f.t) * 0.8);
       if (f.t <= 0) {
         f.live = false;
+        f.a.rushBoost = null; // 引信结束清除冲锋加速
         const c = f.a.pos.clone(); c.y += 1;
         g.fx.explosion(c);
         g.fx.shake = 2.2;
         const owner = f.a;
+        owner.protectT = 0; // 引爆即解除出生保护，否则自伤被挡无法阵亡（V72）
         for (const v of g.actors) {
           if (!v.alive || v === owner || v.team === owner.team || v.wozOut) continue;
           const d = owner.pos.distanceTo(v.pos);
@@ -731,6 +733,7 @@ export class WozManager {
       if (st.side === 'mutant' && st.alive) {
         if (a.alive) a.hp = st.hp;
         a.speedMul = rules.mutantSpeedMultiplier(i);
+        if (a.rushBoost) a.speedMul *= a.rushBoost; // 自爆引信冲锋（V72 修复）
         // 静止不动缓慢回血（对齐原作：变异者蛰伏回复）
         if (a.alive && (a.speed || 0) < 0.6 && rules.phase === 'battle') {
           const cap = rules.effectiveMaxHp(st);
@@ -1253,7 +1256,7 @@ export class WozManager {
 
   // BOT 用技决策表（V25）：按职业语境判定（纯逻辑，可单测）
   botSkillWant(st, dist, hasLos) {
-    if (st.cls === MutantClass.Crawler) return false; // 纯属性型无技能
+    if (st.cls === MutantClass.Crawler || st.cls === MutantClass.Headhunter) return false; // 纯属性型无技能
     if (st.cls === MutantClass.Bomber) return st.hp < this.effMaxHp(st) * 0.45 && dist < 9; // 残血冲人堆自爆
     if (st.cls === MutantClass.Souleater) return dist < WOZ.blindWailRange * 0.9;           // 尖啸开团致盲
     if (st.cls === MutantClass.Nightrunner) return dist > 5 && dist < 16;                    // 疾冲拉近

@@ -416,6 +416,201 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v62') {
+  // V72 六技能真实 case 全量验证：效果落地+数值与描述一致+冷却制+BOT 用技表
+  const setup62 = async () => {
+    await goto('&mode=infection');
+    await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules;
+      if (!rules.__keepHuman) { rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; }
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+    });
+  };
+  const pickBot = () => page.evaluate(() => {
+    const g = window.__game, rules = g.woz.rules;
+    const v = g.actors.find((a) => a.alive && a !== g.player && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+    if (v) { v.protectT = 0; v.armor = 0; v.blindT = 0; v.rootT = 0; if (v.vel.set) v.vel.set(0, 0, 0); }
+    return !!v;
+  });
+  // 1 疾冲：前向冲量 11 + 小跃升 + 用后进冷却
+  {
+    await setup62();
+    const ok0 = await pickBot();
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      rules.convertToMutant(p.id, 'nightrunner', false); g.woz.convertNow(p, true);
+      p.pos.set(0, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 999;
+      if (p.vel.set) p.vel.set(0, 0, 0);
+      g.fastForward(1 / 30, 1 / 30); p.updateCamera(0.016);
+      rules.tryUseSkill(p.id);
+      const fwdSpeed = -p.vel.x; // forward(PI/2) = -x
+      const chargeAfter = rules.state(p.id).skillCharge;
+      const refire = rules.tryUseSkill(p.id);
+      return { fwdSpeed: +fwdSpeed.toFixed(1), chargeAfter, refire, up: p.vel.y >= 3.1 };
+    });
+    check(ok0 && r.fwdSpeed >= 10.5, `疾冲: 前向冲量 11 (实测 ${r.fwdSpeed})`);
+    check(r.up === true, '疾冲: 带小幅跃升');
+    check(r.chargeAfter === 0 && r.refire === false, '疾冲: 用后进冷却不能连发');
+  }
+  // 2 致盲尖啸：10m 致盲整 3s
+  {
+    await setup62();
+    const ok0 = await pickBot();
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      rules.convertToMutant(p.id, 'souleater', false); g.woz.convertNow(p, true);
+      p.pos.set(0, 0.1, 0); p.protectT = 999;
+      const bot = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      bot.protectT = 0; bot.armor = 0; bot.blindT = 0;
+      bot.pos.set(10, 0.1, 0);
+      g.fastForward(1 / 30, 1 / 30);
+      p.updateCamera(0.016);
+      rules.tryUseSkill(p.id);
+      return { blind10m: Math.abs(bot.blindT - 3) < 0.05 };
+    });
+    check(ok0 && r.blind10m === true, '尖啸: 10m 内人类致盲整 3s');
+  }
+  // 2b 尖啸 18m 外无效
+  {
+    await setup62();
+    const ok0 = await pickBot();
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      rules.convertToMutant(p.id, 'souleater', false); g.woz.convertNow(p, true);
+      p.pos.set(0, 0.1, 0); p.protectT = 999;
+      const bot = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      bot.protectT = 0; bot.blindT = 0;
+      bot.pos.set(25, 0.1, 0);
+      g.fastForward(1 / 30, 1 / 30);
+      p.updateCamera(0.016);
+      rules.tryUseSkill(p.id);
+      return { outOfRange: bot.blindT === 0 };
+    });
+    check(ok0 && r.outOfRange === true, '尖啸: 18m 外不受影响');
+  }
+  // 3 投掷斧头：真实命中 ≈300 伤
+  {
+    await setup62();
+    const ok0 = await pickBot();
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      rules.convertToMutant(p.id, 'devourer', false); g.woz.convertNow(p, true);
+      p.pos.set(0, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 999;
+      const bot = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      bot.protectT = 0; bot.armor = 0; bot.rootT = 999;
+      bot.hp = 500; // 抬高血量避免致命钳制，测出斧头真实伤害
+      bot.pos.set(-6, 0.1, 0); // forward(PI/2) = -x，6m 处
+      g.fastForward(2 / 30, 1 / 30); p.updateCamera(0.016);
+      const hp0 = bot.hp;
+      rules.tryUseSkill(p.id);
+      g.fastForward(1.2, 1 / 30);
+      const loss = hp0 - bot.hp;
+      return { loss: +loss.toFixed(0), alive: bot.hp > 0 };
+    });
+    check(ok0 && r.loss >= 250 && r.loss <= 360 && r.alive, `斧头: 实测命中伤害 ≈300 (${r.loss})`);
+  }
+  // 4 缠绕：定身 1.2s + 60 伤 + 拖拽
+  {
+    await setup62();
+    const ok0 = await pickBot();
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      rules.convertToMutant(p.id, 'tangler', false); g.woz.convertNow(p, true);
+      p.pos.set(0, 0.1, 0); p.yaw = -Math.PI / 2; p.pitch = 0; p.protectT = 999; // 面向 +x
+      const bot = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      bot.protectT = 0; bot.armor = 0; bot.pos.set(10, 0.1, 0);
+      g.fastForward(2 / 30, 1 / 30); p.updateCamera(0.016);
+      const hp0 = bot.hp;
+      rules.tryUseSkill(p.id);
+      const rooted = Math.abs(bot.rootT - 1.2) < 0.05;
+      const loss = hp0 - bot.hp;
+      g.fastForward(0.3, 1 / 30);
+      const dist0 = p.pos.distanceTo(bot.pos);
+      g.fastForward(0.4, 1 / 30);
+      const dragged = p.pos.distanceTo(bot.pos) < dist0 - 0.5;
+      return { rooted, loss: +loss.toFixed(0), dragged };
+    });
+    check(ok0 && r.rooted === true, '缠绕: 定身 1.2s');
+    check(ok0 && Math.abs(r.loss - 60) < 12, `缠绕: 60 伤 (实测 ${r.loss})`);
+    check(ok0 && r.dragged === true, '缠绕: 拖拽拉近');
+  }
+  // 4b 缠绕空放不消耗
+  {
+    await setup62();
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      rules.convertToMutant(p.id, 'tangler', false); g.woz.convertNow(p, true);
+      p.pos.set(0, 0.1, 0); p.yaw = Math.PI; p.pitch = 0.9; p.protectT = 999;
+      g.fastForward(2 / 30, 1 / 30); p.updateCamera(0.016);
+      rules.tryUseSkill(p.id);
+      return { refund: rules.state(p.id).skillCharge >= 1 };
+    });
+    check(r.refund === true, '缠绕: 空放不消耗充能（对齐原作可随时使用）');
+  }
+  // 5 自爆：冲锋加速（修复验证）+阵亡+感染链
+  {
+    await setup62();
+    const ok0 = await pickBot();
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      rules.convertToMutant(p.id, 'bomber', false); g.woz.convertNow(p, true);
+      p.pos.set(0, 0.1, 0); p.protectT = 999;
+      const bot = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      bot.protectT = 0; bot.armor = 0; bot.pos.set(4, 0.1, 0);
+      g.fastForward(1 / 30, 1 / 30);
+      rules.tryUseSkill(p.id);
+      g.woz.tick(0.016); g.woz.tick(0.016); g.woz.tick(0.016);
+      const boost = Math.abs(p.speedMul - 1.18 * 1.3) < 0.05;
+      g.fastForward(1.3, 1 / 30);
+      const died = !p.alive;
+      const infected = rules.state(bot.id).side === 'mutant';
+      return { boost, died, infected };
+    });
+    check(ok0 && r.boost === true, '自爆: 引信期间冲锋 ×1.3 生效（V72 修复）');
+    check(ok0 && r.died === true, '自爆: 爆炸后自身阵亡');
+    check(ok0 && r.infected === true, '自爆: 4m 内人类被炸死走感染链');
+  }
+  // 6 母体咆哮：群体加速 ×1.25 / 5s 到期
+  {
+    await setup62();
+    const ok0 = await pickBot();
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      const bot = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      rules.convertToMutant(bot.id, 'nightrunner', false); g.woz.convertNow(bot, true);
+      rules.convertToMutant(p.id, 'mother', true); g.woz.convertNow(p, true);
+      p.pos.set(0, 0.1, 0); p.protectT = 999; bot.pos.set(5, 0.1, 0);
+      g.fastForward(1 / 30, 1 / 30);
+      const before = bot.speedMul;
+      rules.tryUseSkill(p.id);
+      g.fastForward(0.2, 1 / 30);
+      const during = bot.speedMul;
+      g.fastForward(5.2, 1 / 30);
+      const after = bot.speedMul;
+      return { boosted: during > before * 1.2, expired: Math.abs(after - before) < 0.03 };
+    });
+    check(ok0 && r.boosted === true, '咆哮: 附近变异者移速 ×1.25 生效');
+    check(ok0 && r.expired === true, '咆哮: 5s 后到期');
+  }
+  // 7 BOT 用技语境表 + 冷却时长（config 层）
+  {
+    const r = await (await setup62(), page.evaluate(() => {
+      const g = window.__game, mgr = g.woz;
+      const mk = (cls, hp, maxHp) => ({ cls, hp, maxHp, skillActive: false, skillCharge: 1, evoPoints: 0, devourCount: 0, rebirths: 0 });
+      return {
+        nr: mgr.botSkillWant(mk('nightrunner', 1000, 1500), 10, false),
+        se: mgr.botSkillWant(mk('souleater', 700, 800), 10, false),
+        dev: mgr.botSkillWant(mk('devourer', 3000, 4000), 10, true) && !mgr.botSkillWant(mk('devourer', 3000, 4000), 10, false),
+        tan: mgr.botSkillWant(mk('tangler', 1500, 1800), 10, true),
+        bom: mgr.botSkillWant(mk('bomber', 800, 2200), 5, false),
+        mo: mgr.botSkillWant(mk('mother', 2000, 3000), 20, false),
+        crawler: mgr.botSkillWant(mk('crawler', 3000, 3600), 10, true) === false,
+        hh: mgr.botSkillWant(mk('headhunter', 2000, 2800), 10, true) === false,
+      };
+    }));
+    check(Object.values(r).every(Boolean), `V72: BOT 用技语境表全对 (${JSON.stringify(r)})`);
+  }
 } else if (ver === 'v61') {
   // V71：购买页全卡种数值+条 / 变异者可见击退
   await goto('&mode=infection');
