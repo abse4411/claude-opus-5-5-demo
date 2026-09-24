@@ -1036,6 +1036,7 @@ if (ver === 'v1') {
       g.fastForward(20, 1 / 30);
       rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
       const st = rules.state(p.id);
+      if (st.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true); // 玩家可能已被感染/阵亡
       st.humanSurviveTime = WOZ_H(); // 45s × 4 档
       function WOZ_H() { return 45 * 4; }
       g.fastForward(0.25, 1 / 30);
