@@ -319,7 +319,7 @@ if (ver === 'v1') {
         sideBtnsHidden: document.getElementById('wozClasses').style.display === 'none',
       };
     });
-    check(r.visible && r.cards === 6, `变身: 选择面板弹出且 6 张职业卡 (${r.cards})`);
+    check(r.visible && r.cards === 7, `变身: 选择面板弹出且 7 张职业卡 (${r.cards})`);
     check(r.sideBtnsHidden, '变身: 面板打开时右下迷你按钮隐藏');
     await page.waitForTimeout(200);
     await shot('pick');
@@ -416,6 +416,72 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v48') {
+  // V52 断头者：双大刀近战倍率（重击秒杀）、Minus 变身、体型染色
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      if (rules.state(p.id).side !== 'mutant') rules.convertToMutant(p.id, 'headhunter', false);
+      g.woz.convertNow(p, true);
+      p.pos.set(0, 0.1, 0); p.protectT = 0; p.rootT = 0;
+      if (p.vel.set) p.vel.set(0, 0, 0);
+      g.woz.props.length = 0; // 清场景道具：melee 优先劈中路径上的桶/箱会提前 return
+      const scale = p.soldier.root.scale.x;
+      const tint = p.soldier.material.color.getHex();
+      // 近战倍率：冻结靶子 AI 后实测 melee 重击伤害（断头者 vs 夜行者）
+      const mkVictim = () => { const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human'); if (v) { v.pos.set(3.6, 0.1, 0); v.protectT = 0; v.armor = 0; v.rootT = 999; v.staggerT = 0; if (v.vel.set) v.vel.set(0, 0, 0); } return v; };
+      const mulH = g.woz.classMeleeMul(p, true), mulL = g.woz.classMeleeMul(p, false);
+      const v1 = mkVictim(); if (!v1) return { ok: false };
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; // 已知开阔连线（v41 同款）：面向原点
+      g.fastForward(1 / 30, 1 / 30);
+      const dbg = { wid: p.weapon?.id, slot: p.slot, inv0: p.inv[0]?.id, yawsin: Math.sin(p.yaw), vpos: [v1.pos.x, v1.pos.y, v1.pos.z], ppos: [p.pos.x, p.pos.y, p.pos.z] };
+      const hp0 = v1.hp;
+      p.slot = 0; p.readyAt = 0;
+      g.melee(p, true); // 断头者重击（伤害经 timers 延迟结算）
+      g.fastForward(0.5, 1 / 30);
+      const hhHeavy = hp0 - v1.hp;
+      const hhKilled = !v1.alive || rules.state(v1.id).side === 'mutant'; // 秒杀→击杀→感染转化
+      rules.setMutantClass(p.id, 'nightrunner');
+      g.woz.applyClassVisual(p);
+      const mulN = g.woz.classMeleeMul(p, true);
+      const v2 = mkVictim(); if (!v2) return { ok: false };
+      g.fastForward(1 / 30, 1 / 30); // 同步士兵骨骼位置（hitTest 用旧位会落空）
+      const hp1 = v2.hp;
+      g.melee(p, true); // 夜行者重击
+      g.fastForward(0.5, 1 / 30);
+      const nrHeavy = hp1 - v2.hp;
+      return { ok: true, scale, tint, hhHeavy, hhKilled, nrHeavy, mulH, mulL, mulN, dbg };
+    });
+    check(r.ok, '断头者: 场景搭建');
+    check(Math.abs(r.scale - 1.15) < 0.01, `断头者: 体型 1.15 (${r.scale})`);
+    check(r.tint !== 0xffffff, `断头者: 冷钢灰染色 (${r.tint.toString(16)})`);
+    check(r.mulH === 2.65 && r.mulL === 1.75, `断头者: classMeleeMul 重${r.mulH}/轻${r.mulL}`);
+    check(r.hhKilled || r.hhHeavy >= 195, `断头者: 重击秒杀满血人类 (伤${r.hhHeavy.toFixed(0)}/杀${r.hhKilled})`);
+    check(r.mulN === 1, '断头者: 换职业后倍率归 1');
+  }
+  // Minus 键真实事件变身
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      if (rules.state(p.id).side !== 'mutant') { rules.convertToMutant(p.id, 'nightrunner', false); g.woz.convertNow(p, true); }
+      p.protectT = 999;
+      return { side: rules.state(p.id).side, cls: rules.state(p.id).cls };
+    });
+    await page.keyboard.press('Minus');
+    await page.waitForTimeout(150);
+    const r2 = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      return { cls: rules.state(p.id).cls, cards: document.querySelectorAll('#wozPick .pcard').length, btn: !!document.querySelector('#wozClasses button[data-c="headhunter"]') };
+    });
+    check(r.side === 'mutant', '断头者: 先转变异者');
+    check(r2.cls === 'headhunter', `断头者: Minus 键变身生效 (${r2.cls})`);
+    check(r2.cards === 7, `断头者: 选择面板 7 张职业卡 (${r2.cards})`);
+    check(r2.btn, '断头者: 侧栏变身按钮存在');
+  }
 } else if (ver === 'v47') {
   // V51 爬行者：部位伤害（躯体 0.6 / 爆头 1.5+定身）、Digit0 变身、体型染色、职业卡
   await goto('&mode=infection');
@@ -473,7 +539,7 @@ if (ver === 'v1') {
     check(Math.abs(r.headLoss - r.nrBodyLoss * 1.5) < 1.5, `爬行者: 爆头 1.5× (${r.headLoss.toFixed(1)})`);
     check(r.rootT >= 0.89, `爬行者: 爆头定身 0.9s (${r.rootT?.toFixed(2)})`);
     check(r2.cls === 'crawler', `爬行者: Digit0 变身生效 (${r2.cls})`);
-    check(r2.cards === 6, `爬行者: 选择面板 6 张职业卡 (${r2.cards})`);
+    check(r2.cards === 7, `爬行者: 选择面板 7 张职业卡 (${r2.cards})`);
     check(r2.btn, '爬行者: 侧栏变身按钮存在');
   }
 } else if (ver === 'v46') {

@@ -100,6 +100,10 @@ export const WOZ = {
   crawlerBodyArmor: 0.6,    // 躯体减伤 40%（调研：抗击打强，移动中被射击影响不大）
   crawlerHeadMul: 1.5,      // 爆头额外伤害
   crawlerHeadStop: 0.9,     // 爆头定身时长（调研：被击中头部会停止移动）
+  headhunterHp: 2800,       // 断头者：双大刀处刑型（调研：力量型/手持两把大刀/移动慢/时常秒杀对手）
+  headhunterSlow: 0.08,     // 比爬行者更迟缓
+  headhunterLightMul: 1.75, // 双刀轻击 ×1.75（40→70）
+  headhunterHeavyMul: 2.65, // 双刀重击 ×2.65（75→199）：重击近身秒杀满血人类
 };
 
 // ---- 生化对抗：人类攻方占领战术据点，变异者守方 ----
@@ -163,6 +167,7 @@ export const MutantClass = {
   Tangler: 'tangler',
   Bomber: 'bomber',
   Crawler: 'crawler',
+  Headhunter: 'headhunter',
 };
 
 export const MutantSkill = {
@@ -184,6 +189,7 @@ export const CLASS_LABEL = {
   [MutantClass.Tangler]: '缠绕者',
   [MutantClass.Bomber]: '爆破者',
   [MutantClass.Crawler]: '爬行者',
+  [MutantClass.Headhunter]: '断头者',
 };
 
 export const SKILL_LABEL = {
@@ -203,7 +209,7 @@ export function skillOf(cls) {
   if (cls === MutantClass.Devourer) return MutantSkill.AxeThrow;
   if (cls === MutantClass.Tangler) return MutantSkill.Entangle;
   if (cls === MutantClass.Bomber) return MutantSkill.SelfDestruct;
-  // 爬行者：原作纯属性型变异者，无技能（17173 变异者技能解析）
+  // 爬行者/断头者：原作纯属性型变异者，无技能（17173 变异者技能解析）
   return MutantSkill.None;
 }
 

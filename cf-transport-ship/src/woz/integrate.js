@@ -1162,8 +1162,8 @@ export class WozManager {
     if (p.consumePressed('KeyG') || p.consumePressed('KeyF')) {
       if (!rules.tryUseSkill(p.id)) g.hud.toast(`技能冷却中 ${(st.skillCharge * 100) | 0}%`, 1);
     }
-    // 5/6/7/8/9/0 子体变身（V51 增爬行者）
-    for (const [code, cls] of [['Digit5', MutantClass.Nightrunner], ['Digit6', MutantClass.Souleater], ['Digit7', MutantClass.Devourer], ['Digit8', MutantClass.Tangler], ['Digit9', MutantClass.Bomber], ['Digit0', MutantClass.Crawler]]) {
+    // 5/6/7/8/9/0/- 子体变身（V51 增爬行者，V52 增断头者）
+    for (const [code, cls] of [['Digit5', MutantClass.Nightrunner], ['Digit6', MutantClass.Souleater], ['Digit7', MutantClass.Devourer], ['Digit8', MutantClass.Tangler], ['Digit9', MutantClass.Bomber], ['Digit0', MutantClass.Crawler], ['Minus', MutantClass.Headhunter]]) {
       if (p.consumePressed(code) && rules.setMutantClass(p.id, cls)) this.playerClassChosen = true;
     }
   }
@@ -1480,14 +1480,25 @@ export class WozManager {
     return rules.state(v.id).cls === key;
   }
 
+  // V52 断头者双大刀近战倍率
+  classMeleeMul(a, heavy) {
+    const rules = this.rules;
+    if (!rules || !a || a.id >= rules.playerCount) return 1;
+    const st = rules.state(a.id);
+    if (st.side !== 'mutant') return 1;
+    if (st.cls === MutantClass.Headhunter) return heavy ? WOZ.headhunterHeavyMul : WOZ.headhunterLightMul;
+    return 1;
+  }
+
   // 职业外观：体型 + 皮肤乘法染色（新 Soldier 材质为白，restoreHuman 重建时自动复位）
   applyClassVisual(a) {
     const st = this.rules?.state(a.id);
     if (!st || st.side !== 'mutant') return;
     const cls = st.cls;
-    const scale = st.isMother ? 1.28 : cls === MutantClass.Crawler ? 1.24 : cls === MutantClass.Devourer ? 1.18 : 1.08;
+    const scale = st.isMother ? 1.28 : cls === MutantClass.Crawler ? 1.24 : cls === MutantClass.Devourer ? 1.18 : cls === MutantClass.Headhunter ? 1.15 : 1.08;
     a.soldier.root.scale.setScalar(scale);
     if (cls === MutantClass.Crawler) a.soldier.material.color.setHex(0x9cc08a); // 蜥蜴沼泽绿
+    else if (cls === MutantClass.Headhunter) a.soldier.material.color.setHex(0xaab2c0); // 断头者：冷钢灰蓝
     else a.soldier.material.color.setHex(0xffffff);
   }
 
@@ -1520,7 +1531,7 @@ export class WozManager {
     if (!a || a.isPlayer || this.rules.state(victimId).isMother) return;
     this._autoCls = victimId;
     const r = Math.random();
-    const changed = this.rules.setMutantClass(victimId, r < 0.3 ? MutantClass.Nightrunner : r < 0.5 ? MutantClass.Souleater : r < 0.66 ? MutantClass.Devourer : r < 0.8 ? MutantClass.Tangler : r < 0.92 ? MutantClass.Bomber : MutantClass.Crawler);
+    const changed = this.rules.setMutantClass(victimId, r < 0.27 ? MutantClass.Nightrunner : r < 0.46 ? MutantClass.Souleater : r < 0.61 ? MutantClass.Devourer : r < 0.74 ? MutantClass.Tangler : r < 0.85 ? MutantClass.Bomber : r < 0.93 ? MutantClass.Crawler : MutantClass.Headhunter);
     if (!changed) this._autoCls = -1; // 职业未变（默认夜行者）时清除抑制标记，避免吃掉后续手动播报
   }
 

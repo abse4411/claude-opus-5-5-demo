@@ -385,5 +385,23 @@ console.log('== WOZ 规则层断言 ==');
   check(skillOf(MutantClass.Nightrunner) === MutantSkill.Dash, 'V51: 夜行者技能保留');
 }
 
+// V52 断头者：双大刀处刑型（纯属性型无技能/最迟缓/近战倍率）
+{
+  const sim = new ArenaSim('infection', 778);
+  skipBuy(sim);
+  const id = firstNonMother(sim);
+  const st = sim.rules.state(id);
+  st.side = 'mutant'; st.alive = true;
+  check(sim.rules.setMutantClass(id, MutantClass.Headhunter), 'V52: 可切换为断头者');
+  check(sim.rules.baseHp(st) === WOZ.headhunterHp && WOZ.headhunterHp === 2800, 'V52: 断头者 2800HP 血池');
+  check(skillOf(MutantClass.Headhunter) === MutantSkill.None, 'V52: 纯属性型无技能');
+  check(sim.rules.tryUseSkill(id) === false, 'V52: 断头者无法释放技能');
+  const hhSpd = sim.rules.mutantSpeedMultiplier(id);
+  const nrSpd = WOZ.mutantSpeed;
+  check(hhSpd < nrSpd - WOZ.crawlerSlow, `V52: 断头者比爬行者更迟缓 (${hhSpd.toFixed(3)})`);
+  check(Math.abs(hhSpd - (nrSpd - WOZ.headhunterSlow)) < 1e-6, 'V52: 减速量 = headhunterSlow');
+  check(WOZ.headhunterLightMul * 40 === 70 && Math.round(WOZ.headhunterHeavyMul * 75) >= 195, 'V52: 双刀倍率 轻击70/重击秒杀≈199');
+}
+
 console.log(`\n结果: ${passed} 通过, ${failed} 失败`);
 process.exit(failed === 0 ? 0 : 1);

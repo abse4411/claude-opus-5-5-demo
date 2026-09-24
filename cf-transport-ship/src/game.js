@@ -601,6 +601,8 @@ export class Game {
           let dmg = heavy ? d.dmgHeavy : d.dmgLight;
           if (back) dmg *= heavy ? 2 : 1.6;
           if (hit.part === 'head') dmg *= 1.3;
+          // V52 断头者双大刀：轻/重击倍率（重击近身即可秒杀满血人类，原作"时常可以秒杀对手"）
+          if (this.woz) dmg *= this.woz.classMeleeMul(a, heavy);
           const pt = eye.clone().addScaledVector(hit.dir, hit.t);
           this.fx.impact(pt, hit.dir.clone().negate(), 'flesh', hit.dir);
           audio.playKnife(heavy ? 'heavy' : 'light', 'flesh', a.isPlayer ? null : eye);

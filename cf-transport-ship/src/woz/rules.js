@@ -232,6 +232,7 @@ export class WozRules {
     if (p.cls === MutantClass.Tangler) return WOZ.tanglerHp;
     if (p.cls === MutantClass.Bomber) return WOZ.bomberHp;
     if (p.cls === MutantClass.Crawler) return WOZ.crawlerHp;
+    if (p.cls === MutantClass.Headhunter) return WOZ.headhunterHp;
     return WOZ.childHp;
   }
 
@@ -423,6 +424,7 @@ export class WozRules {
     let m = WOZ.mutantSpeed;
     if (p.cls === MutantClass.Nightrunner) m += WOZ.nightrunnerSpeed;
     if (p.cls === MutantClass.Crawler) m -= WOZ.crawlerSlow; // 巨躯迟缓
+    if (p.cls === MutantClass.Headhunter) m -= WOZ.headhunterSlow; // 双刀处刑型：最迟缓
     if (p.skillActive && p.cls === MutantClass.Nightrunner) m *= WOZ.dashSpeed * 0.55;
     if (this.motherRageActive() && p.cls !== MutantClass.Mother) m *= 1.25;
     if (p.skillActive && p.cls === MutantClass.Mother) m *= 1.35;
