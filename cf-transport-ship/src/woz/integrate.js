@@ -841,6 +841,10 @@ export class WozManager {
 
   // 玩家所处目标区域的情境交互提示（null = 无提示）
   promptFor(p) {
+    // 处决提示（V37）：变异者对残血人类近身
+    if (this.rules && this.rules.phase === 'battle' && this.rules.isMutantSide(p.id) && p.alive && this.findExecuteTarget(p)) {
+      return { kind: 'red', title: '[E] 处决', sub: '残血人类 · 必定感染 +200 血' };
+    }
     // 急救包引导（V36）：按住 X 自疗
     if (this._medT > 0 && p.alive && p.team === 'GR' && p.medkits > 0) {
       return { kind: 'gold', title: '包扎中…', sub: '松开或移动会打断', prog: Math.min(1, this._medT / 2) };
@@ -984,14 +988,18 @@ export class WozManager {
     if (!rules.isMutantSide(p.id)) return;
     const st = rules.state(p.id);
     if (!st.alive) return;
-    // E 吞噬
+    // E 处决 / 吞噬（残血人类近身时处决优先）
     if (p.consumePressed('KeyE')) {
-      const corpse = this.findCorpse(p);
-      if (rules.tryDevour(p.id, corpse)) {
-        p.hp = st.hp;
-        g.hud.toast('吞噬！恢复血量并获得进化点', 1.5);
-      } else if (corpse >= 0) g.hud.toast('吞噬冷却中…', 1);
-      else g.hud.toast('附近没有可吞噬的变异者尸体', 1);
+      if (this.tryExecute(p)) {
+        // 处决成功（击杀链已走感染+回血）
+      } else {
+        const corpse = this.findCorpse(p);
+        if (rules.tryDevour(p.id, corpse)) {
+          p.hp = st.hp;
+          g.hud.toast('吞噬！恢复血量并获得进化点', 1.5);
+        } else if (corpse >= 0) g.hud.toast('吞噬冷却中…', 1);
+        else g.hud.toast('附近没有可吞噬的变异者尸体', 1);
+      }
     }
     // G 技能
     if (p.consumePressed('KeyG')) {
@@ -1001,6 +1009,45 @@ export class WozManager {
     for (const [code, cls] of [['Digit5', MutantClass.Nightrunner], ['Digit6', MutantClass.Souleater], ['Digit7', MutantClass.Devourer], ['Digit8', MutantClass.Tangler], ['Digit9', MutantClass.Bomber]]) {
       if (p.consumePressed(code) && rules.setMutantClass(p.id, cls)) this.playerClassChosen = true;
     }
+  }
+
+  // 处决终结技（V37 交互）：变异者对残血（≤40）近身人类 E 键必杀——必定感染 + 回血 200
+  findExecuteTarget(mutant) {
+    const g = this.g, rules = this.rules;
+    if (!rules || !rules.isMutantSide(mutant.id)) return null;
+    for (const v of g.actors) {
+      if (!v.alive || v === mutant || v.id >= rules.playerCount) continue;
+      if (rules.isMutantSide(v.id)) continue;
+      if (v.hp > 40) continue;
+      const d = mutant.pos.distanceTo(v.pos);
+      if (d > 2.2) continue;
+      const eye = mutant.soldier.chestWorld(new THREE.Vector3());
+      const c = v.soldier.chestWorld(new THREE.Vector3());
+      const dir = c.clone().sub(eye); const L = dir.length(); dir.divideScalar(L || 1);
+      if (g.world.raycast(eye.x, eye.y, eye.z, dir.x, dir.y, dir.z, L, 'sight')) continue;
+      return { v, dir };
+    }
+    return null;
+  }
+
+  tryExecute(mutant) {
+    const g = this.g, rules = this.rules;
+    const t = this.findExecuteTarget(mutant);
+    if (!t) return false;
+    const { v, dir } = t;
+    v.protectT = 0; v.armor = 0;
+    const st = rules.state(mutant.id);
+    g.damage(v, mutant, 99999, 'chest', 'claw', dir, false); // claw 标签 → 必定感染
+    if (mutant.alive) {
+      st.hp = Math.min(rules.effectiveMaxHp(st), st.hp + 200);
+      mutant.hp = Math.max(1, Math.round(st.hp));
+    }
+    g.fx.shake = Math.max(g.fx.shake || 0, 1.4);
+    g.hitStopT = Math.max(g.hitStopT, 0.1);
+    if (mutant.isPlayer) g.hud.toast(`<b style="color:#ff5040">处决！</b>感染 +200 血`, 2);
+    g.hud.eventFeed(`${mutant.name} <b>处决</b>了 ${v.name}！`, 'inf');
+    wozAudio.devour(mutant.isPlayer ? null : mutant.pos.clone());
+    return true;
   }
 
   tryHumanUltimate(p) {

@@ -416,6 +416,45 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v33') {
+  // 变异者处决终结技：残血人类近身 E → 必定感染 + 回血 200 + 顿帧震屏
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      rules.convertToMutant(p.id, 'devourer', false);
+      g.woz.convertNow(p, true);
+      const st = rules.state(p.id);
+      st.hp = 1000; p.hp = 1000;
+      // 残血人类靶：贴身
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      v.hp = 30;
+      v.pos.set(p.pos.x + 1.5, v.pos.y, p.pos.z);
+      v.protectT = 0; v.armor = 0;
+      g.fastForward(1 / 30, 1 / 30);
+      const prompt = g.woz.promptFor(p);
+      const before = g.woz.pickups.list.length;
+      const executed = g.woz.tryExecute(p);
+      g.fastForward(0.2, 1 / 30);
+      return {
+        ok: true,
+        promptTitle: prompt ? prompt.title : '',
+        executed,
+        dead: !v.alive,
+        infected: rules.state(v.id).side === 'mutant',
+        healed: p.hp > 1000,
+        hitStop: +g.hitStopT.toFixed(2),
+      };
+    });
+    check(r.ok, '处决: 靶子就位');
+    check(r.promptTitle.includes('处决'), `处决: 近身提示 [${r.promptTitle}]`);
+    check(r.executed && r.dead && r.infected, `处决: 必杀感染 (dead=${r.dead} side=mutant=${r.infected})`);
+    check(r.healed && r.hitStop >= 0.1, `处决: 回血+顿帧 (hp>${1000} hitStop=${r.hitStop})`);
+  }
 } else if (ver === 'v32') {
   // 人类急救包：拾取 → 按住 X 引导条 → 2s 自疗 +60
   await goto('&mode=infection');
