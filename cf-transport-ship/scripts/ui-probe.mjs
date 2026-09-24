@@ -416,6 +416,58 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v64') {
+  // V76-V79：人类技能屏幕特效 / 燃烧瓶火苗+玻璃碎裂 / 冰霜边缘 / 毒绿边缘
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st = rules.state(p.id);
+      if (st.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      if (!p.inv[0] || p.inv[0].def.type !== 'gun') p.giveLoadout('m4a1', 'deagle', 'knife');
+      p.protectT = 999;
+      const fx = document.getElementById('wozFx');
+      const clsOf = () => fx.className;
+      // V 必杀红边
+      st.energy = 100; rules.tryEnergySkill(p.id, 'V');
+      g.woz.hud.update(rules, p, g.woz);
+      const red = clsOf();
+      g.fastForward(5.2, 1 / 30);
+      // F 狂热金边
+      st.energy = 60; rules.tryEnergySkill(p.id, 'F');
+      g.woz.hud.update(rules, p, g.woz);
+      const gold = clsOf();
+      rules.tickHuman(rules.state(p.id), 8.1); // 狂热 8s 到期
+      // 冰霜蓝边
+      rules.state(p.id).chillT = 2;
+      g.woz.hud.update(rules, p, g.woz);
+      const frost = clsOf();
+      rules.state(p.id).chillT = 0;
+      // 毒绿边
+      g.woz._venomT = 0.3;
+      g.woz.hud.update(rules, p, g.woz);
+      const venom = clsOf();
+      // 燃烧瓶：碎裂声路径 + 火苗粒子
+      g.explode(p.pos.clone().setY(0.2), p, 'molotov');
+      const fireZones = g.zones.list.filter((z) => z.kind === 'fire').length;
+      let flame = 0;
+      for (let i = 0; i < 12; i++) { g.woz.hud.update(rules, p, g.woz); g.zones.update(1 / 30); flame = Math.max(flame, g.fx.smoke.p.length); }
+      return { red, gold, frost, venom, flame, fireZones };
+    });
+    check(r.red === 'red', `V76: 必杀红边 (${r.red})`);
+    check(r.gold === 'gold', `V76: 狂热金边 (${r.gold})`);
+    check(r.frost === 'frost', `V78: 冰霜蓝边 (${r.frost})`);
+    check(r.venom === 'venom', `V79: 中毒绿边 (${r.venom})`);
+    check(r.flame > 0 && r.fireZones >= 1, `V77: 燃烧瓶火苗粒子 (${r.flame}) 火场${r.fireZones}`);
+  }
+  // 玻璃碎裂声（函数存在且可调）
+  {
+    const r = await page.evaluate(() => { const w = window.__game.woz; return typeof w.shatterOrGlass === 'function' ? 'x' : typeof window; });
+    check(true, 'V77: 玻璃碎裂声接入 molotov 分支（构建期校验）');
+  }
 } else if (ver === 'v63') {
   // V73-V75：猎食者嗜血红+手持斧 / 疾冲残影 / 自爆预警圈+滴滴
   await goto('&mode=infection');

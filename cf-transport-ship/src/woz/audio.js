@@ -48,6 +48,17 @@ function play(pos, build) {
 export const wozAudio = {
   mount(game) { gameRef = game; },
 
+  // V77 玻璃碎裂：高通滤波噪声爆发
+  shatter(pos) {
+    play(pos, (c, g, t0, vol) => {
+      const src = c.createBufferSource(); src.buffer = noiseBuf(c, 0.22);
+      const hp = c.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2600;
+      src.connect(hp); hp.connect(g);
+      env(g, t0, 0.004, 0.5 * vol, 0.2);
+      src.start(t0);
+    });
+  },
+
   // V75 引信滴滴声：短促方波蜂鸣（freq Hz，pos 可选做距离衰减）
   beep(pos, freq = 880, dur = 0.07) {
     play(pos, (c, g, t0, vol) => {

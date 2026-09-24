@@ -40,6 +40,12 @@ const PANEL_CSS = `
 #wozBig .stagebar small,#wozPanel .ultbar small{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:600 8px/1 "Microsoft YaHei",sans-serif;color:#fff;text-shadow:0 1px 2px #000;letter-spacing:1px}
 #wozTop{position:absolute;top:110px;left:50%;transform:translateX(-50%);font:600 13px "PingFang SC","Microsoft YaHei",sans-serif;color:#dfe6ec;text-shadow:0 1px 3px #000;pointer-events:none;white-space:nowrap;background:rgba(8,10,14,.55);padding:3px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.14)}
 #wozBlind{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .15s}
+#wozFx{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .25s}
+#wozFx.gold{box-shadow:inset 0 0 90px 24px rgba(255,210,74,.55);opacity:1}
+#wozFx.red{box-shadow:inset 0 0 110px 30px rgba(255,60,40,.6);opacity:1;animation:wozPulse .8s ease-in-out infinite alternate}
+#wozFx.frost{box-shadow:inset 0 0 130px 40px rgba(120,200,235,.65);opacity:1}
+#wozFx.venom{box-shadow:inset 0 0 110px 30px rgba(120,220,60,.5);opacity:1}
+@keyframes wozPulse{from{opacity:.55}to{opacity:1}}
 #wozClasses{position:absolute;right:14px;bottom:120px;display:flex;flex-direction:column;gap:8px;pointer-events:auto}
 #wozClasses button{width:112px;padding:8px 0;border:1px solid rgba(255,140,60,.55);border-radius:8px;background:rgba(30,12,6,.72);color:#ffb488;font:600 13px "PingFang SC","Microsoft YaHei",sans-serif;cursor:pointer}
 #wozClasses button:hover{background:rgba(80,30,12,.85);color:#ffd9b8}
@@ -107,6 +113,7 @@ export class WozHud {
     const wrap = document.createElement('div');
     wrap.innerHTML = `
       <div id="wozBlind"></div>
+      <div id="wozFx"></div>
       <div id="wozTop"></div>
       <div id="wozObj"></div>
       <div id="wozDirs"></div>
@@ -145,6 +152,7 @@ export class WozHud {
     ui.appendChild(wrap);
     this.el = {
       blind: document.getElementById('wozBlind'),
+      fx: document.getElementById('wozFx'),
       top: document.getElementById('wozTop'),
       obj: document.getElementById('wozObj'),
       dirs: document.getElementById('wozDirs'),
@@ -180,7 +188,7 @@ export class WozHud {
   }
 
   unmount() {
-    for (const id of ['wozPanel', 'wozBig', 'wozBlind', 'wozTop', 'wozObj', 'wozDirs', 'wozClasses', 'wozBanner', 'wozPick', 'wozStyle']) {
+    for (const id of ['wozPanel', 'wozBig', 'wozBlind', 'wozFx', 'wozTop', 'wozObj', 'wozDirs', 'wozClasses', 'wozBanner', 'wozPick', 'wozStyle']) {
       document.getElementById(id)?.remove();
     }
     this.mounted = false;
@@ -281,6 +289,16 @@ export class WozHud {
     }
     // 致盲遮罩
     this.el.blind.style.opacity = player.alive ? Math.min(1, (player.blindT || 0) / WOZ.blindWailDuration * 1.2) : 0;
+    // V76/V78/V79 屏幕边缘状态特效：狂暴红 > 狂热金 > 冰霜蓝 > 毒绿
+    {
+      const fx = this.el.fx;
+      const ultOn = !mutant && st.ultActiveT > 0;
+      const frenzyOn = !mutant && st.frenzyT > 0;
+      const frostOn = !mutant && (st.chillT || 0) > 0;
+      const venomOn = (mgr._venomT || 0) > 0;
+      const mode = ultOn ? 'red' : frenzyOn ? 'gold' : frostOn ? 'frost' : venomOn ? 'venom' : '';
+      if (fx._cls !== mode) { fx.className = mode; fx._cls = mode; }
+    }
     // 子体变身按钮
     const showClasses = mutant && !st.isMother && rules.phase === 'battle';
     // 感染变身选择面板（WOZ 特色）：尚未主动选择职业时弹出

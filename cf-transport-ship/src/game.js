@@ -20,6 +20,7 @@ import { Bot, BOT_NAMES } from './bots.js';
 import { TouchControls } from './touch.js';
 import { Zones } from './woz/zones.js';
 import { WozManager } from './woz/integrate.js';
+import { wozAudio } from './woz/audio.js';
 
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
 const MULTI = ['', '', 'DOUBLE KILL', 'TRIPLE KILL', 'MULTI KILL', 'ULTRA KILL', 'RAMPAGE', 'UNSTOPPABLE', 'GODLIKE'];
@@ -756,6 +757,7 @@ export class Game {
       this.zones.spawn(wid === 'molotov' ? 'fire' : wid, p.clone());
       this.fx.explosion(p);
       audio.playExplosion(p);
+      if (wid === 'molotov') wozAudio.shatter(p); // V77 玻璃碎裂
       // 投掷型区域武器：燃烧/毒雾小量即时伤害 + 持续区域
       for (const a of this.actors) {
         if (!a.alive) continue;

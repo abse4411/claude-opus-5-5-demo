@@ -50,6 +50,20 @@ export class Zones {
         const heavy = a.wozHeavy ? 0.8 : 1; // 变异者体表宽，毒火持续伤害略降
         g.damage(a, null, KINDS[z.kind].dps * dt * heavy, 'chest', 'zone' + z.kind, Zones._dir, false);
       }
+      // V77 着火者身上火苗 / V79 毒系体积烟雾
+      if (z.kind === 'fire' || z.kind === 'venom' || z.kind === 'gas') {
+        for (const a of g.actors) {
+          if (!a.alive) continue;
+          const d2 = Math.hypot(a.pos.x - z.pos.x, a.pos.z - z.pos.z);
+          if (d2 > KINDS[z.kind].r) continue;
+          if (z.kind === 'fire' && Math.random() < 0.5) {
+            g.fx.smoke.emit({ x: a.pos.x + (Math.random() - 0.5) * 0.4, y: a.pos.y + 1 + Math.random() * 0.6, z: a.pos.z + (Math.random() - 0.5) * 0.4, vx: 0, vy: 1.6 + Math.random(), vz: 0, life: 0, max: 0.4, s0: 0.14, s1: 0.02, r: 2.2, g: 0.9, b: 0.2, a0: 0.85, a1: 0, drag: 1 });
+          } else if (z.kind !== 'fire' && Math.random() < 0.3) {
+            const c3 = z.kind === 'venom' ? [0.5, 1.4, 0.25] : [0.55, 0.75, 0.4];
+            g.fx.smoke.emit({ x: z.pos.x + (Math.random() - 0.5) * z.r * 1.6, y: 0.3 + Math.random() * 1.2, z: z.pos.z + (Math.random() - 0.5) * z.r * 1.6, vx: 0, vy: 0.5, vz: 0, life: 0, max: 1.1, s0: 0.5, s1: 1.3, r: c3[0], g: c3[1], b: c3[2], a0: 0.22, a1: 0, drag: 0.6 });
+          }
+        }
+      }
       if (z.life <= 0) {
         g.renderer.scene.remove(z.ring);
         g.renderer.scene.remove(z.light);

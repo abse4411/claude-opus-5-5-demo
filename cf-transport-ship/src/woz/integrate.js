@@ -31,6 +31,7 @@ export class WozManager {
     this.growlT = 2;
     this.disguiseReveal = WOZ.disguiseReveal; // V55 混入伪装识破距离（bots.js 读取）
     this.rings = [];                  // V67 技能冲击波环
+    this._venomT = 0;                 // V79 玩家中毒绿边计时
     this.ghosts = [];                 // V74 疾冲残影
     // 目标物模式（对抗 / 爆破）
     this.points = [];
@@ -811,6 +812,9 @@ export class WozManager {
         g.hud.toast('<b style="color:#ff5040">第二波尸潮！</b>悲惨行者再度来袭', 3);
         wozAudio.tide();
       }
+      // V79 中毒绿边：玩家站在毒系区域内
+      this._venomT = Math.max(0, (this._venomT || 0) - dt);
+      if (g.player.alive && g.zones.list.some((z) => (z.kind === 'venom' || z.kind === 'gas') && Math.hypot(g.player.pos.x - z.pos.x, g.player.pos.z - z.pos.z) < 4)) this._venomT = 0.3;
       const av = g.actors.find((a) => a.alive && a.id < rules.playerCount && rules.state(a.id)?.isAvenger);
       if (av) {
         for (const a of g.actors) {
