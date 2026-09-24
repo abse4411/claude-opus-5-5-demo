@@ -187,6 +187,15 @@ export class Effects {
   }
   explosion(p) {
     this.light(p, 60, 0.35, 0xff9040, 22);
+    // 焦痕（V42）：地面深色贴片 ×3 + 升腾黑烟
+    for (let i = 0; i < 3; i++) {
+      const a = Math.random() * 6.28, r = Math.random() * 1.1;
+      this.decals.blood.add({ x: p.x + Math.cos(a) * r, y: 0, z: p.z + Math.sin(a) * r }, new THREE.Vector3(0, 1, 0), 0.9 + Math.random() * 0.7);
+    }
+    for (let i = 0; i < 10; i++) {
+      const a = Math.random() * 6.28, sp = 0.5 + Math.random();
+      this.smoke.emit({ x: p.x + Math.cos(a), y: p.y + 0.5, z: p.z + Math.sin(a) * sp, vx: Math.cos(a) * sp * 0.4, vy: 1.2 + Math.random() * 1.4, vz: Math.sin(a) * sp * 0.4, life: 0, max: 1.6 + Math.random(), s0: 0.5, s1: 2.4, r: 0.12, g: 0.12, b: 0.12, a0: 0.5, a1: 0, grav: -0.6, drag: 1.5 });
+    }
     this.add.emit({ x: p.x, y: p.y + 0.3, z: p.z, vx: 0, vy: 0, vz: 0, life: 0, max: 0.18, s0: 2, s1: 7, r: 2.2, g: 1.6, b: 0.9, a0: 1, a1: 0, grav: 0, drag: 0 });
     for (let i = 0; i < 26; i++) {
       const a = Math.random() * 6.28, e = Math.random() * 1.2, sp = 3 + Math.random() * 6;

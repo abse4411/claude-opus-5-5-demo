@@ -811,6 +811,15 @@ export class Game {
   onJump(a) { audio.playJump(a.isPlayer ? null : a.pos.clone()); }
   onLand(a, sp) { audio.playLand(a.isPlayer ? null : a.pos.clone(), a.ground?.surface || 'metal', Math.min(1, sp / 10)); }
   onFootstep(a) {
+    // 变异者重脚步（V42 压迫感）：玩家 10m 内每步低频闷响 + 极轻微震屏
+    if (a.isZombie) {
+      const pl = this.player;
+      const d = pl && pl.alive ? a.pos.distanceTo(pl.pos) : 1e9;
+      if (d < 10) {
+        this.fx.shake = Math.max(this.fx.shake || 0, 0.05 * (1 - d / 10));
+        audio.playHurt(6);
+      }
+    }
     if (!a.isPlayer && a.pos.distanceTo(this.renderer.camera.position) > 30) return;
     audio.playFootstep(a.isPlayer ? null : a.pos.clone(), a.ground?.surface || 'metal', { run: true, crouch: a.crouch });
     if (!a.walk) for (const b of this.actors) if (b.hear && b.team !== a.team && b.pos.distanceTo(a.pos) < 12) b.hear(a.pos, false);
