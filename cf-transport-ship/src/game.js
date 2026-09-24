@@ -6,6 +6,7 @@ import { buildMap } from './map.js';
 import { buildCityMap, buildPlazaMap, buildHarborMap } from './woz/map-city.js';
 import { buildLabMap } from './woz/map-lab.js';
 import { buildHospitalMap } from './woz/map-hospital.js';
+import { buildSubwayMap } from './woz/map-subway.js';
 import { Environment } from './env.js';
 import { World, NavGrid } from './physics.js';
 import { Effects } from './effects.js';
@@ -62,6 +63,7 @@ export class Game {
       plaza: { name: '都会广场', build: buildPlazaMap },
       harbor: { name: '雾港', build: buildHarborMap },
       hospital: { name: '废弃医院', build: buildHospitalMap },
+      subway: { name: '地铁绝境', build: buildSubwayMap },
     };
     const mapDef = MAPS[this.opts.map] || MAPS.ship;
     this.mapName = mapDef.name;

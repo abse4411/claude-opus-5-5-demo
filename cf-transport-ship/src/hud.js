@@ -63,6 +63,7 @@ export class HUD {
     plaza: '都会广场：开阔环岛与中央雕像，三条大道辐射。视野开阔，适合狙击与尸潮冲锋。',
     harbor: '雾港：浓雾大幅降低可视距离，港区集装箱迷宫。适合伏击与听声辨位。',
     hospital: '废弃医院：十字走廊 + 中央大厅，病房床阵/药房柜阵/停尸间惊悚区。频闪应急灯，近距离交火密集。',
+    subway: '地铁绝境：地下站台双轨车厢阵，立柱阵列打断视线。隧道口攻防，灯箱频闪氛围。',
   };
   showMapMeta(map) {
     const el = document.getElementById('mapMeta');
@@ -571,7 +572,7 @@ const TEMPLATE = `
     <div class="opts">
       <div class="mcards" id="modeCards">${MODE_CARDS}</div>
       <div id="modeInfo" style="grid-column:1/-1;margin:2px 0 8px;padding:8px 12px;border:1px solid rgba(245,179,33,.35);border-radius:8px;background:rgba(20,16,6,.5);font:12px/1.7 "PingFang SC","Microsoft YaHei",sans-serif;color:#d8cdb0;text-align:left"></div>
-      <div class="opt"><div class="lab">地图</div><div class="seg" data-k="map"><button data-v="ship">运输船</button><button data-v="city">死亡城市</button><button data-v="lab">生化实验室</button><button data-v="plaza">都会广场</button><button data-v="harbor">雾港</button><button data-v="hospital">废弃医院</button></div></div>
+      <div class="opt"><div class="lab">地图</div><div class="seg" data-k="map"><button data-v="ship">运输船</button><button data-v="city">死亡城市</button><button data-v="lab">生化实验室</button><button data-v="plaza">都会广场</button><button data-v="harbor">雾港</button><button data-v="hospital">废弃医院</button><button data-v="subway">地铁绝境</button></div></div>
       <div class="mapMeta" id="mapMeta"></div>
       <div class="opt"><div class="lab">阵营</div><div class="seg team" data-k="team"><button data-v="BL">潜伏者<small>Black List</small></button><button data-v="GR">保卫者<small>Global Risk</small></button></div></div>
       <div class="opt"><div class="lab">主武器</div><div class="seg" data-k="primary"><button data-v="ak47">AK-47</button><button data-v="m4a1">M4A1</button><button data-v="awm">AWM</button><button data-v="mp5">MP5</button><button data-v="m60">M60</button></div></div>
