@@ -42,6 +42,7 @@ export class WozManager {
     this.airdrops = [];               // 补给空投
     this.dropT = AIRDROP.first;
     this.supplyT = 45;                // 补给变异体刷新（V35）
+    this.props = [];                  // 场景道具：爆炸油桶 / 可破坏木箱（V39）
     this._evoStageSeen = {};          // 进化阶段播报去重
   }
 
@@ -92,6 +93,7 @@ export class WozManager {
     g.vm.equip(g.player.weapon.id, 0.6);
     g.hud.slots(g.player.inv, 0);
     g.playing = true; g.paused = false; g.ended = false;
+    this.spawnProps(); // 对抗/爆破也生成场景道具（V39）
     this.hud.mount();
     g.hud.show(null);
     g.lock();
@@ -173,6 +175,7 @@ export class WozManager {
     this.clearFuses();
     this.clearAirdrops();
     this.dropT = AIRDROP.first;
+    this.spawnProps();
     // 全员复活为人类，回 GR 出生点
     this.pendingConvert.clear();
     for (const a of g.actors) {
@@ -423,6 +426,132 @@ export class WozManager {
     for (const f of this.fuses) this.g.renderer.scene.remove(f.core);
     this.fuses = [];
   }
+
+  // ---- 场景道具（V39）：爆炸油桶 + 可破坏木箱（射击/近战/爆炸均可破坏，油桶殉爆） ----
+  spawnProps() {
+    const g = this.g;
+    this.clearProps();
+    let barrels = 0, crates = 0;
+    for (let i = 0; i < 60 && (barrels < 5 || crates < 4); i++) {
+      const x = (Math.random() - 0.5) * 64, z = (Math.random() - 0.5) * 24;
+      // 找地面：从高处向下射线，落不到地面（海面外）则跳过
+      const h = g.world.raycast(x, 30, z, 0, -1, 0, 60, 'move');
+      if (!h) continue;
+      const y = 30 - h.t;
+      if (y < 0.2 || y > 6) continue;
+      // 与已有道具保持间距
+      if (this.props.some((p) => Math.hypot(p.x - x, p.z - z) < 4)) continue;
+      if (barrels <= crates && barrels < 5) { this.spawnBarrel(x, y, z); barrels++; }
+      else if (crates < 4) { this.spawnCrate(x, y, z); crates++; }
+    }
+  }
+
+  spawnBarrel(x, y, z) {
+    const g = this.g;
+    const grp = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.05, 12), new THREE.MeshLambertMaterial({ color: 0xb03020 }));
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.435, 0.435, 0.18, 12), new THREE.MeshLambertMaterial({ color: 0xe8c832 }));
+    band.position.y = 0.12;
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.05, 12), new THREE.MeshLambertMaterial({ color: 0x701e14 }));
+    lid.position.y = 0.55;
+    grp.add(body, band, lid);
+    grp.position.set(x, y, z);
+    g.renderer.scene.add(grp);
+    this.props.push({ live: true, kind: 'barrel', grp, x, y, z, hp: 40, r: 0.55 });
+  }
+
+  spawnCrate(x, y, z) {
+    const g = this.g;
+    const grp = new THREE.Group();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.92, 0.92), new THREE.MeshLambertMaterial({ color: 0x8a6a3a }));
+    const plank = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.16, 0.96), new THREE.MeshLambertMaterial({ color: 0x6a4e28 }));
+    plank.position.y = 0.2;
+    const plank2 = plank.clone(); plank2.position.y = -0.22;
+    grp.add(box, plank, plank2);
+    grp.position.set(x, y + 0.46, z);
+    grp.rotation.y = Math.random() * 6;
+    g.renderer.scene.add(grp);
+    this.props.push({ live: true, kind: 'crate', grp, x, y, z, hp: 80, r: 0.6 });
+  }
+
+  // 射线找最近道具（from..maxT 区间内）
+  propRay(o, dir, minT, maxT) {
+    let best = null, bestT = maxT;
+    for (const p of this.props) {
+      if (!p.live) continue;
+      // 视作竖直圆柱：先做 2D 圆相交，再卡高度
+      const ox = o.x - p.x, oz = o.z - p.z;
+      const b = ox * dir.x + oz * dir.z;
+      const c = ox * ox + oz * oz - p.r * p.r;
+      const disc = b * b - c * (dir.x * dir.x + dir.z * dir.z);
+      if (disc < 0) continue;
+      const sq = Math.sqrt(disc);
+      let t = (-b - sq) / (dir.x * dir.x + dir.z * dir.z);
+      if (t < minT) t = (-b + sq) / (dir.x * dir.x + dir.z * dir.z);
+      if (t < minT || t >= bestT) continue;
+      const hy = o.y + dir.y * t;
+      if (hy < p.y - 0.15 || hy > p.y + (p.kind === 'barrel' ? 1.1 : 0.95)) continue;
+      best = p; bestT = t;
+    }
+    return best ? { prop: best, t: bestT } : null;
+  }
+
+  damageProp(prop, dmg, shooter, silent) {
+    if (!prop.live) return;
+    prop.hp -= dmg;
+    prop.grp.position.x = prop.x + (Math.random() - 0.5) * 0.06; // 受击晃动
+    if (prop.hp > 0) return;
+    prop.live = false;
+    this.g.renderer.scene.remove(prop.grp);
+    if (prop.kind === 'barrel') this.detonateBarrel(prop, shooter);
+    else this.breakCrate(prop, shooter, silent);
+  }
+
+  detonateBarrel(prop, shooter) {
+    const g = this.g;
+    const c = new THREE.Vector3(prop.x, prop.y + 0.6, prop.z);
+    g.fx.explosion(c);
+    g.fx.shake = Math.max(g.fx.shake || 0, 1.8);
+    audio.playExplosion(c);
+    // AoE：对 actors（he 结算：击杀走感染链，队友免伤由友伤抑制处理）
+    const R = 5.5, DMG = 110;
+    for (const v of g.actors) {
+      if (!v.alive) continue;
+      const d = Math.hypot(v.pos.x - prop.x, v.pos.z - prop.z);
+      if (d > R || Math.abs(v.pos.y - prop.y) > 3.5) continue;
+      const dir = new THREE.Vector3(v.pos.x - prop.x, 0, v.pos.z - prop.z).normalize();
+      g.damage(v, shooter, DMG * (1 - d / R * 0.55), 'chest', 'he', dir, false);
+    }
+    // 殉爆：附近油桶延迟起爆
+    for (const p2 of this.props) {
+      if (!p2.live || p2 === prop || p2.kind !== 'barrel') continue;
+      const d = Math.hypot(p2.x - prop.x, p2.z - prop.z);
+      if (d < R) {
+        const delay = 0.12 + d * 0.04;
+        const pp = p2;
+        g.timers.push({ t: g.time + delay, fn: () => this.damageProp(pp, 999, shooter, true) });
+      }
+    }
+  }
+
+  breakCrate(prop, shooter, silent) {
+    const g = this.g;
+    // 木片飞溅
+    for (let i = 0; i < 3; i++) {
+      g.fx.impact(new THREE.Vector3(prop.x + (Math.random() - 0.5) * 0.6, prop.y + 0.3 + Math.random() * 0.5, prop.z + (Math.random() - 0.5) * 0.6),
+        new THREE.Vector3(0, 1, 0), 'wood', new THREE.Vector3(0, 1, 0));
+    }
+    if (!silent) audio.playImpact(new THREE.Vector3(prop.x, prop.y + 0.5, prop.z), 'wood');
+    // 必掉一份补给
+    this.pickups.randomDrop({ x: prop.x, y: 0, z: prop.z });
+  }
+
+  clearProps() {
+    for (const p of this.props) if (p.live) this.g.renderer.scene.remove(p.grp);
+    this.props = [];
+  }
+
+  propAlive() { return this.props.some((p) => p.live); }
 
   // ---- 人类急救包（V36 交互）：按住 X 2s 自疗 +60，移动/受击打断 ----
   tickMedkit(dt) {

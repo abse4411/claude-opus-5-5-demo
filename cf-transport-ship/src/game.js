@@ -461,6 +461,17 @@ export class Game {
         const r = a.soldier.hitTest(o, dir, bestT, this.frame);
         if (r && r.t > from - 0.01 && r.t < bestT) { best = a; bestT = r.t; part = r.part; }
       }
+      // WOZ 场景道具（油桶/木箱）：比角色更近则先命中道具
+      if (this.woz && this.woz.props.length) {
+        const ph = this.woz.propRay(o, dir, from, best ? bestT : lim);
+        if (ph) {
+          const pt = o.clone().addScaledVector(dir, ph.t);
+          this.fx.impact(pt, _v.copy(dir).negate(), ph.prop.kind === 'barrel' ? 'metal' : 'wood', dir);
+          audio.playImpact(pt, ph.prop.kind === 'barrel' ? 'metal' : 'wood');
+          this.woz.damageProp(ph.prop, d.dmg * mul * (d.explosive ? 0 : 1), shooter);
+          return pt;
+        }
+      }
       if (best) {
         const pt = o.clone().addScaledVector(dir, bestT);
         const dist = bestT;
@@ -529,6 +540,16 @@ export class Game {
     }
     // 隔墙不可命中（变异者爪击/军刀均受视线遮挡约束）
     if (hit && this.world.raycast(eye.x, eye.y, eye.z, hit.dir.x, hit.dir.y, hit.dir.z, hit.t - 0.05, 'sight')) hit = null;
+    // 近战劈道具（V39）：伤害 ×1.5
+    if (this.woz && this.woz.props.length) {
+      const ph = this.woz.propRay(eye, base, 0.2, range);
+      if (ph && (!hit || ph.t < hit.t)) {
+        if (a.isPlayer) this.fx.shake = Math.max(this.fx.shake || 0, 0.2);
+        this.woz.damageProp(ph.prop, (heavy ? d.dmgHeavy : d.dmgLight) * 1.5, a);
+        audio.playKnife(heavy ? 'heavy' : 'light', 'wall', a.isPlayer ? null : eye);
+        return;
+      }
+    }
     if (a.isPlayer) this.fx.shake = Math.max(this.fx.shake || 0, heavy ? 0.3 : 0.12); // 近战出手/命中震屏（V32）
     const delay = heavy ? 0.33 : 0.1;
     this.timers.push({
@@ -648,6 +669,18 @@ export class Game {
       if (dmg > 1) this.damage(a, owner, dmg, 'chest', 'he', dir, false);
     }
     for (const b of this.actors) if (b.hear && b.pos.distanceTo(p) < 40) b.hear(p, true);
+    // 爆炸波及场景道具（V39）：油桶殉爆链
+    if (this.woz && this.woz.props.length) {
+      const wdef = WEAPONS[wid] || WEAPONS.he;
+      for (const pr of this.woz.props) {
+        if (!pr.live) continue;
+        const pd = Math.hypot(pr.x - p.x, pr.z - p.z);
+        if (pd < wdef.radius) {
+          const pdmg = wdef.dmg * (1 - Math.min(1, pd / wdef.radius));
+          if (pdmg > 10) this.woz.damageProp(pr, pdmg, owner, true);
+        }
+      }
+    }
   }
   damage(v, att, amt, part, wid, dir, wall, melee) {
     if (!v.alive || v.protectT > 0) return;

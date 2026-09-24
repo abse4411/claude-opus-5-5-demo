@@ -416,6 +416,46 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v35') {
+  // 场景道具：油桶被击爆（AoE+殉爆）+ 木箱击碎必掉补给
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const barrel = g.woz.props.find((x) => x.live && x.kind === 'barrel');
+      const crate = g.woz.props.find((x) => x.live && x.kind === 'crate');
+      if (!barrel || !crate) return { ok: false, n: g.woz.props.length };
+      // 木箱：劈碎必掉补给
+      const before = g.woz.pickups.list.length;
+      g.woz.damageProp(crate, 999, p, true);
+      const crateDropped = g.woz.pickups.list.length > before;
+      // 油桶：一发引爆（伤害 AoE 波及附近变异者）
+      const near = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (near) {
+        rules.convertToMutant(near.id, 'nightrunner', false);
+        g.woz.convertNow(near, true);
+        near.pos.set(barrel.x + 2.5, near.pos.y, barrel.z);
+        near.protectT = 0; near.armor = 0;
+      }
+      const bBefore = g.woz.props.filter((x) => x.live && x.kind === 'barrel').length;
+      g.woz.damageProp(barrel, 999, p, true);
+      const barrelsAfter = g.woz.props.filter((x) => x.live && x.kind === 'barrel').length;
+      for (let i = 0; i < 12; i++) g.woz.tick(1 / 30); // 推进殉爆延迟计时
+      const chained = g.woz.props.filter((x) => x.live && x.kind === 'barrel').length;
+      return {
+        ok: true, n: g.woz.props.length,
+        crateDropped, hpBefore: 1500, nearHp: near ? Math.max(0, Math.round(near.hp)) : -1, nearSide: near ? rules.state(near.id).side : '',
+        bBefore, barrelsAfter, chained,
+      };
+    });
+    check(r.ok && r.n >= 5, `道具: 场景生成 ${r.n} 个（油桶+木箱）`);
+    check(r.crateDropped, '道具: 木箱击碎必掉补给');
+    check(!r.alive !== undefined && (r.nearHp < 1500 || r.nearSide === 'mutant'), `道具: 油桶爆炸波及 2.5m 内目标 (hp=${r.nearHp})`);
+    check(r.barrelsAfter < r.bBefore || r.chained < r.bBefore, `道具: 油桶殉爆链触发 (${r.bBefore}→${Math.min(r.barrelsAfter, r.chained)})`);
+  }
 } else if (ver === 'v34') {
   // 移动速度 bug 回归：命中迟滞（staggerT）必须会衰减，跑速在 1s 内恢复满速；蹲起/跨局无残留
   await goto('&mode=infection');
