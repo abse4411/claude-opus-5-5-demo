@@ -354,7 +354,7 @@ if (ver === 'v1') {
       srows: (document.querySelector('#loadCards .card')?.querySelectorAll('.srow') || []).length,
       timer: document.getElementById('loadTimer').textContent,
     }));
-    check(shop.visible && shop.cards === 10, `商店: 打开且 10 张主武器卡 (${shop.cards})`);
+    check(shop.visible && shop.cards === 13, `商店: 打开且 13 张主武器卡 (${shop.cards})`);
     check(shop.srows === 3, `商店: 属性条渲染 (${shop.srows} 行)`);
     check(shop.timer.includes('购买期'), `商店: 购买期倒计时 (${shop.timer.trim().slice(-18)})`);
     await page.waitForTimeout(200);

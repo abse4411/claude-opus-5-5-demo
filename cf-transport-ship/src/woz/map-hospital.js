@@ -84,6 +84,11 @@ export function buildHospitalMap(scene, T, world) {
   solid(0, 14.6, 80, 1, 4.5); put('wall', BX(80, 4.5, 1), 0, 2.25, 14.6);
   solid(-39.6, 0, 1, 30, 4.5); put('wall', BX(1, 4.5, 30), -39.6, 2.25, 0);
   solid(39.6, 0, 1, 30, 4.5); put('wall', BX(1, 4.5, 30), 39.6, 2.25, 0);
+  // 隐形高栏（防爆炸击退把玩家抛出屋顶）
+  world.add({ x: 0, y: 15, z: -14.6, sx: 80, sy: 30, sz: 1, yaw: 0, mat: 'metal', bullet: 'block', sight: false, surface: 'metal' });
+  world.add({ x: 0, y: 15, z: 14.6, sx: 80, sy: 30, sz: 1, yaw: 0, mat: 'metal', bullet: 'block', sight: false, surface: 'metal' });
+  world.add({ x: -39.6, y: 15, z: 0, sx: 1, sy: 30, sz: 30, yaw: 0, mat: 'metal', bullet: 'block', sight: false, surface: 'metal' });
+  world.add({ x: 39.6, y: 15, z: 0, sx: 1, sy: 30, sz: 30, yaw: 0, mat: 'metal', bullet: 'block', sight: false, surface: 'metal' });
 
   // 中央大厅（x -8..8）：接待台 + 候诊椅 + 吊灯
   solid(0, 3.5, 6, 1.2, 1.1);

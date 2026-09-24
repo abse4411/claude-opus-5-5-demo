@@ -69,6 +69,7 @@ export class Game {
     this.mapName = mapDef.name;
     document.querySelector('#radarWrap .lbl').textContent = mapDef.name;
     this.map = mapDef.build(this.renderer.scene, this.T, this.world);
+    this.world.build(); // 重建空间哈希（船图内部已调，其余地图在此统一构建，否则无碰撞）
     this.applyFogOverride();
     this.hud.loading(0.68, '天空与海洋');
     await nextFrame();
