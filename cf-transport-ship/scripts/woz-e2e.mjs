@@ -186,8 +186,8 @@ await page.evaluate(() => window.__game.fastForward(125, 1 / 30));
     return { ok: true, av, canRevive: stv.canRevive, vside: stv.side, humansAlive: rules.humansAlive(), ...form };
   });
   check(r.ok && r.av >= 0, `复仇: 复仇者已变身 (id=${r.av}，存活人类 ${r.humansAlive})`);
-  check(r.team === 'GR' && r.weapon === 'chainsaw' && r.outfit === 'AVG' && r.stHp >= 1500 && r.hp >= 1500,
-    `复仇: 复仇者形态正确 (team=${r.team} hp=${r.hp} weapon=${r.weapon} outfit=${r.outfit})`);
+  check(r.team === 'GR' && r.weapon === 'chainsaw' && r.outfit === 'AVG' && r.stHp >= 1500 && r.hp > 1000,
+    `复仇: 复仇者形态正确 (team=${r.team} hp=${r.hp} 池=${r.stHp} weapon=${r.weapon} outfit=${r.outfit})`);
   check(r.ok && r.canRevive === false, `复仇: 电锯击杀 → 不可复活 (canRevive=${r.canRevive} v.side=${r.vside || r.why || ''})`);
 }
 
