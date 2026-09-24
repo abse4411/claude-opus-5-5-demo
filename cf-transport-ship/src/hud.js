@@ -533,9 +533,9 @@ const SEC_CARDS = SECONDARIES.map((id) => {
   return `<div class="card" data-s="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
 }).join('');
 
-const NADE_CARDS = ['he', 'molotov', 'frost', 'gas', 'flash'].map((id) => {
+const NADE_CARDS = ['he', 'molotov', 'frost', 'gas', 'flash', 'sticky'].map((id) => {
   const d = WEAPONS[id];
-  const sub = { he: '高爆 · 范围杀伤', molotov: '火海 · 持续灼烧', frost: '寒爆 · 大幅冻缓', gas: '毒雾 · 持续毒伤', flash: '强光 · 致盲扫点' }[id];
+  const sub = { he: '高爆 · 范围杀伤', molotov: '火海 · 持续灼烧', frost: '寒爆 · 大幅冻缓', gas: '毒雾 · 持续毒伤', flash: '强光 · 致盲扫点', sticky: '黏附必中 · 反丧尸神器' }[id];
   return `<div class="card" data-g="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
 }).join('');
 

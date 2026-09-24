@@ -416,6 +416,41 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v37') {
+  // 黏性炸弹：掷出 → 黏附变异体 → 短引信必中爆炸
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st0 = rules.state(p.id);
+      if (st0.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      // 5m 外变异体靶（静止）
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 999;
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      rules.convertToMutant(v.id, 'nightrunner', false);
+      g.woz.convertNow(v, true);
+      v.pos.set(0, 0.1, 0); v.protectT = 0; v.armor = 0;
+      g.fastForward(1 / 30, 1 / 30);
+      p.updateCamera(0.016);
+      // 经引擎 nade 管线掷出黏性炸弹（Scene 可充当 Object3D 网格）
+      const mesh = new g.renderer.scene.constructor();
+      g.renderer.scene.add(mesh);
+      const pos = new p.pos.constructor(p.pos.x - 0.5, 1.5, p.pos.z);
+      const vel = new p.vel.constructor(-28, 1.2, 0);
+      g.nades.push({ id: 'sticky', mesh, pos, vel, fuse: 3, owner: p, spin: new p.vel.constructor(2, 0, 0) });
+      const hp0 = v.hp;
+      g.fastForward(0.35, 1 / 30);
+      const stuck = g.nades.some((n) => n.id === 'sticky' && n.stuck === v);
+      g.fastForward(1.4, 1 / 30);
+      return { ok: true, stuck, hp0, hpAfter: Math.max(0, Math.round(v.hp)), dead: !v.alive || !rules.state(v.id).alive };
+    });
+    check(r.ok && r.stuck, '黏雷: 接触变异体即黏附');
+    check(r.hpAfter < r.hp0 - 100 || r.dead, `黏雷: 短引信必中爆炸 (${r.hp0}→${r.hpAfter})`);
+  }
 } else if (ver === 'v36') {
   // M79 榴弹发射器：开火抛射 → 爆炸重创 8m 内目标
   await goto('&mode=infection');

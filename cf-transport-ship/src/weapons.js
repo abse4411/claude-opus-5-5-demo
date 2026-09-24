@@ -234,6 +234,10 @@ export const WEAPONS = {
     id: 'flash', name: '震撼弹', slot: 3, type: 'grenade', auto: false,
     dmg: 4, radius: 10, fuse: 1.6, blind: 2.4, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'FLASHBANG', mag: 1, reserve: 0,
   },
+  sticky: {
+    id: 'sticky', name: '黏性炸弹', slot: 3, type: 'grenade', auto: false,
+    dmg: 160, radius: 4.5, fuse: 3.0, stickFuse: 1.1, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'STICKY BOMB', mag: 1, reserve: 0,
+  },
   molotov: {
     id: 'molotov', name: '燃烧瓶', slot: 3, type: 'grenade', auto: false,
     dmg: 14, radius: 3.2, fuse: 1.8, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'MOLOTOV', mag: 1, reserve: 0,

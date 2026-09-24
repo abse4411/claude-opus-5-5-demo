@@ -266,6 +266,17 @@ const builders = {
     return g;
   },
   // ---- V2 扩充枪模（紧凑程序化造型，共用锚点） ----
+  sticky(m) {
+    const g = new THREE.Group();
+    const ball = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), new THREE.MeshLambertMaterial({ color: 0x4a5a30 }));
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.092, 0.092, 0.03, 10), new THREE.MeshLambertMaterial({ color: 0xc8b820 }));
+    band.rotation.x = Math.PI / 2;
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.04, 8), m.metal);
+    cap.position.y = 0.09;
+    g.add(ball, band, cap);
+    anchor(g, 'grip', 0, -0.06, 0);
+    return g;
+  },
   m79shell(m) {
     const g = new THREE.Group();
     part(g, CZ(0.035, 0.1, 10), m.metal, 0, 0, 0);                       // 弹体

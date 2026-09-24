@@ -609,6 +609,34 @@ export class Game {
     const W = this.world;
     this.nades = this.nades.filter((n) => {
       n.fuse -= dt;
+      // 黏性炸弹（V41）：飞行中接触变异体即黏附跟随，短引信必中
+      if (n.id === 'sticky' && n.stuck === undefined) {
+        for (const a of this.actors) {
+          if (!a.alive || a === n.owner || a.team === n.owner.team || a.wozOut) continue;
+          if (Math.hypot(a.pos.x - n.pos.x, a.pos.z - n.pos.z) < 1.0 && n.pos.y > a.pos.y - 0.4 && n.pos.y < a.pos.y + 2) {
+            n.stuck = a;
+            n.fuse = Math.min(n.fuse, WEAPONS.sticky.stickFuse);
+            n.mesh.scale.setScalar(0.8);
+            audio.playImpact(n.pos.clone(), 'flesh');
+            if (a.isPlayer) this.hud.toast('<b style="color:#ff5040">黏性炸弹黏住了你！</b>', 1.2);
+            break;
+          }
+        }
+      }
+      if (n.stuck) {
+        const a = n.stuck;
+        if (!a.alive) { n.fuse = Math.min(n.fuse, 0.15); }
+        n.pos.set(a.pos.x, a.pos.y + 1.3, a.pos.z);
+        n.mesh.position.copy(n.pos);
+        n.mesh.rotation.z += dt * 3;
+        if (n.fuse <= 0) {
+          this.explode(n.pos.clone(), n.owner, 'sticky');
+          if (a.alive) this.fx.bloodBurst(a.pos, new THREE.Vector3(0, 0, 1));
+          this.renderer.scene.remove(n.mesh);
+          return false;
+        }
+        return true;
+      }
       const steps = 3, h = dt / steps;
       for (let s = 0; s < steps; s++) {
         n.vel.y -= 14 * h;
