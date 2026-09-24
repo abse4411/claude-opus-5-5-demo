@@ -3019,6 +3019,47 @@ if (ver === 'v1') {
   check(r.warned, `警告: 10s 全场警告 (${r.warned})`);
   check(r.smokes >= 30, `引爆: 蘑菇烟尘柱粒子 (n=${r.smokes})`);
   check(r.slowMo, `引爆: 慢动作演出 (${r.slowMo.toFixed(2)}s)`);
+} else if (ver === 'v71') {
+  // V97 末日求生精修：波次血量递增 / 下一波预告 / 波次肃清奖励
+  await page.goto(base + '&mode=bio');
+  await page.waitForFunction(() => window.__game && window.__game.playing, null, { timeout: 60000 });
+  await page.waitForTimeout(500);
+  const r = await page.evaluate(() => {
+    const g = window.__game, woz = g.woz, rules = woz.rules;
+    g.fastForward(20, 1 / 30); // 过购买期
+    if (rules.phase !== 'battle') { rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999; }
+    const toasts = [];
+    const origT = g.hud.toast.bind(g.hud);
+    g.hud.toast = (m, d) => { toasts.push(String(m)); return origT(m, d); };
+    // 首波（20s 计时）→ 直接推进
+    woz.waveT = 0.05; woz.waveN = 0; woz.tide.length = 0;
+    g.fastForward(0.1, 1 / 30);
+    const wave1N = woz.waveN;
+    const hp1 = woz.tide.filter((z) => z.alive)[0]?.hp || 0;
+    // 清波 → 肃清奖励（回血 20）
+    const me = g.actors.find((a) => a.alive && a.team === 'GR');
+    me.hp = 50;
+    for (const z of woz.tide) if (z.alive) { z.protectT = 0; g.damage(z, null, 99999, 'chest', 'awm', { x: 0, z: 1 }, false); }
+    g.fastForward(0.1, 1 / 30);
+    const clearedHeal = me.hp >= 70;
+    const clearedToast = toasts.some((t) => t.includes('波次肃清'));
+    // 第二波：血量应递增（300 → 340+）
+    woz.waveT = 0.05;
+    g.fastForward(0.1, 1 / 30);
+    const wave2N = woz.waveN;
+    const hp2 = woz.tide.filter((z) => z.alive)[0]?.hp || 0;
+    // 下一波预告（waveT 进入 8s 窗口）
+    const warned0 = toasts.length;
+    woz.waveT = 7.5;
+    g.fastForward(0.1, 1 / 30);
+    const warned = toasts.slice(warned0).some((t) => t.includes('下一波'));
+    return { wave1N, wave2N, hp1, hp2, clearedHeal, clearedToast, warned };
+  });
+  check(r.wave1N === 1 && r.wave2N === 2, `波次: 计数递进 (${r.wave1N}→${r.wave2N})`);
+  check(r.hp1 >= 295 && r.hp1 <= 305, `波次: 首波基础血量 (${r.hp1})`);
+  check(r.hp2 >= r.hp1 + 35, `波次: 二波血量递增 (${r.hp1}→${r.hp2})`);
+  check(r.clearedHeal && r.clearedToast, `肃清: 奖励回血+播报 (heal=${r.clearedHeal} toast=${r.clearedToast})`);
+  check(r.warned, `预告: 下一波 8 秒警告 (${r.warned})`);
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

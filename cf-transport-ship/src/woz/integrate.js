@@ -812,16 +812,32 @@ export class WozManager {
     if (this.mode === 'bio') {
       this.waveT = (this.waveT ?? BIO.waveFirst) - dt;
       const alive = this.tide.filter((z) => z.alive).length;
+      // V97 下一波预告（原作波次生存手感：给玩家换弹/布防窗口）
+      if (this.waveT <= 8 && this.waveT > 0 && !this._waveWarned && (this.waveN || 0) > 0 && rules.phase === 'battle') {
+        this._waveWarned = true;
+        g.hud.toast('<b style="color:#ffd24a">下一波 8 秒后来袭</b>——抓紧换弹与布防', 2);
+      }
       if (this.waveT <= 0 && alive < BIO.aiMax && rules.phase === 'battle') {
         this.waveT = BIO.waveInterval;
+        this._waveWarned = false;
         this.waveN = (this.waveN || 0) + 1;
         const n = Math.min(BIO.aiMax - alive, 1 + this.waveN);
-        for (let i = 0; i < n; i++) this.spawnAiZombie();
+        for (let i = 0; i < n; i++) this.spawnAiZombie(BIO.aiHp + (this.waveN - 1) * 40); // V97 波次血量递增
         let frost = '';
         if (this.waveN % 3 === 0 && alive + n < BIO.aiMax + 2) { this.spawnFrostWalker(); frost = ' <b style="color:#86c8e0">含寒霜行者！</b>'; }
         g.hud.toast(`<b style="color:#ff7040">第 ${this.waveN} 波</b> 变异爬行者来袭 ×${n}！${frost}`, 2.5);
         wozAudio.tide();
       }
+      // V97 波次肃清奖励：波间隙清空场上怪物 → 补给奖励（原作：清波回复士气/物资）
+      if ((this.waveN || 0) > 0 && !this._waveCleared && alive === 0 && rules.phase === 'battle') {
+        this._waveCleared = true;
+        g.hud.toast('<b style="color:#8cff8c">波次肃清！</b>全员回复 20 生命 · 步枪备弹 +1 弹匣', 2.5);
+        for (const a of g.actors) {
+          if (!a.alive || a.team !== 'GR') continue;
+          a.hp = Math.min(a.wozMaxHp || 100, a.hp + 20);
+          for (const w of a.inv) { const d = w.def; if (d.type !== 'melee' && d.type !== 'grenade') w.reserve += d.mag; }
+        }
+      } else if (alive > 0) this._waveCleared = false;
       // 末分钟狂潮（V53 调研：最后 1 分钟大批 AI 变异者，HP 低每击 20HP）
       if (!this._bioFrenzy && rules.phase === 'battle' && rules.phaseTimeLeft <= 60) {
         this._bioFrenzy = true;
@@ -902,14 +918,14 @@ export class WozManager {
     return z;
   }
 
-  spawnAiZombie() {
+  spawnAiZombie(hp = BIO.aiHp) {
     const g = this.g;
     const z = new Zombie(g, { id: 100 + this.tide.length + ((Math.random() * 90) | 0), name: '变异爬行者', team: 'BL', wozExtra: true });
     g.actors.push(z);
     this.tide.push(z);
     const sp = this.pickSpawn('BL');
     z.spawn(sp);
-    this.formZombie(z, BIO.aiHp);
+    this.formZombie(z, hp);
     z.protectT = 0.5;
     z.soldier.root.scale.setScalar(0.92);
   }
