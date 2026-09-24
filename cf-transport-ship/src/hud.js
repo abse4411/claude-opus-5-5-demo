@@ -476,6 +476,21 @@ export class HUD {
         ctx.fillStyle = '#ffd24a'; ctx.font = '700 11px sans-serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText('☢', p.x, p.y + 1);
+      } else if (m.kind === 'drop') {
+        // 补给空投：金色菱形脉冲
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(Math.PI / 4);
+        ctx.globalAlpha = 0.5 + 0.5 * Math.abs(Math.sin(t * 5));
+        ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 2.5;
+        ctx.strokeRect(-7, -7, 14, 14);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = 'rgba(30,22,2,.8)';
+        ctx.fillRect(-4.5, -4.5, 9, 9);
+        ctx.restore();
+        ctx.fillStyle = '#ffd24a'; ctx.font = '700 11px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('📦', p.x, p.y + 1);
       } else if (m.kind === 'bomb') {
         ctx.globalAlpha = 0.55 + 0.45 * Math.abs(Math.sin(t * 10));
         ctx.beginPath(); ctx.arc(p.x, p.y, 12, 0, 7);

@@ -135,6 +135,14 @@ export const BIO = {
   dropAmmoMags: 1,
 };
 
+// ---- 补给空投（V24）：战斗期周期空投全补给箱 ----
+export const AIRDROP = {
+  first: 45,
+  interval: 60,
+  life: 30,
+  fallSpeed: 8,
+};
+
 export const MutantClass = {
   None: 'none',
   Mother: 'mother',

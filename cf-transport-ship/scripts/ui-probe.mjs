@@ -416,6 +416,37 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v24') {
+  // 补给空投：投放 → 落地雷达标记 → 走近拾取补给
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const w = p.inv.find((x) => x && x.def.type !== 'melee' && x.def.type !== 'grenade');
+      w.mag = 1; w.reserve = 1; // 掏空验证补给
+      p.hp = 40;
+      g.woz.dropT = 0.01;
+      g.fastForward(1, 1 / 30);
+      const spawned = g.woz.airdrops.length;
+      const markerWhile = g.woz.radarMarkers().some((m) => m.kind === 'drop');
+      g.fastForward(4, 1 / 30);
+      const d = g.woz.airdrops[0];
+      const landed = d && d.state === 'landed';
+      p.pos.set(d ? d.x : 0, p.pos.y, d ? d.z : 0); // 走到空投上
+      g.fastForward(0.4, 1 / 30);
+      return {
+        ok: true, spawned, markerWhile, landed,
+        collected: g.woz.airdrops.length === 0,
+        mag: w.mag, reserve: w.reserve, hp: Math.round(p.hp),
+      };
+    });
+    check(r.ok && r.spawned === 1, `空投: 空投箱已投放 (${r.spawned})`);
+    check(r.landed, '空投: 降落伞着陆');
+    check(r.collected && r.mag > 1 && r.reserve > 1, `空投: 拾取补给（弹药 ${r.mag}/${r.reserve}）`);
+    check(r.hp > 40, `空投: 医疗回复 (${r.hp})`);
+  }
 } else if (ver === 'v23') {
   // 对抗模式浓雾增援 + 生化模式 AI 波次
   {

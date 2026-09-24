@@ -11,7 +11,7 @@ import { WozHud } from './hud.js';
 import { wozAudio } from './audio.js';
 import { CapturePoint, NuclearBomb } from './objectives.js';
 import { Pickups } from './pickups.js';
-import { WOZ, MutantClass, CLASS_LABEL, CONFRONT, DEMOL, BIO } from './config.js';
+import { WOZ, MutantClass, CLASS_LABEL, CONFRONT, DEMOL, BIO, AIRDROP } from './config.js';
 import { audio } from '../audio.js';
 
 const ROUND_WINS = 3;
@@ -39,6 +39,8 @@ export class WozManager {
     this.axes = [];                   // 猎食者投掷斧头抛射物
     this.grabs = [];                  // 缠绕者触须拖拽
     this.fuses = [];                  // 爆破者自爆引信
+    this.airdrops = [];               // 补给空投
+    this.dropT = AIRDROP.first;
     this._evoStageSeen = {};          // 进化阶段播报去重
   }
 
@@ -168,6 +170,8 @@ export class WozManager {
     this.clearAxes();
     this.clearGrabs();
     this.clearFuses();
+    this.clearAirdrops();
+    this.dropT = AIRDROP.first;
     // 全员复活为人类，回 GR 出生点
     this.pendingConvert.clear();
     for (const a of g.actors) {
@@ -211,6 +215,7 @@ export class WozManager {
     this.tickAxes(dt);
     this.tickGrabs(dt);
     this.tickFuses(dt);
+    this.tickAirdrops(dt);
     // 购买期结束自动关闭武器商店
     if (this.rules) {
       if (this.rules.phase === 'buy') this._buyOpen = true;
@@ -413,6 +418,74 @@ export class WozManager {
   clearFuses() {
     for (const f of this.fuses) this.g.renderer.scene.remove(f.core);
     this.fuses = [];
+  }
+
+  // ---- 补给空投（V24）：战斗期周期空投全补给箱，雷达金菱形标记 ----
+  spawnAirdrop() {
+    const g = this.g;
+    const sp = this.pickSpawn(Math.random() < 0.5 ? 'GR' : 'BL');
+    const grp = new THREE.Group();
+    const box = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.6, 0.9), new THREE.MeshLambertMaterial({ color: 0xb08828, emissive: 0x382200 }));
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.94, 0.14, 0.94), new THREE.MeshLambertMaterial({ color: 0xd8d2c0, emissive: 0x333020 }));
+    const chute = new THREE.Mesh(new THREE.ConeGeometry(1.1, 1.2, 8, 1, true), new THREE.MeshLambertMaterial({ color: 0xd85840, side: THREE.DoubleSide, transparent: true, opacity: 0.85 }));
+    chute.position.y = 1.4;
+    grp.add(box, stripe, chute);
+    grp.position.set(sp.x, 26, sp.z);
+    g.renderer.scene.add(grp);
+    this.airdrops.push({ live: true, grp, chute, x: sp.x, z: sp.z, y: 26, state: 'fall', t: 0 });
+    g.hud.toast('<b style="color:#ffd24a">补给空投已投放！</b>注意雷达标记', 2.5);
+    g.hud.eventFeed('📦 补给空投正在降落', 'evt');
+  }
+
+  tickAirdrops(dt) {
+    const g = this.g, rules = this.rules;
+    // 只在感染族战斗期投放
+    if (rules && rules.phase === 'battle' && this.cat() === 'infection') {
+      this.dropT -= dt;
+      if (this.dropT <= 0) {
+        this.dropT = AIRDROP.interval;
+        this.spawnAirdrop();
+      }
+    }
+    for (const d of this.airdrops) {
+      if (!d.live) continue;
+      d.t += dt;
+      if (d.state === 'fall') {
+        d.y -= AIRDROP.fallSpeed * dt;
+        if (d.y <= 0.3) {
+          d.y = 0.3;
+          d.state = 'landed';
+          d.grp.remove(d.chute);
+          d.life = AIRDROP.life;
+          g.audio.playGrenadeBounce(new THREE.Vector3(d.x, 1, d.z));
+        }
+        d.grp.position.y = d.y;
+      } else {
+        d.life -= dt;
+        d.grp.position.y = 0.3 + Math.sin(d.t * 3) * 0.06;
+        // 人类拾取：走近即得（全弹药 + 医疗 + 手雷）
+        const p = g.player;
+        const taker = p.alive && p.team === 'GR' && Math.hypot(p.pos.x - d.x, p.pos.z - d.z) < 1.4 ? p
+          : g.actors.find((a) => a.alive && a.team === 'GR' && !a.isPlayer && Math.hypot(a.pos.x - d.x, a.pos.z - d.z) < 1.2);
+        if (taker) {
+          for (const w of taker.inv) {
+            if (w && w.def.type !== 'melee') { w.reserve = w.def.reserve; if (w.def.type !== 'grenade') w.mag = w.def.mag; else w.mag = Math.min(1, w.mag + 1); }
+          }
+          if (taker.hp > 0) taker.hp = Math.min(taker.wozMaxHp || 100, taker.hp + 60);
+          g.hud.toast(`<b style="color:#ffd24a">获得空投补给！</b>弹药补满 · 医疗 · 手雷`, 2.5);
+          g.hud.eventFeed(`${taker.name} 获取了补给空投`, 'evt');
+          audio.playUI('buy');
+          d.live = false;
+        } else if (d.life <= 0) d.live = false; // 无人认领超时消散
+      }
+    }
+    for (const d of this.airdrops) if (!d.live) g.renderer.scene.remove(d.grp);
+    this.airdrops = this.airdrops.filter((d) => d.live);
+  }
+
+  clearAirdrops() {
+    for (const d of this.airdrops) this.g.renderer.scene.remove(d.grp);
+    this.airdrops = [];
   }
 
   tickInfection(dt) {
@@ -686,6 +759,7 @@ export class WozManager {
       if (b.state === 'planted' || b.state === 'destroying') ms.push({ kind: 'bomb', x: b.pos.x, z: b.pos.z });
       else if (b.state !== 'detonated' && b.state !== 'destroyed') ms.push({ kind: 'site', x: b.def.x, z: b.def.z });
     }
+    for (const d of this.airdrops) ms.push({ kind: 'drop', x: d.x, z: d.z });
     return ms;
   }
 
