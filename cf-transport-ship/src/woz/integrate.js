@@ -668,6 +668,14 @@ export class WozManager {
     this.devourAndSkills(dt);
     this.ambientGrowl(dt);
     this.tickMedkit(dt);
+    // 分裂体到期消散（V48）
+    for (const z of this.tide) {
+      if (z.alive && z.cloneExpire && g.time >= z.cloneExpire) {
+        z.cloneExpire = 0;
+        g.damage(z, null, 99999, 'chest', 'claw', { x: 0, z: 1 }, false);
+        z.respawnT = 1e9; z.wozOut = true;
+      }
+    }
     // 补给变异体（V35）：感染族战斗期周期出现，场上最多 1 只
     if (rules.phase === 'battle' && this.cat() === 'infection') {
       this.supplyT -= dt;
@@ -703,6 +711,22 @@ export class WozManager {
   }
 
   // ---- 生化模式 AI 怪物 ----
+  // 噬魂者分裂体（V48）：短命 AI 复制体，随主人阵营攻击人类
+  spawnCloneZombie(owner, i) {
+    const g = this.g;
+    const z = new Zombie(g, { id: 60 + i * 3 + ((Math.random() * 50) | 0), name: '分裂体', team: 'BL' });
+    g.actors.push(z);
+    this.tide.push(z);
+    const ang = Math.random() * Math.PI * 2;
+    z.spawn({ x: owner.pos.x + Math.cos(ang) * 1.6, z: owner.pos.z + Math.sin(ang) * 1.6, yaw: owner.yaw });
+    this.formZombie(z, 400);
+    z.protectT = 0.4;
+    z.soldier.root.scale.setScalar(0.85);
+    z.soldier.material.color.setHex(0x7a4a8a); // 紫灰分裂体
+    z.cloneExpire = g.time + 20; // 20s 后消散
+    return z;
+  }
+
   // 补给变异体（V35）：驮补给的特感，击杀必掉双份补给
   spawnSupplyZombie() {
     const g = this.g;
@@ -1485,7 +1509,12 @@ export class WozManager {
         if (st.side !== 'human' || !h.alive) continue;
         if (h.pos.distanceTo(a.pos) <= WOZ.blindWailRange) h.blindT = WOZ.blindWailDuration;
       }
-      if (a.isPlayer) g.hud.toast('致盲尖啸！', 1);
+      // 分裂个体（V48，调研：噬魂者可复制分裂个体）：召唤 2 只 20s 短命分裂体
+      if (!a.cloneCd || g.time - a.cloneCd > 30) {
+        a.cloneCd = g.time;
+        for (let i = 0; i < 2; i++) this.spawnCloneZombie(a, i);
+      }
+      if (a.isPlayer) g.hud.toast('致盲尖啸！分裂体已分离', 1);
     } else if (skill === 'rage') {
       wozAudio.wail(a.isPlayer ? null : a.pos.clone());
       if (a.isPlayer) g.hud.toast('狂暴咆哮！附近变异者加速', 1.5);

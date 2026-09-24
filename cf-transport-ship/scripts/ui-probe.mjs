@@ -416,6 +416,32 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v45') {
+  // 噬魂者分裂：致盲尖啸同时召唤 2 只 20s 分裂体，到期消散
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      rules.convertToMutant(p.id, 'souleater', false);
+      g.woz.convertNow(p, true);
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 999;
+      if (p.vel.set) p.vel.set(0, 0, 0);
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      v.pos.set(0, 0.1, 0); v.protectT = 0;
+      g.fastForward(1 / 30, 1 / 30);
+      p.updateCamera(0.016);
+      rules.tryUseSkill(p.id);
+      const clones = g.woz.tide.filter((z) => z.alive && z.cloneExpire);
+      g.fastForward(21, 1 / 30);
+      const expired = g.woz.tide.filter((z) => z.cloneExpire && z.alive).length;
+      return { ok: true, n: clones.length, expired };
+    });
+    check(r.ok && r.n === 2, `分裂: 致盲尖啸召唤 2 只分裂体 (${r.n})`);
+    check(r.expired === 0, `分裂: 20s 后到期消散 (剩余 ${r.expired})`);
+  }
 } else if (ver === 'v44') {
   // 十字弩：装填单发高伤狙击
   await goto('&mode=infection');
