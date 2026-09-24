@@ -561,6 +561,7 @@ export class Game {
   }
   melee(a, heavy) {
     if (a.morphT > 0) return; // V93 尸变中不可出爪
+    a.soldier?.attack?.(heavy); // V98 第三人称近战挥砍
     this.woz?.breakDisguise?.(a); // V55 伪装：出爪暴露
     const d = WEAPONS[a.weapon?.id] || WEAPONS.knife;
     const range = heavy ? d.rangeHeavy : d.rangeLight;

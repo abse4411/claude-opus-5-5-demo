@@ -3060,6 +3060,40 @@ if (ver === 'v1') {
   check(r.hp2 >= r.hp1 + 35, `波次: 二波血量递增 (${r.hp1}→${r.hp2})`);
   check(r.clearedHeal && r.clearedToast, `肃清: 奖励回血+播报 (heal=${r.clearedHeal} toast=${r.clearedToast})`);
   check(r.warned, `预告: 下一波 8 秒警告 (${r.warned})`);
+} else if (ver === 'v72') {
+  // V98 第三人称近战挥砍：出手进入挥砍态 / 轻重差异 / 左右交替 / 到期复位
+  await goto('&mode=infection');
+  const r = await page.evaluate(() => {
+    const g = window.__game, rules = g.woz.rules, p = g.player;
+    g.fastForward(20, 1 / 30);
+    rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+    const bot = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+    rules.convertToMutant(bot.id, 'nightrunner', false);
+    g.woz.convertNow(bot, true); // 直调：不触发 V93 尸变
+    bot.protectT = 0; bot.morphT = 0;
+    // 轻击：出手瞬间 atkT=1，臂部摆出挥砍姿态
+    const flip0 = bot.soldier.atkFlip;
+    g.melee(bot, false);
+    const t0 = bot.soldier.atkT, heavy0 = bot.soldier.atkHeavy, flip1 = bot.soldier.atkFlip;
+    g.fastForward(0.12, 1 / 30);
+    const armMid = bot.soldier.B.upperArmR.rotation.x;
+    g.fastForward(0.25, 1 / 30);
+    const tEnd = bot.soldier.atkT;
+    // 重击：atkHeavy 且持续更长
+    g.melee(bot, true);
+    const heavy1 = bot.soldier.atkHeavy;
+    g.fastForward(0.35, 1 / 30);
+    const heavyStill = bot.soldier.atkT;
+    g.fastForward(0.2, 1 / 30);
+    const heavyEnd = bot.soldier.atkT;
+    return { t0, heavy0, flip1, flip0, armMid, tEnd, heavy1, heavyStill, heavyEnd };
+  });
+  check(r.t0 === 1 && r.heavy0 === false, `轻击: 出手进入挥砍态 (t=${r.t0} heavy=${r.heavy0})`);
+  check(r.flip1 !== r.flip0, `轻击: 左右交替 (${r.flip0}→${r.flip1})`);
+  check(r.armMid < -0.4, `轻击: 挥砍中手臂抬起 (armX=${r.armMid.toFixed(2)})`);
+  check(r.tEnd === 0, `轻击: 0.3s 后收势 (t=${r.tEnd})`);
+  check(r.heavy1 === true, `重击: 过顶劈标记 (${r.heavy1})`);
+  check(r.heavyStill > 0 && r.heavyEnd === 0, `重击: 0.5s 时长 (${r.heavyStill.toFixed(2)}→${r.heavyEnd})`);
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

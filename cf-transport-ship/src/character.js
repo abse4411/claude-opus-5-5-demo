@@ -324,8 +324,33 @@ export class Soldier {
     B.neck.rotation.set(pitch * 0.2, 0.3, 0);
     B.head.rotation.set(0, 0.05, 0);
     this.recoilK *= Math.exp(-dt * 12);
+    // V98 近战挥砍：起手-发力-收势包络；期间持械臂走关键帧（跳过 IK）
+    let atkK = 0;
+    if (this.atkT > 0) {
+      this.atkT = Math.max(0, this.atkT - dt / (this.atkHeavy ? 0.5 : 0.3));
+      atkK = Math.sin((1 - this.atkT) * Math.PI);
+    }
     // 枪相对胸骨
-    if (this.gun) {
+    if (this.atkT > 0 && this.gun) {
+      const B2 = B, gun = this.gun;
+      gun.position.set(0.18, 0.02 + 0.25 * atkK, -0.28 - 0.1 * atkK);
+      gun.rotation.set(-0.3 - 0.9 * atkK, 0.37 + (this.atkFlip ? 0.5 : -0.5) * atkK, this.atkFlip ? 0.4 * atkK : -0.4 * atkK);
+      if (this.atkHeavy) {
+        B2.upperArmR.rotation.set(-2.4 * atkK + 0.3, 0, -0.2 - 0.5 * atkK);
+        B2.upperArmL.rotation.set(-2.0 * atkK + 0.3, 0, 0.2 + 0.4 * atkK);
+        B2.forearmR.rotation.set(0.6 - 0.5 * atkK, 0, 0);
+        B2.forearmL.rotation.set(0.6 - 0.5 * atkK, 0, 0);
+        B2.chest.rotation.x += 0.35 * atkK;
+      } else {
+        const s2 = this.atkFlip ? 1 : -1;
+        B2.upperArmR.rotation.set(-1.9 * atkK + 0.3, 0, (-0.15 + 0.6 * atkK) * s2);
+        B2.forearmR.rotation.set(0.6 - 0.45 * atkK, 0, 0);
+        B2.upperArmL.rotation.set(0.3, 0, -0.15);
+        B2.forearmL.rotation.set(0.6, 0, 0);
+        B2.chest.rotation.y += 0.25 * atkK * s2;
+      }
+      B.handR.rotation.set(0, 0, 0); B.handL.rotation.set(0, 0, 0);
+    } else if (this.gun) {
       const sniper = this.gunType === 'awm', pistol = this.gunType === 'deagle', knife = this.gunType === 'knife' || this.gunType === 'he';
       const gx = pistol ? 0.03 : 0.1, gy = pistol ? 0.14 : 0.1, gz = pistol ? -0.42 : -0.3;
       this.gun.position.set(gx, gy + (st.reloading ? -0.08 : 0), gz + this.recoilK * 0.05);
@@ -349,6 +374,8 @@ export class Soldier {
     B.handR.rotation.set(0, 0, 0); B.handL.rotation.set(0, 0, 0);
   }
   kick() { this.recoilK = 1; }
+  // V98 第三人称近战挥砍：light=单臂斜劈（左右交替），heavy=双手过顶劈
+  attack(heavy) { this.atkT = 1; this.atkHeavy = !!heavy; this.atkFlip = !this.atkFlip; }
   die(dirX, dirZ, headshot) {
     this.deadT = 0;
     // 倒地方向：沿子弹方向
