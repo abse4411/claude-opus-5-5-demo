@@ -1088,7 +1088,7 @@ if (ver === 'v1') {
       b: !!document.querySelector('#loadCards .card[data-w="xm8"]'),
       c: !!document.querySelector('#loadCards .card[data-w="dualuzi"]'),
     }));
-    check(r.cards === 21 && r.a && r.b && r.c, `武器B: 21 张卡片含 95式/XM8/双持乌兹 (${r.cards})`);
+    check(r.cards === 23 && r.a && r.b && r.c, `武器B: 23 张卡片含 95式/XM8/双持乌兹 (${r.cards})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'qbz95', melee: 'crowbar', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');
@@ -1131,7 +1131,7 @@ if (ver === 'v1') {
       c: !!document.querySelector('#loadCards .card[data-w="m3super"]'),
       d: !!document.querySelector('#loadCards .card[data-w="mac10"]'),
     }));
-    check(r.cards === 21 && r.a && r.b && r.c && r.d, `武器A: 21 张卡片含四新枪 (${r.cards})`);
+    check(r.cards === 23 && r.a && r.b && r.c && r.d, `武器A: 23 张卡片含四新枪 (${r.cards})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'm14ebr', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');
@@ -1468,7 +1468,7 @@ if (ver === 'v1') {
       m60: !!document.querySelector('#loadCards .card[data-w="m60"]'),
       prim: document.querySelectorAll('#loadCards .card').length,
     }));
-    check(r.prim === 21 && r.m60, `武器: 商店 21 张主武器卡含 M60 (${r.prim})`);
+    check(r.prim === 23 && r.m60, `武器: 商店 23 张主武器卡含 M60 (${r.prim})`);
     check(r.sec === 3 && r.r8, `副武器: 三张副武器卡含 R8 左轮 (${r.sec})`);
     await page.evaluate(() => {
       const g = window.__game, p = g.player;
