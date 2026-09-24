@@ -9,6 +9,7 @@ const HIP = {
   mp5: { p: [0.155, -0.165, -0.5], r: [0.05, 0.17, 0.02] },
   deagle: { p: [0.085, -0.115, -0.4], r: [0.05, 0.1, 0] },
   knife: { p: [0.17, -0.15, -0.34], r: [0.35, -0.25, 0.55] },
+  axe: { p: [0.2, -0.26, -0.3], r: [0.5, -0.2, 0.35] },
   he: { p: [0.13, -0.12, -0.3], r: [0.1, -0.2, 0.2] },
 };
 const KICK = { ak47: [0.04, 0.07], m4a1: [0.032, 0.05], awm: [0.09, 0.2], mp5: [0.024, 0.035], deagle: [0.05, 0.22] };
@@ -241,7 +242,7 @@ export class ViewModel {
     const gp = P.grip ? P.grip.getWorldPosition(new THREE.Vector3()) : new THREE.Vector3(px, py, pz);
     const fp = P.fore ? P.fore.getWorldPosition(new THREE.Vector3()) : null;
     this.placeArm('R', handROverride || gp, true);
-    if (id === 'knife') this.arms.L.g.visible = false;
+    if (id === 'knife' || id === 'axe') this.arms.L.g.visible = false;
     else { this.arms.L.g.visible = true; this.placeArm('L', handL || fp || gp, false); }
     // 枪口火焰
     if (this.flashT > 0) {

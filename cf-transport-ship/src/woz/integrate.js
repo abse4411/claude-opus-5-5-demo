@@ -72,6 +72,8 @@ export class WozManager {
     let id = 0;
     g.player = new Player(g, { id: id++, name: '我', team: 'GR' });
     g.player.primary = o.primary;
+    g.player.secondary = o.secondary;
+    g.player.melee = o.melee;
     g.player.bind(document.getElementById('c'));
     g.actors.push(g.player);
     const prim = (i) => ['ak47', 'awm', 'famas', 'mp5', 'thompson', 'm24', 'm4a1', 'spas', 'g3sg1', 'aug', 'p90'][i % 11];
@@ -116,6 +118,8 @@ export class WozManager {
     let id = 0;
     g.player = new Player(g, { id: id++, name: '我', team: 'GR' });
     g.player.primary = o.primary;
+    g.player.secondary = o.secondary;
+    g.player.melee = o.melee;
     g.player.bind(document.getElementById('c'));
     g.actors.push(g.player);
     for (let i = 0; i < cfg.humans - 1; i++) {
@@ -437,7 +441,6 @@ export class WozManager {
         a.speedMul = rules.humanSpeedMultiplier(i);
       }
       if (a.alive && a.staggerT > 0) a.speedMul = (a.speedMul || 1) * 0.45; // 命中暂缓减速
-      if (a.blindT > 0) a.blindT = Math.max(0, a.blindT - dt);
     }
     this.devourAndSkills(dt);
     this.ambientGrowl(dt);

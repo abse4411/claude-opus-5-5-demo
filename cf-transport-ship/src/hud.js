@@ -26,7 +26,7 @@ export class HUD {
     this.slotsT = 0;
     this.radarCtx = this.el.radar.getContext('2d');
     const touch = matchMedia('(pointer:coarse)').matches;
-    this.opts = { mode: 'tdm', map: 'ship', team: 'BL', primary: 'ak47', secondary: 'deagle', size: 6, diff: 'normal', goal: 50, tod: 'day', quality: touch ? 'low' : 'high', sens: 1.0, fov: 78, vol: 0.8 };
+    this.opts = { mode: 'tdm', map: 'ship', team: 'BL', primary: 'ak47', secondary: 'deagle', melee: 'knife', size: 6, diff: 'normal', goal: 50, tod: 'day', quality: touch ? 'low' : 'high', sens: 1.0, fov: 78, vol: 0.8 };
     try { Object.assign(this.opts, JSON.parse(localStorage.getItem('cf_ship_opts') || '{}')); } catch (e) { /* 忽略 */ }
     this.buildMenu();
     this.showModeInfo(this.opts.mode);
@@ -504,8 +504,9 @@ const SEC_CARDS = SECONDARIES.map((id) => {
   return `<div class="card" data-s="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
 }).join('');
 
-const NADE_CARDS = ['he', 'molotov', 'frost', 'gas'].map((id) => {  const d = WEAPONS[id];
-  const sub = { he: '高爆 · 范围杀伤', molotov: '火海 · 持续灼烧', frost: '寒爆 · 大幅冻缓', gas: '毒雾 · 持续毒伤' }[id];
+const NADE_CARDS = ['he', 'molotov', 'frost', 'gas', 'flash'].map((id) => {
+  const d = WEAPONS[id];
+  const sub = { he: '高爆 · 范围杀伤', molotov: '火海 · 持续灼烧', frost: '寒爆 · 大幅冻缓', gas: '毒雾 · 持续毒伤', flash: '强光 · 致盲扫点' }[id];
   return `<div class="card" data-g="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
 }).join('');
 
@@ -574,6 +575,7 @@ const TEMPLATE = `
       <div class="opt"><div class="lab">阵营</div><div class="seg team" data-k="team"><button data-v="BL">潜伏者<small>Black List</small></button><button data-v="GR">保卫者<small>Global Risk</small></button></div></div>
       <div class="opt"><div class="lab">主武器</div><div class="seg" data-k="primary"><button data-v="ak47">AK-47</button><button data-v="m4a1">M4A1</button><button data-v="awm">AWM</button><button data-v="mp5">MP5</button><button data-v="m60">M60</button></div></div>
       <div class="opt"><div class="lab">副武器</div><div class="seg" data-k="secondary"><button data-v="deagle">沙漠之鹰</button><button data-v="usp">USP</button><button data-v="r8">R8 左轮</button></div></div>
+      <div class="opt"><div class="lab">近战</div><div class="seg" data-k="melee"><button data-v="knife">军刀</button><button data-v="axe">消防斧</button></div></div>
       <div class="row2">
         <div class="opt"><div class="lab">对战规模</div><div class="seg" data-k="size"><button data-v="4">4v4</button><button data-v="6">6v6</button><button data-v="8">8v8</button></div></div>
         <div class="opt"><div class="lab">目标击杀</div><div class="seg" data-k="goal"><button data-v="30">30</button><button data-v="50">50</button><button data-v="100">100</button></div></div>

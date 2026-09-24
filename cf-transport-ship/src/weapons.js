@@ -148,6 +148,17 @@ export const WEAPONS = {
     recoil: { up: 0.006, upMax: 0.08, side: 0.007, sideStart: 6, recover: 7 },
     sound: 'ak47', hudName: 'M60',
   },
+
+  // ---- V20（近战/投掷扩展）----
+  axe: {
+    id: 'axe', name: '消防斧', slot: 2, type: 'melee', auto: true,
+    dmgLight: 75, dmgHeavy: 140, rangeLight: 2.1, rangeHeavy: 1.8, rateLight: 0.62, rateHeavy: 1.3, draw: 0.5,
+    speed: 0.94, sound: 'knife', hudName: 'FIRE AXE', knock: 6.5, stagger: 0.35, mag: 0, reserve: 0,
+  },
+  flash: {
+    id: 'flash', name: '震撼弹', slot: 3, type: 'grenade', auto: false,
+    dmg: 4, radius: 10, fuse: 1.6, blind: 2.4, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'FLASHBANG', mag: 1, reserve: 0,
+  },
   molotov: {
     id: 'molotov', name: '燃烧瓶', slot: 3, type: 'grenade', auto: false,
     dmg: 14, radius: 3.2, fuse: 1.8, draw: 0.5, speed: 1.0, sound: 'grenade', hudName: 'MOLOTOV', mag: 1, reserve: 0,

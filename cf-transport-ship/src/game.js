@@ -169,6 +169,7 @@ export class Game {
     this.player = new Player(this, { id: id++, name: '我', team: my });
     this.player.primary = o.primary;
     this.player.secondary = o.secondary;
+    this.player.melee = o.melee;
     this.player.bind(document.getElementById('c'));
     this.actors.push(this.player);
     const N = o.size;
@@ -590,6 +591,25 @@ export class Game {
   }
   explode(p, owner, wid = 'he') {
     void 0;
+    if (wid === 'flash') {
+      // 震撼弹：视野内致盲（对齐原作致盲机制），微伤
+      this.fx.explosion(p);
+      audio.playExplosion(p);
+      const d = WEAPONS.flash;
+      for (const a of this.actors) {
+        if (!a.alive) continue;
+        const c = a.soldier.chestWorld(new THREE.Vector3());
+        const dist = c.distanceTo(p);
+        if (dist > d.radius) continue;
+        const dir = c.clone().sub(p); const L = dir.length(); dir.divideScalar(L || 1);
+        if (this.world.raycast(p.x, p.y + 0.2, p.z, dir.x, dir.y, dir.z, Math.max(0, L - 0.3), 'sight')) continue;
+        const k = 1 - dist / d.radius;
+        a.blindT = Math.max(a.blindT || 0, d.blind * k);
+        if (a.isPlayer) { this.dmgFlash = Math.max(this.dmgFlash || 0, 0.8); this.fx.shake = Math.max(this.fx.shake, 0.6); }
+        if (dist < 2.5) this.damage(a, owner, d.dmg, 'chest', 'flash', dir, false);
+      }
+      return;
+    }
     if (wid === 'molotov' || wid === 'frost' || wid === 'gas') {
       this.zones.spawn(wid === 'molotov' ? 'fire' : wid, p.clone());
       this.fx.explosion(p);
@@ -758,6 +778,7 @@ export class Game {
       }
       for (const a of this.actors) {
         a.radarT = Math.max(0, a.radarT - dt);
+        if (a.blindT > 0) a.blindT = Math.max(0, a.blindT - dt); // 震撼弹/尖啸致盲统一衰减
         if (a.alive) {
           a.protectT = Math.max(0, a.protectT - dt);
           const s = a.soldier;

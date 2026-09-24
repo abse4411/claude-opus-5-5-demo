@@ -266,6 +266,27 @@ const builders = {
     return g;
   },
   // ---- V2 扩充枪模（紧凑程序化造型，共用锚点） ----
+  flash(m) {
+    const g = new THREE.Group();
+    part(g, CZ(0.045, 0.13), m.metal, 0, 0, 0);                          // 圆柱弹体
+    part(g, CZ(0.046, 0.02), m.dark, 0, 0, -0.055);                      // 上箍带
+    part(g, CZ(0.046, 0.02), m.dark, 0, 0, 0.055);                       // 下箍带
+    part(g, CY(0.014, 0.03), m.metal, 0, 0.08, 0);                       // 引信帽
+    part(g, BX(0.012, 0.024, 0.03), m.steel, 0, 0.1, 0.012);             // 保险片
+    anchor(g, 'grip', 0, -0.05, 0);
+    return g;
+  },
+  axe(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.034, 0.72, 0.036, 0.012), m.wood, 0, 0, 0, 0, 0, 0);        // 柄
+    part(g, RB(0.026, 0.16, 0.03, 0.008), m.wood, 0, 0.2, 0.02);             // 柄尾握段
+    const head = part(g, RB(0.05, 0.14, 0.055, 0.012), m.steel, 0, 0.36, 0); // 斧头
+    part(head, BX(0.012, 0.11, 0.16), m.steel, 0.028, 0, -0.03);             // 斧刃
+    part(head, BX(0.014, 0.06, 0.04), m.metal, -0.03, 0, 0.01);              // 尾锤
+    part(g, CZ(0.02, 0.045), m.metal, 0, 0.36, 0, 0, 0, Math.PI / 2);        // 固定箍
+    anchor(g, 'grip', 0, -0.3, 0); anchor(g, 'muzzle', 0, 0.36, 0);
+    return g;
+  },
   famas(m) {
     const g = new THREE.Group();
     part(g, RB(0.05, 0.09, 0.42, 0.01), m.black, 0, 0, -0.03);          // 无托机身

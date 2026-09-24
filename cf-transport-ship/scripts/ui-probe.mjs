@@ -306,6 +306,7 @@ if (ver === 'v1') {
   {
     const r = await page.evaluate(() => {
       const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r; }; })();
       g.fastForward(20, 1 / 30);
       rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
       rules.convertToMutant(p.id, 'nightrunner', false);
@@ -415,6 +416,55 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v20') {
+  // 消防斧近战 + 震撼弹
+  await goto('&mode=infection');
+  {
+    const cards = await page.evaluate(() => ({
+      meleeSeg: !!document.querySelector('.seg[data-k="melee"] button[data-v="axe"]'),
+      nades: document.querySelectorAll('#nadeCards .card').length,
+      flash: !!document.querySelector('#nadeCards .card[data-g="flash"]'),
+    }));
+    check(cards.meleeSeg, '近战: 菜单消防斧选项存在');
+    check(cards.nades === 5 && cards.flash, `投掷: 5 种投掷物含震撼弹 (${cards.nades})`);
+    await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', melee: 'axe', grenade: 'flash', diff: 'normal', quality: 'low' })));
+  }
+  await page.goto(base + '&mode=infection');
+  await page.waitForFunction(() => window.__game && window.__game.playing, null, { timeout: 60000 });
+  await page.waitForTimeout(600);
+  const r = await page.evaluate(() => {
+    const g = window.__game, rules = g.woz.rules, p = g.player;
+    (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r; }; })();
+      g.fastForward(20, 1 / 30);
+    rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+    const axeOn = p.inv[2].id; // 出生近战 = 消防斧
+    // 消防斧重击：把一名变异者放面前劈（转阵营规避友军伤害抑制）
+    p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 0;
+    const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+    if (!v) return { ok: false };
+    rules.convertToMutant(v.id, 'nightrunner', false);
+    g.woz.convertNow(v, true);
+    v.pos.set(3.9, 0.1, 0); v.protectT = 0; v.armor = 0;
+    g.fastForward(1 / 30, 1 / 30); // 同步士兵网格位置到逻辑坐标
+    p.slot = 2; p.soldier.setWeapon('axe'); p.readyAt = 0; // 切到消防斧
+    p.updateCamera(0.016);
+    const hp0 = v.hp;
+    g.melee(p, true);
+    g.timers[g.timers.length - 1].fn(); // 同步结算重击（避免延迟期 bot 走位）
+    // 震撼弹：在人群旁引爆 → 致盲但不致死
+    const v2 = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+    let flashBlind = null;
+    if (v2) {
+      v2.pos.set(-1, 0.1, 0); v2.protectT = 0; // 已知开阔的 B 点连线上
+      g.fastForward(1 / 30, 1 / 30); // 同步网格位置
+      g.explode(new (v2.pos.constructor)(1, 0.4, 0), p, 'flash'); // 引爆点距靶 2m
+      flashBlind = { blind: v2.blindT > 0, alive: v2.alive, self: p.blindT > 0 && p.alive };
+    }
+    return { ok: true, axeOn, axeHit: v.hp < hp0 || !v.alive, flashBlind };
+  });
+  check(r.ok && r.axeOn === 'axe', `近战: 消防斧出厂装备 (${r.axeOn})`);
+  check(r.axeHit, '近战: 消防斧重击命中伤害');
+  check(r.flashBlind && r.flashBlind.blind && r.flashBlind.alive, `震撼弹: 视野内目标致盲但存活 (${JSON.stringify(r.flashBlind)})`);
 } else if (ver === 'v19') {
   // M60 + 副武器三选（沙鹰/USP/R8 左轮）
   await goto('&mode=infection');
@@ -453,7 +503,7 @@ if (ver === 'v1') {
       aug: !!document.querySelector('#loadCards .card[data-w="aug"]'),
       p90: !!document.querySelector('#loadCards .card[data-w="p90"]'),
     }));
-    check(r.cards === 12 && r.aug && r.p90, `武器: 商店 12 张主武器卡含 AUG/P90 (${r.cards})`);
+    check(r.cards === 13 && r.aug && r.p90, `武器: 商店 13 张主武器卡含 AUG/P90 (${r.cards})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'aug', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');
@@ -478,6 +528,7 @@ if (ver === 'v1') {
   {
     const r = await page.evaluate(() => {
       const g = window.__game;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r; }; })();
       g.fastForward(20, 1 / 30);
       return {
         topBL: document.querySelector('#tBL .nm')?.textContent,
@@ -559,6 +610,7 @@ if (ver === 'v1') {
   {
     const r = await page.evaluate(() => {
       const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r; }; })();
       g.fastForward(20, 1 / 30);
       rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
       const st = rules.state(p.id);
@@ -590,6 +642,7 @@ if (ver === 'v1') {
   {
     const r = await page.evaluate(() => {
       const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r; }; })();
       g.fastForward(20, 1 / 30);
       rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
       rules.convertToMutant(p.id, 'devourer', false);
@@ -625,6 +678,7 @@ if (ver === 'v1') {
   {
     const r = await page.evaluate(() => {
       const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r; }; })();
       g.fastForward(20, 1 / 30);
       rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
       rules.convertToMutant(p.id, 'bomber', false);
@@ -659,6 +713,7 @@ if (ver === 'v1') {
   {
     const r = await page.evaluate(() => {
       const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r; }; })();
       g.fastForward(20, 1 / 30);
       rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
       rules.convertToMutant(p.id, 'tangler', false);
@@ -690,6 +745,7 @@ if (ver === 'v1') {
   {
     const r = await page.evaluate(() => {
       const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r; }; })();
       g.fastForward(20, 1 / 30);
       rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
       rules.convertToMutant(p.id, 'devourer', false);
