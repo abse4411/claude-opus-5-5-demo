@@ -297,6 +297,48 @@ const builders = {
     anchor(g, 'grip', 0, -0.05, 0.1); anchor(g, 'muzzle', 0, 0, -0.42);
     return g;
   },
+  qbz95(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.05, 0.085, 0.4, 0.012), m.black, 0, 0, -0.02);         // 无托机匣
+    part(g, RB(0.03, 0.022, 0.22, 0.008), m.dark, 0, 0.058, -0.1);      // 提把瞄具
+    part(g, RB(0.028, 0.1, 0.05, 0.01), m.black, 0, -0.06, 0.05);       // 无托握把
+    part(g, RB(0.03, 0.13, 0.055, 0.01), m.dark, 0, -0.05, 0.12);       // 后置弹匣
+    part(g, BX(0.026, 0.24, 0.045), m.steel, 0, -0.005, -0.3);          // 枪管
+    part(g, CZ(0.016, 0.1), m.metal, 0, 0.025, -0.48);                  // 消焰器
+    anchor(g, 'grip', 0, -0.055, 0.05); anchor(g, 'muzzle', 0, 0.025, -0.54);
+    return g;
+  },
+  xm8(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.052, 0.085, 0.42, 0.016), m.olive, 0, 0, -0.02);       // 圆润机匣
+    part(g, CZ(0.02, 0.06), m.dark, 0, 0.062, -0.02, Math.PI / 2, 0, 0);// 穿越提把
+    part(g, BX(0.026, 0.25, 0.045), m.steel, 0, -0.005, -0.3);          // 枪管
+    part(g, RB(0.028, 0.13, 0.052, 0.01), m.rubber, 0, -0.055, 0.0);    // 握把
+    part(g, RB(0.03, 0.12, 0.05, 0.01), m.rubber, 0, -0.045, -0.08);    // 弹匣
+    part(g, RB(0.04, 0.07, 0.18, 0.014), m.olive, 0, 0.005, 0.2);       // 枪托
+    anchor(g, 'grip', 0, -0.05, 0.02); anchor(g, 'muzzle', 0, 0.02, -0.46);
+    return g;
+  },
+  dualuzi(m) {
+    const g = new THREE.Group();
+    for (const sx of [-1, 1]) {
+      part(g, RB(0.045, 0.075, 0.24, 0.01), m.black, sx * 0.05, 0, -0.04);      // 双机匣
+      part(g, CZ(0.012, 0.07), m.metal, sx * 0.05, 0.028, -0.2);                // 双枪管
+      part(g, RB(0.026, 0.14, 0.045, 0.008), m.dark, sx * 0.05, -0.09, -0.03);  // 双弹匣
+    }
+    part(g, RB(0.03, 0.09, 0.05, 0.01), m.rubber, 0, -0.055, 0.1);              // 中央握把
+    anchor(g, 'grip', 0, -0.05, 0.09); anchor(g, 'muzzle', 0, 0.028, -0.26);
+    return g;
+  },
+  crowbar(m) {
+    const g = new THREE.Group();
+    part(g, RB(0.03, 0.5, 0.032, 0.012), m.metal, 0, 0, 0);             // 主杆
+    part(g, RB(0.032, 0.12, 0.034, 0.01), m.metal, 0, 0.24, 0.015, 0.5);// 弯钩端
+    part(g, RB(0.034, 0.06, 0.05, 0.01), m.steel, 0, 0.27, 0.04);       // 撬爪
+    part(g, RB(0.034, 0.1, 0.036, 0.012), m.rubber, 0, -0.2, 0);        // 握把套
+    anchor(g, 'grip', 0, -0.22, 0); anchor(g, 'muzzle', 0, 0.27, 0);
+    return g;
+  },
   scarl(m) {
     const g = new THREE.Group();
     part(g, RB(0.048, 0.082, 0.44, 0.012), m.olive, 0, 0, -0.03);       // 沙色机匣

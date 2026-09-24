@@ -78,7 +78,7 @@ export class WozManager {
     g.player.melee = o.melee;
     g.player.bind(document.getElementById('c'));
     g.actors.push(g.player);
-    const prim = (i) => ['ak47', 'awm', 'famas', 'mp5', 'thompson', 'm24', 'm4a1', 'spas', 'g3sg1', 'aug', 'p90', 'scarl', 'm14ebr', 'm3super', 'mac10'][i % 15];
+    const prim = (i) => ['ak47', 'awm', 'famas', 'mp5', 'thompson', 'm24', 'm4a1', 'spas', 'g3sg1', 'aug', 'p90', 'scarl', 'm14ebr', 'm3super', 'mac10', 'qbz95', 'xm8', 'dualuzi'][i % 18];
     for (let i = 0; i < 9; i++) {
       const b = new Bot(g, { id: id++, name: names.pop() || 'Bot' + id, team: 'GR', diff: o.diff });
       b.primary = prim(i);

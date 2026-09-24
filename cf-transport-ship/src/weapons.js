@@ -183,6 +183,37 @@ export const WEAPONS = {
     sound: 'mp5', hudName: 'MAC-10',
   },
 
+  // ---- V34（枪械收尾 + 新近战）----
+  qbz95: {
+    id: 'qbz95', name: '95式', slot: 0, type: 'rifle', auto: true,
+    dmg: 30, headMul: 4.0, limbMul: 0.8, rpm: 650, mag: 30, reserve: 90, reload: 2.3, draw: 0.7,
+    speed: 0.99, range: 200, falloff: 0.986, pen: 1.0, armorPen: 0.72, knock: 1.8, stagger: 0.1,
+    spread: { base: 0.003, move: 0.032, air: 0.14, crouch: 0.6, perShot: 0.0034, max: 0.034, recover: 9 },
+    recoil: { up: 0.0052, upMax: 0.055, side: 0.0038, sideStart: 5, recover: 9 },
+    sound: 'ak47', hudName: 'QBZ-95',
+  },
+  xm8: {
+    id: 'xm8', name: 'XM8', slot: 0, type: 'rifle', auto: true,
+    dmg: 29, headMul: 3.8, limbMul: 0.82, rpm: 700, mag: 30, reserve: 90, reload: 2.2, draw: 0.7,
+    speed: 1.0, range: 190, falloff: 0.985, pen: 0.95, armorPen: 0.7, knock: 1.7, stagger: 0.1,
+    spread: { base: 0.0032, move: 0.03, air: 0.13, crouch: 0.6, perShot: 0.0032, max: 0.036, recover: 10 },
+    recoil: { up: 0.005, upMax: 0.05, side: 0.0036, sideStart: 5, recover: 9 },
+    sound: 'mp5', hudName: 'XM8',
+  },
+  dualuzi: {
+    id: 'dualuzi', name: '双持乌兹', slot: 0, type: 'smg', auto: true,
+    dmg: 17, headMul: 3.0, limbMul: 0.86, rpm: 1200, mag: 64, reserve: 128, reload: 3.0, draw: 0.6,
+    speed: 1.02, range: 75, falloff: 0.93, pen: 0.5, armorPen: 0.45, knock: 1.0, stagger: 0.05,
+    spread: { base: 0.007, move: 0.026, air: 0.13, crouch: 0.75, perShot: 0.0024, max: 0.06, recover: 8 },
+    recoil: { up: 0.0034, upMax: 0.05, side: 0.006, sideStart: 6, recover: 8 },
+    sound: 'mp5', hudName: 'DUAL UZI',
+  },
+  crowbar: {
+    id: 'crowbar', name: '撬棍', slot: 2, type: 'melee', auto: true,
+    dmgLight: 60, dmgHeavy: 110, rangeLight: 2.0, rangeHeavy: 1.7, rateLight: 0.38, rateHeavy: 1.0, draw: 0.4,
+    speed: 1.05, sound: 'knife', hudName: 'CROWBAR', knock: 5.0, stagger: 0.24, mag: 0, reserve: 0,
+  },
+
   // ---- V20（近战/投掷扩展）----
   axe: {
     id: 'axe', name: '消防斧', slot: 2, type: 'melee', auto: true,
@@ -211,7 +242,7 @@ export const WEAPONS = {
   },
 };
 
-export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90', 'm60', 'scarl', 'm14ebr', 'm3super', 'mac10'];
+export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90', 'm60', 'scarl', 'm14ebr', 'm3super', 'mac10', 'qbz95', 'xm8', 'dualuzi'];
 // V19：副武器三选（沙鹰默认；R8 左轮为原作风格高伤手炮）
 export const SECONDARIES = ['deagle', 'usp', 'r8'];
 
