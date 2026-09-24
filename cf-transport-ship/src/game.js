@@ -730,6 +730,7 @@ export class Game {
     if (att && att !== v && att.team === v.team) return;
     const def = WEAPONS[wid];
     let hpD = amt;
+    if (att && att.dmgBuff > 1) hpD *= att.dmgBuff; // 连杀狂怒（V43）
     if (this.woz) hpD *= this.woz.adjustDamage(v, att);
     if (v.armor > 0 && part !== 'leg') {
       const ap = def?.armorPen ?? 0.75;
@@ -768,7 +769,7 @@ export class Game {
   }
   kill(v, att, wid, hs, wall, dir) {
     v.alive = false; v.hp = 0; v.deadT = 0; v.respawnT = 4.0; v.stats.d++;
-    v.scoped = 0;
+    v.scoped = 0; v.dmgBuff = 1; v.streak = 0;
     v.soldier.die(dir.x, dir.z, hs);
     audio.playDeath(v.soldier.chestWorld(new THREE.Vector3()));
     const p = this.player;
@@ -777,6 +778,9 @@ export class Game {
       if (!this.woz) this.score[att.team]++;
       att.multi = this.time - att.lastKillT < 5 ? att.multi + 1 : 1;
       att.lastKillT = this.time; att.streak++;
+      // 连杀奖励（V43）：3 杀补弹 / 5 杀回血 / 8 杀狂怒（死亡清空）
+      const rewards = { 3: 'ammo', 5: 'heal', 8: 'rage' };
+      if (rewards[att.streak]) this.streakReward(att, rewards[att.streak], att.streak);
     }
     this.hud.killFeed(att && att !== v ? att : null, v, wid, hs, wall, att === p || v === p);
     if (att === p && v !== p) {
@@ -810,6 +814,21 @@ export class Game {
   // ================= 事件音效 =================
   onJump(a) { audio.playJump(a.isPlayer ? null : a.pos.clone()); }
   onLand(a, sp) { audio.playLand(a.isPlayer ? null : a.pos.clone(), a.ground?.surface || 'metal', Math.min(1, sp / 10)); }
+  streakReward(a, kind, streak) {
+    if (kind === 'ammo') {
+      for (const w of a.inv) if (w && w.def.type !== 'melee' && w.def.type !== 'grenade') { w.mag = w.def.mag; w.reserve = w.def.reserve; }
+    } else if (kind === 'heal') {
+      const cap = a.wozMaxHp || 100;
+      a.hp = cap;
+      if (this.woz?.rules && a.id < this.woz.rules.playerCount) this.woz.rules.state(a.id).hp = cap;
+    } else if (kind === 'rage') {
+      a.dmgBuff = 1.1;
+    }
+    const CN = { ammo: '弹药补给', heal: '战地医疗', rage: '狂怒（伤害 +10%）' };
+    if (a.isPlayer) this.hud.toast(`<b style="color:#ffd24a">${streak} 连杀！</b>奖励：${CN[kind]}`, 2);
+    this.hud.eventFeed(`${a.name} 达成 ${streak} 连杀 · ${CN[kind]}`, 'avg');
+    audio.playUI('buy');
+  }
   onFootstep(a) {
     // 变异者重脚步（V42 压迫感）：玩家 10m 内每步低频闷响 + 极轻微震屏
     if (a.isZombie) {

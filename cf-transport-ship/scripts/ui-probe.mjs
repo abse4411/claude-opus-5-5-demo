@@ -416,6 +416,45 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v38') {
+  // 连杀奖励：3 杀补弹 / 5 杀回血 / 8 杀狂怒
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st0 = rules.state(p.id);
+      if (st0.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      const out = {};
+      const killOne = () => {
+        const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+        if (!v) return false;
+        rules.convertToMutant(v.id, 'nightrunner', false);
+        g.woz.convertNow(v, true);
+        v.protectT = 0; v.armor = 0;
+        g.kill(v, p, 'ak47', false, false, { x: 1, z: 0 });
+        return true;
+      };
+      // 3 杀：补弹
+      const main = p.inv.find((w) => w && w.def.type !== 'melee' && w.def.type !== 'grenade');
+      main.mag = 1; main.reserve = 1;
+      p.streak = 2;
+      if (killOne()) { out.ammo = main.mag === main.def.mag && main.reserve === main.def.reserve; }
+      // 5 杀：回血
+      p.hp = 40;
+      p.streak = 4;
+      if (killOne()) { out.heal = p.hp >= 100; }
+      // 8 杀：狂怒
+      p.streak = 7;
+      if (killOne()) { out.rage = p.dmgBuff === 1.1; }
+      return out;
+    });
+    check(r.ammo === true, `连杀: 3 杀补满弹药 (${r.ammo})`);
+    check(r.heal === true, `连杀: 5 杀回满血 (${r.heal})`);
+    check(r.rage === true, `连杀: 8 杀狂怒 +10% 伤害 (${r.rage})`);
+  }
 } else if (ver === 'v37') {
   // 黏性炸弹：掷出 → 黏附变异体 → 短引信必中爆炸
   await goto('&mode=infection');
