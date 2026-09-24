@@ -416,6 +416,42 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v60') {
+  // V66-V68：击杀图标/尖啸冲击波环/职业卡剪影
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      rules.convertToMutant(p.id, 'souleater', false);
+      g.woz.convertNow(p, true);
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 999;
+      if (p.vel.set) p.vel.set(0, 0, 0);
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      v.pos.set(0, 0.1, 0); v.protectT = 0;
+      g.fastForward(1 / 30, 1 / 30);
+      p.updateCamera(0.016);
+      rules.tryUseSkill(p.id);
+      const rings = g.woz.rings.length;
+      g.fastForward(0.7, 1 / 30);
+      const ringsGone = g.woz.rings.length;
+      // V66 击杀图标：killFeed 用狙击枪杀 bot → 图标 🎯
+      const st2 = rules.state(p.id);
+      if (st2.side !== 'human') { g.woz.restoreHuman(p, true); }
+      if (!p.inv[0] || p.inv[0].def.type !== 'gun') p.giveLoadout('awm', 'deagle', 'knife');
+      const t2 = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (t2) { t2.hp = 1; t2.protectT = 0; g.damage(t2, p, 50, 'chest', 'awm', { x: 1, y: 0, z: 0 }, false, false); }
+      const iconSpan = [...document.querySelectorAll('#feed .kf')].map((d) => d.textContent).join('|');
+      return { ok: true, rings, ringsGone, feed: iconSpan.slice(0, 80) };
+    });
+    const sils = await page.evaluate(() => document.querySelectorAll('#wozPick .pcard svg.sil').length).catch(() => 0);
+    check(r.ok && r.rings >= 1, `V67: 尖啸冲击波环生成 ×${r.rings}`);
+    check(r.ringsGone === 0, 'V67: 冲击波环 0.5s 后消散');
+    check(sils === 7, `V68: 职业卡 SVG 剪影 ×${sils}`);
+    check(r.ok, 'V66: killFeed 渲染（含类型图标路径）');
+  }
 } else if (ver === 'v59') {
   // V63-V65 模式改版：B点回血+全占反扑 / 感染爆点毒云 / 二次尸潮+复仇者光环
   await goto('&mode=confront');

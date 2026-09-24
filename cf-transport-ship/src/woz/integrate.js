@@ -30,6 +30,7 @@ export class WozManager {
     wozAudio.mount(game);
     this.growlT = 2;
     this.disguiseReveal = WOZ.disguiseReveal; // V55 混入伪装识破距离（bots.js 读取）
+    this.rings = [];                  // V67 技能冲击波环
     // 目标物模式（对抗 / 爆破）
     this.points = [];
     this.bomb = null;
@@ -222,6 +223,7 @@ export class WozManager {
     this.tickGrabs(dt);
     this.tickFuses(dt);
     this.tickAirdrops(dt);
+    this.tickRings(dt);
     // 购买期结束自动关闭武器商店
     if (this.rules) {
       if (this.rules.phase === 'buy') this._buyOpen = true;
@@ -1228,7 +1230,7 @@ export class WozManager {
         const c = this.findCorpse(a);
         if (rules.tryDevour(a.id, c)) a.hp = st.hp;
       }
-      if (!st.skillActive && st.skillCharge >= 1 && Math.random() < 0.06) {
+      if (!st.skillActive && st.skillCharge >= 1 && Math.random() < 0.09) { // V69 平衡：AI 用技频率提升（感染局偏人类 4:1）
         // 职业化用技（V25）：各变异者按语境释放，不再无脑空放
         const enemy = this.nearestEnemy(a);
         const dist = enemy ? a.pos.distanceTo(enemy.pos) : 1e9;
@@ -1658,6 +1660,33 @@ export class WozManager {
     return rules.state(v.id).cls === key;
   }
 
+  // V67 冲击波环：扩张 0.5s 后消散（尖啸/自爆预警可复用）
+  spawnShockRing(pos, maxR, color) {
+    const g = this.g;
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.4, 0.7, 40), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false }));
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.copy(pos).setY(0.12);
+    g.renderer.scene.add(ring);
+    this.rings.push({ ring, t: 0, maxR });
+  }
+
+  tickRings(dt) {
+    const g = this.g;
+    for (let i = this.rings.length - 1; i >= 0; i--) {
+      const r = this.rings[i];
+      r.t += dt / 0.5;
+      if (r.t >= 1) {
+        g.renderer.scene.remove(r.ring);
+        r.ring.geometry.dispose(); r.ring.material.dispose();
+        this.rings.splice(i, 1);
+        continue;
+      }
+      const s = 0.2 + r.t * (r.maxR / 0.7);
+      r.ring.scale.setScalar(s);
+      r.ring.material.opacity = 0.85 * (1 - r.t);
+    }
+  }
+
   // V63 全占领反扑：人类拿下全部据点 → 变异者绝望反扑（3 只悲惨行者）
   mutantCounterAttack() {
     const g = this.g;
@@ -1816,10 +1845,15 @@ export class WozManager {
       a.forward(_fwd);
       a.vel.x += _fwd.x * 11; a.vel.z += _fwd.z * 11;
       a.vel.y = Math.max(a.vel.y, 3.2);
+      // V67 疾冲残影尘土：沿途 4 处冲击尘
+      for (let i = 1; i <= 4; i++) {
+        g.fx.impact(a.pos.clone().addScaledVector(_fwd, -i * 0.8).setY(0.15), new THREE.Vector3(0, 1, 0), 'dust', new THREE.Vector3(0, 1, 0));
+      }
       wozAudio.dash(a.isPlayer ? null : a.pos.clone());
       if (a.isPlayer) g.hud.toast('疾冲！', 0.8);
     } else if (skill === 'blindWail') {
       wozAudio.wail(a.isPlayer ? null : a.pos.clone());
+      this.spawnShockRing(a.pos.clone(), WOZ.blindWailRange, 0xff6ad0); // V67 尖啸冲击波环
       for (let i = 0; i < this.rules.playerCount; i++) {
         const h = g.actors[i], st = this.rules.state(i);
         if (st.side !== 'human' || !h.alive) continue;

@@ -289,7 +289,11 @@ export class HUD {
     const d = document.createElement('div');
     d.className = 'kf' + (mine ? ' me' : '');
     const WOZ_WN = { claw: '🞂利爪', chainsaw: '🞂电锯', axe: '🞂消防斧', flash: '🞂震撼弹' };
-    const icon = this.icons[wid] ? `<img src="${this.icons[wid]}">` : `<span>${WOZ_WN[wid] || '[' + (WEAPONS[wid]?.name || wid) + ']'}</span>`;
+    // V66 击杀图标按武器类型分级（近战/爆炸/火系/狙击/其他枪械）
+    const TYPE_ICON = { melee: '🔪', grenade: '💥', launcher: '💣' };
+    const wid_def = WEAPONS[wid];
+    const typeIcon = TYPE_ICON[wid_def?.type] || (wid === 'flamer' ? '🔥' : wid === 'crossbow' ? '🏹' : wid_def?.type === 'sniper' ? '🎯' : wid_def?.type === 'shotgun' ? '💨' : null);
+    const icon = this.icons[wid] ? `<img src="${this.icons[wid]}">` : WOZ_WN[wid] ? `<span>${WOZ_WN[wid]}</span>` : typeIcon ? `<span>${typeIcon}</span>` : `<span>[${WEAPONS[wid]?.name || wid}]</span>`;
     d.innerHTML = (k ? `<span class="k ${k.team}">${esc(k.name)}</span>` : '') + icon + (wb ? `<img class="hs" src="${WB_ICON}">` : '') + (hs ? `<img class="hs" src="${HS_ICON}">` : '') + `<span class="v ${v.team}">${esc(v.name)}</span>`;
     this.el.feed.prepend(d);
     this.feedItems.push({ el: d, t: performance.now() });

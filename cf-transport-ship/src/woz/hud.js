@@ -13,6 +13,19 @@ const CLASS_PICK = [
 ];
 const statRow = (label, v) => `<div class="stat"><span>${label}</span><i><b style="width:${v * 20}%"></b></i></div>`;
 
+// V68 职业剪影预览（全程序化 SVG）
+const SIL = {
+  nightrunner: '<path d="M18 4 L22 12 L21 20 L26 32 L22 32 L18 24 L14 32 L10 32 L15 20 L14 12 Z" fill="#ffb488"/>',
+  souleater: '<path d="M12 8 Q18 2 24 8 L26 20 L30 22 L25 23 L26 32 L21 32 L18 25 L15 32 L10 32 L11 23 L6 22 L10 20 Z M8 10 L12 14 M28 10 L24 14" stroke="#ffb488" stroke-width="1.4" fill="#8a2a1a"/>',
+  devourer: '<path d="M13 10 L23 10 L25 22 L22 32 L14 32 L11 22 Z" fill="#8a2a1a" stroke="#ffb488"/><path d="M26 8 L33 26 L29 27 L23 14 Z" fill="#c8a050"/>',
+  tangler: '<path d="M14 8 L22 8 L24 20 L21 32 L15 32 L12 20 Z" fill="#8a2a1a" stroke="#ffb488"/><path d="M24 14 Q32 12 30 20 M24 18 Q33 18 29 25 M12 16 Q4 14 6 22" stroke="#8fc88a" stroke-width="1.6" fill="none"/>',
+  bomber: '<path d="M13 10 L23 10 L25 20 L22 32 L14 32 L11 20 Z" fill="#8a2a1a" stroke="#ffb488"/><rect x="24" y="16" width="6" height="9" rx="1" fill="#c84020"/><circle cx="16" cy="6" r="3.4" fill="#e8c832"/>',
+  crawler: '<path d="M8 32 Q8 14 18 12 Q28 14 28 32 L22 32 Q22 22 18 22 Q14 22 14 32 Z" fill="#46633a" stroke="#8fc88a"/><path d="M12 12 L14 7 L16 12 M20 12 L22 7 L24 12" fill="#46633a" stroke="#8fc88a"/>',
+  headhunter: '<path d="M13 10 L23 10 L25 22 L21 32 L15 32 L11 22 Z" fill="#5a6472" stroke="#aab2c0"/><path d="M26 6 L32 28 L28 29 L23 12 Z M10 6 L4 28 L8 29 L13 12 Z" fill="#9aa2ac"/>',
+  mother: '<path d="M12 8 L24 8 L27 22 L23 32 L13 32 L9 22 Z" fill="#6a1410" stroke="#ff7040"/><path d="M12 5 L13 0 L15 5 M17 5 L18 0 L19 5 M22 5 L23 0 L24 5" stroke="#ff4020" stroke-width="1.6" fill="none"/>',
+};
+const silRow = (c) => `<svg class="sil" viewBox="0 0 36 36" width="36" height="36">${SIL[c] || ''}</svg>`;
+
 const PANEL_CSS = `
 #wozPanel{position:absolute;left:18px;bottom:96px;width:210px;font:13px/1.5 "PingFang SC","Microsoft YaHei",sans-serif;color:#eee;text-shadow:0 1px 2px #000;pointer-events:none;user-select:none;transition:opacity .2s}
 #wozPanel .card{background:rgba(8,10,14,.62);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 11px;margin-top:6px}
@@ -120,7 +133,7 @@ export class WozHud {
         <div class="pcards">
           ${CLASS_PICK.map((k) => `
             <div class="pcard" data-c="${k.c}">
-              <b>${k.name}</b><kbd>${k.key}</kbd>
+              <div class="silwrap">${silRow(k.c)}<b>${k.name}</b><kbd>${k.key}</kbd></div>
               <span class="d">${k.desc}</span>
               ${statRow('速度', k.sp)}${statRow('血量', k.hp)}${statRow('技能', k.sk)}
             </div>`).join('')}
