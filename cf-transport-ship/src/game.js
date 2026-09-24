@@ -559,6 +559,7 @@ export class Game {
     audio.playKnife('light', 'flesh', a.isPlayer ? null : eye);
   }
   melee(a, heavy) {
+    this.woz?.breakDisguise?.(a); // V55 伪装：出爪暴露
     const d = WEAPONS[a.weapon?.id] || WEAPONS.knife;
     const range = heavy ? d.rangeHeavy : d.rangeLight;
     const eye = a.eye(new THREE.Vector3());

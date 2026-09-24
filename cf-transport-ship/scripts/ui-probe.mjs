@@ -416,6 +416,50 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v51') {
+  // V55 混入伪装：爬行者玩家 8m 外不被 BOT 选为目标；出爪暴露 3s
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      if (rules.state(p.id).side !== 'mutant') rules.convertToMutant(p.id, 'crawler', false);
+      g.woz.convertNow(p, true);
+      p.pos.set(0, 0.1, 0); p.protectT = 999;
+      const bot = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!bot) return { ok: false };
+      bot.pos.set(12, 0.1, 0); bot.blindT = 0; bot.protectT = 999;
+      g.fastForward(1 / 30, 1 / 30);
+      // 12m 外：伪装生效 → 不应被选为目标
+      const disguised12 = g.woz.isDisguised(p);
+      bot.target = null; bot.visible = false; bot.think();
+      const skipFar = bot.target !== p;
+      // 3m 内：识破
+      p.pos.set(9.5, 0.1, 0);
+      g.fastForward(1 / 30, 1 / 30);
+      bot.target = null; bot.visible = false; bot.think();
+      const revealNear = bot.target === p;
+      // 对照：夜行者 12m 外仍会被锁定
+      rules.setMutantClass(p.id, 'nightrunner');
+      p.pos.set(0, 0.1, 0);
+      g.fastForward(1 / 30, 1 / 30);
+      bot.target = null; bot.visible = false; bot.think();
+      const nrTargeted = bot.target === p;
+      // 出爪暴露
+      rules.setMutantClass(p.id, 'crawler');
+      g.woz.breakDisguise(p);
+      const brokenAfterClaw = !g.woz.isDisguised(p);
+      return { ok: true, disguised12, skipFar, revealNear, nrTargeted, brokenAfterClaw };
+    });
+    check(r.ok, '伪装: 场景搭建');
+    check(r.disguised12 === true, '伪装: 爬行者玩家伪装生效');
+    check(r.skipFar === true, '伪装: 12m 外 BOT 无视');
+    check(r.revealNear === true, '伪装: 3m 内识破');
+    check(r.nrTargeted === true, '伪装: 对照夜行者正常被锁定');
+    check(r.brokenAfterClaw === true, '伪装: 出爪后暴露');
+  }
 } else if (ver === 'v50') {
   // V54 职业外观附件：肉刺/巨斧/矿工帽/瘦长/背鳍/双刀/王冠 + 切职业清理 + 复活清理
   await goto('&mode=infection');

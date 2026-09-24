@@ -117,6 +117,8 @@ export class Bot extends Actor {
       if (!a.alive || a.team === this.team) continue;
       const d = a.pos.distanceTo(this.pos);
       if (d > bestD) continue;
+      // V55 混入伪装：附身爬行者混入变异者群，识破距离外人类 BOT 直接无视
+      if (g.woz?.isDisguised?.(a) && d > (g.woz.disguiseReveal ?? 8)) continue;
       if (this.canSee(a)) { best = a; bestD = d; }
     }
     if (best) {

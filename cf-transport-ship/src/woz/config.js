@@ -109,6 +109,8 @@ export const WOZ = {
   sorrowSpeed: 1.3,         // 调研：三模式中速度较快
   sorrowFrenzyHp: 300,      // 末分钟狂潮版血量（HP 低）
   sorrowFrenzyCount: 4,     // 狂潮只数
+  disguiseReveal: 8,        // 混入伪装（V55）：人类 8m 内识破附身爬行者
+  disguiseBreak: 3,         // 出爪后暴露时长
 };
 
 // ---- 生化对抗：人类攻方占领战术据点，变异者守方 ----

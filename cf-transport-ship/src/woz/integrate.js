@@ -29,6 +29,7 @@ export class WozManager {
     this.hud = new WozHud(game);
     wozAudio.mount(game);
     this.growlT = 2;
+    this.disguiseReveal = WOZ.disguiseReveal; // V55 混入伪装识破距离（bots.js 读取）
     // 目标物模式（对抗 / 爆破）
     this.points = [];
     this.bomb = null;
@@ -1511,6 +1512,22 @@ export class WozManager {
     return rules.state(v.id).cls === key;
   }
 
+  // V55 混入伪装：附身爬行者的玩家混入 AI 变异者群（调研：伺机对人类发动闪电突袭）
+  isDisguised(a) {
+    const rules = this.rules;
+    if (!rules || !a?.isPlayer || !a.alive) return false;
+    if (this.g.time < (a._disguiseBreakT || 0)) return false; // 出爪暴露中
+    const st = rules.state(a.id);
+    return st.side === 'mutant' && st.cls === MutantClass.Crawler;
+  }
+
+  breakDisguise(a) {
+    if (this.isDisguised(a)) {
+      a._disguiseBreakT = this.g.time + WOZ.disguiseBreak;
+      if (a.isPlayer) this.g.hud.toast('<b style="color:#ff5040">伪装暴露！</b>', 1.5);
+    }
+  }
+
   // V52 断头者双大刀近战倍率
   classMeleeMul(a, heavy) {
     const rules = this.rules;
@@ -1617,7 +1634,10 @@ export class WozManager {
     this.applyClassVisual(a);    // 体型 + 职业染色同步（V51）
     if (this._autoCls === id) { this._autoCls = -1; } // 感染时的自动默认职业不重复播报
     else g.hud.eventFeed(`${a.name} 进化为 <b>${CLASS_LABEL[cls] || '变异者'}</b>`, 'evo');
-    if (a.isPlayer) g.hud.toast(`已变身：<b style="color:#ff7040">${CLASS_LABEL[cls]}</b>`, 2);
+    if (a.isPlayer) {
+      g.hud.toast(`已变身：<b style="color:#ff7040">${CLASS_LABEL[cls]}</b>`, 2);
+      if (cls === MutantClass.Crawler) g.hud.toast('<b style="color:#8fc88a">混入伪装</b>：士兵 8m 外无法识破你，出爪会短暂暴露', 3.5); // V55
+    }
   }
 
   onInfected(victimId, attackerId) {
