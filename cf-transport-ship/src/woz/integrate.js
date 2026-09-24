@@ -1112,8 +1112,11 @@ export class WozManager {
   onPlayerInput(p) {
     const g = this.g, rules = this.rules;
     if (!rules || rules.phase !== 'battle' || !p.alive) return;
-    // V 人类必杀技（进化满档解锁）
-    if (!rules.isMutantSide(p.id) && p.consumePressed('KeyV')) this.tryHumanUltimate(p);
+    // 人类能量三级技能（V46）：[T] 战术装填 / [V] 必杀技·狂暴（[F] 在 player.js 路由）
+    if (!rules.isMutantSide(p.id)) {
+      if (p.consumePressed('KeyT')) this.tryHumanEnergyKey(p, 'T');
+      if (p.consumePressed('KeyV')) this.tryHumanEnergyKey(p, 'V');
+    }
     if (!rules.isMutantSide(p.id)) return;
     const st = rules.state(p.id);
     if (!st.alive) return;
@@ -1179,25 +1182,40 @@ export class WozManager {
     return true;
   }
 
-  tryHumanUltimate(p) {
+  // 人类能量三级技能（V46）：[T] 战术装填(25) / [F] 战地狂热(50) / [V] 必杀技·狂暴(100)
+  tryHumanEnergyKey(p, level) {
     const g = this.g, rules = this.rules;
-    if (rules.tryHumanUltimate(p.id)) {
+    const costs = { T: WOZ.energyCostT, F: WOZ.energyCostF, V: WOZ.energyCostV };
+    if (!rules.tryEnergySkill(p.id, level)) {
+      g.hud.toast(`能量不足：需要 ${costs[level]}（当前 ${rules.humanEnergy(p.id) | 0}）`, 1.2);
+      return false;
+    }
+    const st = rules.state(p.id);
+    if (level === 'T') {
+      for (const w of p.inv) if (w && w.def.type !== 'melee' && w.def.type !== 'grenade') { w.mag = w.def.mag; w.reserve = w.def.reserve; }
+      g.hud.slots(p.inv, p.slot);
+      g.hud.toast('<b style="color:#8cc8ff">战术装填！</b>弹药全满', 1.5);
+    } else if (level === 'F') {
+      g.hud.toast('<b style="color:#8cc8ff">战地狂热！</b>8 秒移速 +10%', 1.5);
+    } else {
       for (const w of p.inv) if (w && w.def.type !== 'melee' && w.def.type !== 'grenade') w.mag = w.def.mag; // 狂暴：瞬间满弹
       g.hud.toast('<b style="color:#ffd24a">必杀技：狂暴！</b>5 秒伤害 ×1.5', 2);
-      g.hud.eventFeed(`${p.name} 释放了<b>必杀技·狂暴</b>！`, 'avg');
       wozAudio.ult();
-      return true;
     }
-    if (rules.humanTier(p.id) >= WOZ.humanMaxTier) {
-      g.hud.toast(`必杀技冷却 ${Math.ceil(rules.state(p.id).ultCooldown)}s`, 1);
-    } else {
-      g.hud.toast(`达到 ${WOZ.humanMaxTier} 档进化后解锁必杀技`, 1);
-    }
-    return false;
+    g.hud.eventFeed(`${p.name} 释放了<b>能量技能 ${level}</b>`, 'avg');
+    return true;
   }
 
   onHumanUltimate(id) {
-    void id; // 表现已在 tryHumanUltimate 处理；规则层回调占位
+    void id; // 表现已在能量技能路径处理；规则层回调占位
+  }
+
+  // 引擎伤害上报 → 规则层（变异者技能充能 / 人类能量充能，V46）
+  reportDamage(att, v, amount) {
+    const rules = this.rules;
+    if (!rules || !att || att === v || !v.alive || amount <= 0) return;
+    if (att.id < 0 || att.id >= rules.playerCount) return;
+    rules.reportDamage(att.id, v.id, amount);
   }
 
   // 复仇者旋转清场（原作：被包围时原地旋转一周清除所有近身敌人）——重击的 360° 版本
@@ -1287,6 +1305,7 @@ export class WozManager {
     const attId = attacker && attacker !== victim && attacker.id < rules.playerCount ? attacker.id : -1;
     const wasHuman = rules.state(vid).side === 'human';
     rules.reportDeath(vid, attId);
+    if (attId >= 0 && !wasHuman) rules.addEnergy(attId, WOZ.energyPerKill); // 击杀充能（V46）
     victim.respawnT = wasHuman ? 2.2 : 1.2;
     if (wasHuman) this.pendingConvert.add(vid);
     // 人类侧击杀奖励（原作击杀发钱 → 这里给进化学击杀计数已在规则层处理）

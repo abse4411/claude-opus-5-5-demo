@@ -331,27 +331,36 @@ console.log('== WOZ 规则层断言 ==');
   check(Math.abs(sim.rules.evoDamageReduction(st)) < 1e-6, 'V14: 阶段判定严格按吞噬数');
 }
 
-// 13. V15 人类必杀技（进化满档解锁，V 键）
+// 13. V46 人类能量三级技能（T/F/V，击杀/伤害/时间充能）
 {
   const sim = new ArenaSim('infection', 77);
   sim.rules.beginRound(5); skipBuy(sim);
   const hid = sim.rules.players.findIndex((p) => !p.isMother && p.side === 'human');
   const h = sim.rules.state(hid);
-  check(!sim.rules.humanUltimateReady(hid), 'V15: 未满档不可用');
-  check(sim.rules.tryHumanUltimate(hid) === false, 'V15: 未满档释放拒绝');
-  // 快进生存时间到满档（45s × 4）
-  sim.rules.tickHuman(h, WOZ.humanTierSeconds * 4);
-  check(sim.rules.humanTier(hid) === WOZ.humanMaxTier, 'V15: 生存时间叠满 4 档');
-  check(sim.rules.humanUltimateReady(hid), 'V15: 满档后必杀技就绪');
-  check(Math.abs(sim.rules.humanDamageBoost(hid) - WOZ.humanTier3Damage) < 1e-6, 'V15: 三档威力 +10%');
-  check(sim.rules.tryHumanUltimate(hid), 'V15: 满档释放成功');
-  check(sim.host.has(`ult:${hid}`), 'V15: 宿主收到必杀技回调');
-  check(Math.abs(sim.rules.humanDamageBoost(hid) - WOZ.humanUltDamage) < 1e-6, 'V15: 必杀技期间伤害 ×1.5');
-  check(!sim.rules.tryHumanUltimate(hid), 'V15: 生效期间不可重复释放');
-  sim.rules.tickHuman(h, 6);
-  check(Math.abs(sim.rules.humanDamageBoost(hid) - WOZ.humanTier3Damage) < 1e-6, 'V15: 5 秒后狂暴结束回落三档威力');
-  check(!sim.rules.humanUltimateReady(hid), 'V15: 冷却中不可再释放');
-  check(Math.abs(h.ultCooldown - (WOZ.humanUltCooldown - 6)) < 1e-6, 'V15: 冷却 60s 正确递减');
+  check(sim.rules.humanEnergy(hid) === 0, 'V46: 初始能量 0');
+  check(!sim.rules.tryEnergySkill(hid, 'T'), 'V46: 能量不足释放拒绝');
+  // 伤害充能：500 伤害 ×0.06 = +30
+  sim.rules.reportDamage(hid, 0, 500);
+  check(Math.abs(sim.rules.humanEnergy(hid) - 30) < 0.01, 'V46: 500 伤害充能 +30');
+  // 击杀充能 +25
+  sim.rules.addEnergy(hid, WOZ.energyPerKill);
+  check(Math.abs(sim.rules.humanEnergy(hid) - 55) < 0.01, 'V46: 击杀充能 +25');
+  // [T] 战术装填（25）
+  check(sim.rules.tryEnergySkill(hid, 'T'), 'V46: T 战术装填释放成功');
+  check(Math.abs(sim.rules.humanEnergy(hid) - 30) < 0.01, 'V46: T 消耗 25 能量');
+  // 时间充能 20s → +30 = 60；[F] 战地狂热（50）
+  sim.rules.tickHuman(h, 20);
+  check(sim.rules.tryEnergySkill(hid, 'F'), 'V46: F 战地狂热释放成功（60≥50）');
+  check(h.frenzyT > 0, 'V46: 狂热计时激活');
+  const spd = sim.rules.humanSpeedMultiplier(hid);
+  check(spd > 1, `V46: 狂热移速 +10% (${spd.toFixed(2)})`);
+  sim.rules.tickHuman(h, WOZ.energyFrenzyDuration);
+  check(h.frenzyT === 0, 'V46: 狂热到时结束');
+  // [V] 必杀技（100）
+  sim.rules.addEnergy(hid, 100);
+  check(sim.rules.tryEnergySkill(hid, 'V'), 'V46: V 必杀技释放成功');
+  check(h.ultActiveT > 0, 'V46: 狂暴激活');
+  check(Math.abs(sim.rules.humanDamageBoost(hid) - WOZ.humanUltDamage) < 1e-6, 'V46: 伤害 ×1.5');
 }
 
 console.log(`\n结果: ${passed} 通过, ${failed} 失败`);

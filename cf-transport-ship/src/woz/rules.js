@@ -60,6 +60,8 @@ export class WozRules {
         tierNotified: 0,
         ultActiveT: 0,          // 人类必杀技剩余时间（V15）
         ultCooldown: 0,
+        energy: 0,              // 人类能量 0-100（V46：T/F/V 三级技能）
+        frenzyT: 0,             // 战地狂热剩余时间
         revivesLeft: mode === 'revenge' ? WOZ.mutantRevives : 0,
         canRevive: true,
         reviveTimer: 0,
@@ -172,6 +174,8 @@ export class WozRules {
     p.humanSurviveTime += dt;
     p.ultActiveT = Math.max(0, p.ultActiveT - dt);
     p.ultCooldown = Math.max(0, p.ultCooldown - dt);
+    p.frenzyT = Math.max(0, (p.frenzyT || 0) - dt);
+    p.energy = Math.min(100, p.energy + dt * WOZ.energyPerSecond); // 时间充能（V46）
     const tier = this.humanTier(p.id);
     if (tier > p.tierNotified) {
       p.tierNotified = tier;
@@ -179,19 +183,25 @@ export class WozRules {
     }
   }
 
-  // 人类必杀技（原作：进化满档解锁）
-  humanUltimateReady(id) {
-    const p = this.players[id];
-    return !!p && p.side === 'human' && p.alive && this.humanTier(id) >= WOZ.humanMaxTier
-      && p.ultCooldown <= 0 && !p.isAvenger;
+  // 人类能量三级技能（V46，原作 T/F/V）：T 战术装填 / F 战地狂热 / V 必杀技·狂暴
+  humanEnergy(id) {
+    return this.players[id]?.energy || 0;
   }
 
-  tryHumanUltimate(id) {
+  addEnergy(id, amount) {
     const p = this.players[id];
-    if (this.phase !== 'battle' || !this.humanUltimateReady(id)) return false;
-    p.ultActiveT = WOZ.humanUltDuration;
-    p.ultCooldown = WOZ.humanUltCooldown;
-    this.host.onHumanUltimate(id);
+    if (p && p.side === 'human') p.energy = Math.min(100, p.energy + amount);
+  }
+
+  tryEnergySkill(id, level) {
+    const p = this.players[id];
+    if (this.phase !== 'battle' || !p || p.side !== 'human' || !p.alive || p.isAvenger) return false;
+    const cost = level === 'T' ? WOZ.energyCostT : level === 'F' ? WOZ.energyCostF : WOZ.energyCostV;
+    if (p.energy < cost) return false;
+    if (level === 'F' && p.frenzyT > 0) return false;
+    p.energy -= cost;
+    if (level === 'F') p.frenzyT = WOZ.energyFrenzyDuration;
+    if (level === 'V') p.ultActiveT = WOZ.humanUltDuration;
     return true;
   }
 
@@ -323,6 +333,7 @@ export class WozRules {
       p.skillCharge = Math.min(1, p.skillCharge + amount * WOZ.skillChargePerDamage);
     } else {
       p.humanDamage += amount;
+      p.energy = Math.min(100, p.energy + amount * WOZ.energyPerDamage); // 伤害充能（V46）
     }
   }
 
@@ -420,6 +431,7 @@ export class WozRules {
     const p = this.players[id];
     if (!p) return 1;
     let m = 1 + this.humanTier(id) * WOZ.humanSpeedPerTier;
+    if (p.frenzyT > 0) m *= 1.1; // 战地狂热（V46）
     if (p.isAvenger) m += WOZ.avengerSpeed - 1;
     return m;
   }

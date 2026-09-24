@@ -793,6 +793,7 @@ export class Game {
     v.lastAttacker = att; v.lastHurt = this.time;
     const killed = v.hp <= 0;
     if (att && att !== v) att.stats.hits++;
+    if (this.woz) this.woz.reportDamage(att, v, Math.min(hpD, amt * 2)); // 伤害上报（充能/能量）
     // 打击感（V31）：受击者红闪；重击/爆头/爆炸击杀触发顿帧
     if (v.soldier && !v.isPlayer) v.soldier.hitFlash(Math.min(1, 0.35 + hpD / 80) + (part === 'head' ? 0.25 : 0));
     if (killed && att && att !== v) {

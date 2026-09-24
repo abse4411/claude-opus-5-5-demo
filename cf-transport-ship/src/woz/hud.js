@@ -233,25 +233,23 @@ export class WozHud {
       const tier = rules.humanTier(player.id);
       const ultSt = rules.state(player.id);
       this.el.tier.innerHTML = (tier > 0 ? `进化 Lv.${tier}` : '')
-        + (ultSt.ultActiveT > 0 ? ' · <b style="color:#ffd24a">必杀技生效中！</b>'
-          : tier >= WOZ.humanMaxTier ? (ultSt.ultCooldown > 0 ? ` · 必杀技冷却 ${Math.ceil(ultSt.ultCooldown)}s` : ' · <b style="color:#ffd24a">[V] 必杀技就绪</b>')
-          : '');
-      // 必杀技充能条（未满档=进化进度；满档=冷却/就绪）
+        + (ultSt.ultActiveT > 0 ? ' · <b style="color:#ffd24a">必杀技生效中！</b>' : '');
+      // 能量条（V46）：击杀/伤害/时间充能，T25 / F50 / V100
       {
         const fill = this.el.ultFill, txt = this.el.ultTxt;
+        const en = ultSt.energy || 0;
         if (ultSt.ultActiveT > 0) {
           fill.style.width = `${(ultSt.ultActiveT / WOZ.humanUltDuration) * 100}%`;
           fill.style.background = 'linear-gradient(90deg,#ffd24a,#fff0a0)';
-          txt.textContent = '狂暴中';
-        } else if (tier >= WOZ.humanMaxTier) {
-          const cool = ultSt.ultCooldown / WOZ.humanUltCooldown;
-          fill.style.width = `${(1 - cool) * 100}%`;
-          fill.style.background = 'linear-gradient(90deg,#ffd24a,#ffe080)';
-          txt.textContent = ultSt.ultCooldown > 0 ? '冷却中' : '[V] 就绪';
+          txt.textContent = '必杀技·狂暴中';
+        } else if (ultSt.frenzyT > 0) {
+          fill.style.width = `${(ultSt.frenzyT / WOZ.energyFrenzyDuration) * 100}%`;
+          fill.style.background = 'linear-gradient(90deg,#8cc8ff,#d8f0ff)';
+          txt.textContent = '战地狂热中';
         } else {
-          fill.style.width = `${Math.min(1, tier / WOZ.humanMaxTier) * 100}%`;
+          fill.style.width = `${en}%`;
           fill.style.background = 'linear-gradient(90deg,#4fa0ff,#8cc8ff)';
-          txt.textContent = `进化 ${tier}/${WOZ.humanMaxTier} 档解锁必杀技`;
+          txt.textContent = `能量 ${en | 0} · [T]25 [F]50 [V]100`;
         }
       }
       this.el.evo.textContent = this.g.opts.mode === 'revenge' ? '濒败时觉醒复仇者' : `击杀 ${player.stats.k}`;

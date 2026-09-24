@@ -59,7 +59,14 @@ export const WOZ = {
   humanTier3Damage: 1.1,      // 三档：威力 +10%
   humanUltDamage: 1.5,        // 必杀技期间威力
   humanUltDuration: 5,
-  humanUltCooldown: 60,
+  // 人类能量三级技能（V46，百度百科原作：T/F/V 三键，击杀/伤害/时间充能）
+  energyPerSecond: 1.5,
+  energyPerDamage: 0.06,
+  energyPerKill: 25,
+  energyCostT: 25,
+  energyCostF: 50,
+  energyCostV: 100,
+  energyFrenzyDuration: 8,
 
   // 复仇模式
   avengerHp: 1500,

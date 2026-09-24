@@ -86,8 +86,10 @@ export class Player extends Actor {
       this.mouse.lp = this.mouse.rp = false; this.touch.firePressed = false;
       this.weaponUpdate(dt, { fire: this.mouse.l || this.touch.fire, firePressed: lp, alt: this.mouse.r, altPressed: rp, reload: this.consumePressed('KeyR'), sw });
       if (this.consumePressed('KeyF')) {
-        if (g.woz?.rules && g.woz.rules.isMutantSide(this.id) && this.alive) g.woz.onPlayerSkillKey(this); // 原作技能键 F
-        else g.vm.inspect();
+        if (g.woz?.rules && this.alive) {
+          if (g.woz.rules.isMutantSide(this.id)) g.woz.onPlayerSkillKey(this); // 变异者技能键
+          else g.woz.tryHumanEnergyKey(this, 'F'); // 人类能量技能 F（V46）
+        } else g.vm.inspect();
       }
       if (this.consumePressed('KeyH')) g.toggleHelp();
       // 丢弃 / 拾取（变异者的 E/G 由 WOZ 管理层处理）

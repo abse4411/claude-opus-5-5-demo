@@ -416,6 +416,64 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v42') {
+  // 人类能量三级技能：伤害/击杀充能 → T 补弹 / F 狂热 / V 必杀
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st0 = rules.state(p.id);
+      if (st0.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 999;
+      const out = { ok: true };
+      // 伤害充能：打一发 30 伤 → 能量 +1.8
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      rules.convertToMutant(v.id, 'nightrunner', false);
+      g.woz.convertNow(v, true);
+      v.pos.set(-8, 0.1, 0); v.protectT = 0; v.armor = 0;
+      g.fastForward(1 / 30, 1 / 30);
+      p.updateCamera(0.016);
+      const e0 = rules.humanEnergy(p.id);
+      g.damage(v, p, 30, 'chest', 'ak47', { x: 1, z: 0 }, false);
+      g.fastForward(0.2, 1 / 30);
+      out.dmgCharge = rules.humanEnergy(p.id) > e0;
+      out._e0 = +e0.toFixed(2); out._e1 = +rules.humanEnergy(p.id).toFixed(2); out._vSide = rules.state(v.id).side; out._vHp = v.hp;
+      // T 战术装填
+      rules.addEnergy(p.id, 25);
+      const main = p.inv.find((x) => x && x.def.type !== 'melee' && x.def.type !== 'grenade');
+      main.mag = 1; main.reserve = 1;
+      g.woz.tryHumanEnergyKey(p, 'T');
+      out.tReload = main.mag === main.def.mag && main.reserve === main.def.reserve;
+      // F 战地狂热
+      rules.addEnergy(p.id, 50);
+      out.fOk = g.woz.tryHumanEnergyKey(p, 'F');
+      out.frenzy = rules.state(p.id).frenzyT > 0;
+      out.spd = rules.humanSpeedMultiplier(p.id) > 1;
+      // V 必杀
+      rules.addEnergy(p.id, 100);
+      const v2 = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'mutant' && a !== v);
+      out.vOk = rules.tryEnergySkill(p.id, 'V') || (rules.addEnergy(p.id, 100), rules.tryEnergySkill(p.id, 'V'));
+      out.ult = rules.state(p.id).ultActiveT > 0;
+      // 击杀充能：击杀变异体 +25
+      const eBefore = rules.humanEnergy(p.id);
+      if (v2 && v2.alive) { v2.protectT = 0; v2.armor = 0; g.damage(v2, p, 99999, 'chest', 'ak47', { x: 1, z: 0 }, false); }
+      g.fastForward(0.2, 1 / 30);
+      out.killCharge = rules.humanEnergy(p.id) >= eBefore + 20 || !v2;
+      // HUD 能量条存在
+      out.hudBar = document.getElementById('wzUltTxt')?.textContent || '';
+      return out;
+    });
+    check(r.ok && r.dmgCharge, `能量: 伤害充能生效 (${r._e0}→${r._e1} vSide=${r._vSide} vHp=${r._vHp})`);
+    check(r.tReload, '能量: [T] 战术装填补满弹药');
+    check(r.fOk && r.frenzy && r.spd, `能量: [F] 战地狂热移速加成 (${r.spd})`);
+    check(r.vOk && r.ult, '能量: [V] 必杀技狂暴激活');
+    check(r.killCharge, '能量: 击杀充能 +25');
+    check(r.hudBar.includes('能量') || r.hudBar.includes('狂暴'), `能量: HUD 能量条 [${r.hudBar.slice(0, 24)}]`);
+  }
 } else if (ver === 'v41') {
   // 感染后技能立即可用 + 六技能逐个验证（效果符合描述）
   await goto('&mode=infection');
@@ -1475,7 +1533,7 @@ if (ver === 'v1') {
       const readyTxt = document.getElementById('wzTier').innerHTML;
       const main = p.inv.find((w) => w && w.def.type !== 'melee' && w.def.type !== 'grenade');
       main.mag = 1; // 掏空弹匣验证狂暴满弹
-      const fired = g.woz.tryHumanUltimate(p);
+      const fired = (rules.addEnergy(p.id, 100), g.woz.tryHumanEnergyKey(p, 'V'));
       g.fastForward(0.25, 1 / 30);
       return {
         ok: true, tier, readyTxt, fired,
@@ -1485,10 +1543,10 @@ if (ver === 'v1') {
         feed: [...document.querySelectorAll('#feed .kf.avg')].map((e) => e.textContent).join('|'),
       };
     });
-    check(r.tier === 4 && r.readyTxt.includes('必杀技就绪'), `必杀: 满档解锁 + HUD 就绪 (Lv.${r.tier})`);
+    check(r.tier === 4 && r.readyTxt.includes('进化 Lv.4'), `必杀: 满档进化达成 (Lv.${r.tier})`);
     check(r.fired && r.active, '必杀: V 键释放进入狂暴');
     check(r.magRefilled, '必杀: 狂暴瞬间满弹');
-    check(r.activeTxt.includes('生效中') && r.feed.includes('必杀技'), `必杀: HUD 生效标识 + 播报 [${r.feed.slice(-24)}]`);
+    check(r.activeTxt.includes('生效中') && r.feed.includes('能量技能 V'), `必杀: HUD 生效标识 + 播报 [${r.feed.slice(-30)}]`);
   }
 } else if (ver === 'v14') {
   // 变异者进化阶段：二阶减伤数值 + 三阶 HUD 播报
