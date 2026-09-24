@@ -155,7 +155,7 @@ await page.evaluate(() => window.__game.fastForward(125, 1 / 30));
     const dir = { x: 0.6, z: 0.8 };
     // 强制 0/1 号存活人类，其余人类全部压死（感染转化）→ 满足触发条件
     rules.avengerUsed = false;
-    for (let i = 2; i < rules.playerCount; i++) {
+    for (let i = 1; i < rules.playerCount; i++) { // V94/V100 确定性：除 0 号外全部清场（1 号状态此前随机）
       const st = rules.state(i), a = g.actors[i];
       if (st.side === 'human' && st.alive && a.alive) { a.protectT = 0; g.damage(a, null, 9999, 'chest', 'he', dir, false); }
     }

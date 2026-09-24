@@ -333,6 +333,31 @@ export class Soldier {
     B.spine.rotation.set(pitch * 0.3 + ck * 0.15, -B.hips.rotation.y - 0.25, 0);
     B.chest.rotation.set(pitch * 0.45 - this.recoilK * 0.08, -0.12, 0);
     B.neck.rotation.set(pitch * 0.2, 0.3, 0);
+    // V100 技能施法姿态叠加（近战挥砍期间不出手，二者互斥由调用顺序保证）
+    let castK = 0;
+    if (this.castT > 0) {
+      this.castT = Math.max(0, this.castT - dt / this.castDur());
+      castK = Math.sin((1 - this.castT) * Math.PI);
+      const c = this.castKind;
+      if (c === 'roar') { // 咆哮/尖啸：双臂后展 + 头部后仰嘶吼
+        B.upperArmR.rotation.x = -2.2 * castK; B.upperArmL.rotation.x = -2.0 * castK;
+        B.upperArmR.rotation.z = -0.5 * castK; B.upperArmL.rotation.z = 0.5 * castK;
+        B.forearmR.rotation.x = 0.3; B.forearmL.rotation.x = 0.3;
+        B.chest.rotation.x -= 0.3 * castK; B.neck.rotation.x -= 0.35 * castK; B.head.rotation.x -= 0.3 * castK;
+      } else if (c === 'dash') { // 疾冲：大幅前倾蓄势
+        B.spine.rotation.x += 0.45 * castK; B.chest.rotation.x += 0.2 * castK; B.neck.rotation.x += 0.15 * castK;
+      } else if (c === 'harden') { // 硬化/自爆蓄力：蹲伏抱身
+        B.upperArmR.rotation.x = -1.2 * castK; B.upperArmL.rotation.x = -1.2 * castK;
+        B.forearmR.rotation.x = 1.5 * castK; B.forearmL.rotation.x = 1.5 * castK;
+        B.chest.rotation.x += 0.25 * castK; B.hips.position.y -= 0.12 * castK;
+      } else if (c === 'throw') { // 投掷：过顶甩出
+        B.upperArmR.rotation.x = -2.6 * castK + 0.4; B.forearmR.rotation.x = 0.5 - 0.4 * castK;
+        B.chest.rotation.x -= 0.2 * castK;
+      } else if (c === 'grab') { // 缠绕：探臂前抓
+        B.upperArmR.rotation.x = -1.6 * castK + 0.2; B.forearmR.rotation.x = 0.2;
+        B.chest.rotation.x += 0.15 * castK;
+      }
+    }
     // V99 受击踉跄叠加：躯干侧扭 + 迎面后仰 + 头部甩动
     if (this.flinchT > 0) {
       this.flinchT = Math.max(0, this.flinchT - dt * 4.5);
@@ -395,6 +420,9 @@ export class Soldier {
   kick() { this.recoilK = 1; }
   // V98 第三人称近战挥砍：light=单臂斜劈（左右交替），heavy=双手过顶劈
   attack(heavy) { this.atkT = 1; this.atkHeavy = !!heavy; this.atkFlip = !this.atkFlip; }
+  // V100 技能施法姿态：roar 咆哮后仰展臂 / dash 前倾突进 / harden 蹲伏抱身 / throw 过顶投掷 / grab 探臂抓取
+  cast(kind) { this.castT = 1; this.castKind = kind; }
+  castDur() { return this.castKind === 'roar' ? 0.8 : this.castKind === 'throw' ? 0.5 : 0.45; }
   die(dirX, dirZ, headshot) {
     this.deadT = 0;
     // 倒地方向：沿子弹方向

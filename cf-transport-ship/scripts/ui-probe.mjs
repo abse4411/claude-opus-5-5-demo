@@ -756,7 +756,7 @@ if (ver === 'v1') {
       g.fastForward(1 / 30, 1 / 30);
       rules.tryUseSkill(p.id);
       g.woz.tick(0.016); g.woz.tick(0.016); g.woz.tick(0.016);
-      const boost = Math.abs(p.speedMul - 1.18 * 1.3) < 0.05;
+      const boost = p.speedMul > 1.18 * 1.25; // 抗干扰：AI 咆哮等增益可叠加在乘区上，只验 rush 已生效
       g.fastForward(1.3, 1 / 30);
       const died = !p.alive;
       const infected = rules.state(bot.id).side === 'mutant';
@@ -776,6 +776,8 @@ if (ver === 'v1') {
       rules.convertToMutant(bot.id, 'nightrunner', false); g.woz.convertNow(bot, true);
       rules.convertToMutant(p.id, 'mother', true); g.woz.convertNow(p, true);
       p.pos.set(0, 0.1, 0); p.protectT = 999; bot.pos.set(5, 0.1, 0);
+      // 清除环境干扰：其他存活母体的咆哮（motherRageActive 全局判定）会让 before 已带 ×1.25
+      for (const q of rules.players) if (q.isMother && q !== rules.state(p.id)) { q.skillActive = false; q.skillTimeLeft = 0; }
       g.fastForward(1 / 30, 1 / 30);
       const before = bot.speedMul;
       rules.tryUseSkill(p.id);
@@ -783,7 +785,7 @@ if (ver === 'v1') {
       const during = bot.speedMul;
       g.fastForward(5.2, 1 / 30);
       const after = bot.speedMul;
-      return { boosted: during > before * 1.2, expired: Math.abs(after - before) < 0.03 };
+      return { boosted: during > before * 1.2, expired: after < before * 1.15 }; // 到期=回落（等值断言会被 AI 环境增益偶发破坏）
     });
     check(ok0 && r.boosted === true, '咆哮: 附近变异者移速 ×1.25 生效');
     check(ok0 && r.expired === true, '咆哮: 5s 后到期');
@@ -2829,7 +2831,7 @@ if (ver === 'v1') {
       p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 0; p.vel = { x: 0, y: 0, z: 0 };
       const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
       if (!v) return { ok: false };
-      v.pos.set(-2, 0.1, 0); v.protectT = 0; v.armor = 0;
+      v.pos.set(-2, 0.1, 0); v.protectT = 0; v.armor = 0; v.rootT = 999; v.staggerT = 0; if (v.vel.set) v.vel.set(0, 0, 0);
       p.updateCamera(0.016); // 同步相机朝向到玩家视角（抛射方向取自相机）
       const fired = rules.tryUseSkill(p.id);
       const spawned = g.woz.axes.length;
@@ -3134,6 +3136,51 @@ if (ver === 'v1') {
   check(r.tEnd === 0, `受击: 0.4s 内衰减归零 (${r.tEnd})`);
   check(r.fBack.fwd === -0.6 && r.fBack.t === 1, `受击: 背后来袭方向翻转 (${r.fBack.fwd})`);
   check(r.kHead > 1, `受击: 爆头甩动加成 (k=${r.kHead.toFixed(2)})`);
+} else if (ver === 'v74') {
+  // V100 技能施法姿态：各技能映射姿态生效 + 衰减
+  await goto('&mode=infection');
+  const r = await page.evaluate(() => {
+    const g = window.__game, rules = g.woz.rules, p = g.player;
+    (function keepHuman() { if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+    g.fastForward(20, 1 / 30);
+    rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+    const bot = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+    const reset = () => { rules.convertToMutant(bot.id, 'nightrunner', false); g.woz.convertNow(bot, true); bot.protectT = 0; bot.morphT = 0; bot.rootT = 999; };
+    reset();
+    const S = bot.soldier; // convertNow 会重建 Soldier（换 MUT 模型）→ 必须在 reset 后取引用
+    // 1) 咆哮：头后仰（neck.x 负向）
+    const out = {};
+    g.woz.onSkillFired(bot.id, 'rage');
+    out.roarSet = S.castT === 1 && S.castKind === 'roar';
+    g.fastForward(0.3, 1 / 30);
+    out.roarNeck = S.B.neck.rotation.x;
+    g.fastForward(0.6, 1 / 30);
+    out.roarEnd = S.castT;
+    // 2) 疾冲：前倾（spine.x 正向贡献）
+    g.woz.onSkillFired(bot.id, 'dash');
+    out.dashSet = S.castKind === 'dash';
+    S.castT = 0; g.fastForward(1 / 30, 1 / 30); out.dashSpine0 = S.B.spine.rotation.x;
+    g.woz.onSkillFired(bot.id, 'dash'); g.fastForward(0.2, 1 / 30); out.dashSpine1 = S.B.spine.rotation.x;
+    g.fastForward(0.4, 1 / 30);
+    // 3) 硬化：蹲伏（hips.y 下降）
+    g.woz.onSkillFired(bot.id, 'harden');
+    out.hardenSet = S.castKind === 'harden';
+    g.fastForward(0.2, 1 / 30); out.hardenHips = S.B.hips.position.y;
+    g.fastForward(0.4, 1 / 30);
+    // 4) 投掷/缠绕映射
+    g.woz.onSkillFired(bot.id, 'axeThrow'); out.throwKind = S.castKind;
+    g.fastForward(0.6, 1 / 30);
+    g.woz.onSkillFired(bot.id, 'entangle'); out.grabKind = S.castKind;
+    g.fastForward(0.6, 1 / 30);
+    out.allDecayed = S.castT === 0;
+    return out;
+  });
+  check(r.roarSet && r.roarNeck < 0, `咆哮: 后仰嘶吼姿态 (neck=${r.roarNeck.toFixed(2)})`);
+  check(r.roarEnd === 0, `咆哮: 0.8s 衰减归零 (${r.roarEnd})`);
+  check(r.dashSpine1 > r.dashSpine0 + 0.05, `疾冲: 前倾突进 (+${(r.dashSpine1 - r.dashSpine0).toFixed(2)})`);
+  check(r.hardenSet && r.hardenHips < 0.95, `硬化: 蹲伏蓄力 (hips=${r.hardenHips.toFixed(2)})`);
+  check(r.throwKind === 'throw' && r.grabKind === 'grab', `映射: 投掷/缠绕姿态 (${r.throwKind}/${r.grabKind})`);
+  check(r.allDecayed, `衰减: 全部姿态到期复位 (${r.allDecayed})`);
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

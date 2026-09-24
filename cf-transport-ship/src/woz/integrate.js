@@ -1990,6 +1990,9 @@ export class WozManager {
   onSkillFired(id, skill) {
     const g = this.g, a = g.actors[id];
     if (!a) return;
+    // V100 技能施法姿态（第三人称可见）：技能 → 姿态映射
+    const castMap = { dash: 'dash', blindWail: 'roar', rage: 'roar', harden: 'harden', axeThrow: 'throw', entangle: 'grab', selfDestruct: 'harden' };
+    if (castMap[skill] && a.soldier) a.soldier.cast(castMap[skill]);
     if (skill === 'dash') {
       a.forward(_fwd);
       a.vel.x += _fwd.x * 11; a.vel.z += _fwd.z * 11;

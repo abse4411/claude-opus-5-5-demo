@@ -178,3 +178,14 @@ V73 猎食者视觉对齐（嗜血红皮+手持斧）；V74 疾冲残影拖尾�
 - **Soldier.hitFlinch(dirX, dirZ, k)**：按来袭方向叉积/点积算出侧向与前后分量——躯干侧扭（spine.z ±0.16×K）+ 迎面后仰（chest.x −0.1×K，背面来袭为前扑 −0.6 权重）+ 头部甩动（neck.z ±0.2×K），平方衰减 0.22s。
 - 接线：game.damage 受击红闪处同步触发；强度 = 0.5 + hpD/60，爆头 +0.35（甩动更猛）。
 - 测试：probe v73 新增 7 断言（进入踉跄态/侧扭/后仰差值/衰减归零/背面方向翻转/爆头加成）。探针坑：bot AI 每帧改 yaw，须在紧贴 damage 前重设 yaw+root.rotation.y；受害者的阵营必须与攻击者相异（友军伤害在 hitFlash 前被跳过）。rules 83 + e2e 41 + smoke 通过。
+
+### V100 变异者技能施法姿态（2026-09-26）
+- **Soldier.cast(kind)**：技能施法第三人称姿态（正弦包络，与 V98 挥砍互斥共用叠加管道）——
+  - roar（咆哮/尖啸/狂暴）：双臂后展+头胸后仰嘶吼 0.8s；
+  - dash（疾冲）：大幅前倾蓄势 0.45s；
+  - harden（硬化/自爆）：蹲伏抱身蓄力（hips 下降 0.12）；
+  - throw（投掷斧头）：过顶甩出 0.5s；
+  - grab（缠绕）：探臂前抓 0.45s。
+- 接线：onSkillFired 入口 castMap 映射（dash/blindWail/rage/harden/axeThrow/entangle/selfDestruct）。
+- 修测：e2e 复仇者用例确定性修复（清场循环 2→1 起，1 号位状态此前随机导致 humansAlive=2 触发不了 V94 单幸存者阈值）；v62 咆哮用例清环境母体 skillActive（motherRageActive 全局判定会让 before 已带 ×1.25）、自爆/到期断言改抗干扰形式；v62 斧头用例冻结靶位（AI 走位躲斧）。
+- 测试：probe v74 新增 7 断言（roar 后仰 neck−0.25/0.8s 复位/dash 前倾 +0.45/harden hips 0.85/throw·grab 映射/全姿态到期）。v62 三连绿；rules 83 + e2e 20 + e2e2 21 + smoke 通过。
