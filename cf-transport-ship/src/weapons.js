@@ -214,6 +214,16 @@ export const WEAPONS = {
     speed: 1.05, sound: 'knife', hudName: 'CROWBAR', knock: 5.0, stagger: 0.24, mag: 0, reserve: 0,
   },
 
+  // ---- V48（十字弩）----
+  crossbow: {
+    id: 'crossbow', name: '十字弩', slot: 0, type: 'rifle', auto: false,
+    dmg: 115, headMul: 2.6, limbMul: 0.9, rpm: 42, mag: 1, reserve: 20, reload: 2.2, draw: 0.8, bolt: 1.1,
+    speed: 0.98, range: 260, falloff: 0.995, pen: 2.0, armorPen: 0.9, knock: 6, stagger: 0.4,
+    spread: { base: 0.001, move: 0.04, air: 0.2, crouch: 0.5, perShot: 0, max: 0.02, recover: 3 },
+    recoil: { up: 0.012, upMax: 0.04, side: 0.003, sideStart: 1, recover: 5 },
+    sound: 'awm', hudName: 'CROSSBOW', silent: true,
+  },
+
   // ---- V47（火焰喷射器）----
   flamer: {
     id: 'flamer', name: '火焰喷射器', slot: 0, type: 'flamer', auto: true, continuous: true,
@@ -263,7 +273,7 @@ export const WEAPONS = {
   },
 };
 
-export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90', 'm60', 'scarl', 'm14ebr', 'm3super', 'mac10', 'qbz95', 'xm8', 'dualuzi', 'm79', 'flamer'];
+export const PRIMARIES = ['ak47', 'm4a1', 'awm', 'mp5', 'famas', 'thompson', 'minigun', 'spas', 'g3sg1', 'm24', 'aug', 'p90', 'm60', 'scarl', 'm14ebr', 'm3super', 'mac10', 'qbz95', 'xm8', 'dualuzi', 'm79', 'flamer', 'crossbow'];
 // V19：副武器三选（沙鹰默认；R8 左轮为原作风格高伤手炮）
 export const SECONDARIES = ['deagle', 'usp', 'r8'];
 // V45：近战 selectable（电锯为复仇者/变异者专属不在列）
