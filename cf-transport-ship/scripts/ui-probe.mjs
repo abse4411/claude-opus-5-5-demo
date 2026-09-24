@@ -416,6 +416,48 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v34') {
+  // 移动速度 bug 回归：命中迟滞（staggerT）必须会衰减，跑速在 1s 内恢复满速；蹲起/跨局无残留
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st0 = rules.state(p.id);
+      if (st0.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 999; if (p.vel.set) p.vel.set(0, 0, 0);
+      const run = (sec) => {
+        const from = { x: p.pos.x, z: p.pos.z };
+        g.fastForward(sec, 1 / 30);
+        return Math.hypot(p.pos.x - from.x, p.pos.z - from.z) / sec;
+      };
+      p.keys.add('KeyW');
+      const v1 = run(1); // 基准跑速（全程按住 W）
+      // 被命中（带迟滞的武器）→ 蹲下/走位时最常见
+      p.protectT = 0;
+      g.damage(p, null, 15, 'chest', 'ak47', { x: 1, z: 0 }, false);
+      p.protectT = 999;
+      const stag = p.staggerT;
+      g.fastForward(1 / 30, 1 / 30); // 让 tickInfection 应用迟滞减速
+      const mul = p.speedMul;
+      // 修复点：迟滞衰减后 speedMul 必须被 tickInfection 重写回满（旧 bug：staggerT 永不归零 → 永久 45% 减速）
+      g.fastForward(0.5, 1 / 30);
+      const stagAfter = p.staggerT;
+      const mulAfter = p.speedMul;
+      const v3 = run(0.6); // 恢复后跑速
+      p.keys.delete('KeyW');
+      // 跨局残留：重生重置
+      p.staggerT = 5; g.woz.restoreHuman(p, true);
+      const resetOk = p.staggerT === 0 && (p.speedMul === 1 || p.speedMul === undefined);
+      return { ok: true, v1: +v1.toFixed(2), stag: +stag.toFixed(2), mul: +mul.toFixed(2), stagAfter, mulAfter: +mulAfter.toFixed(2), v3: +v3.toFixed(2), resetOk };
+    });
+    check(r.ok && r.v1 > 4, `移速: 基准跑速正常 (${r.v1} m/s)`);
+    check(r.stag > 0 && r.mul < 0.6, `移速: 命中迟滞生效 (stagger=${r.stag} mul=${r.mul})`);
+    check(r.stagAfter === 0 && r.mulAfter > 0.9 && r.v3 > r.v1 * 0.8, `移速: 迟滞衰减后恢复满速 (stagger=${r.stagAfter} mul=${r.mulAfter} ${r.v3} vs ${r.v1})`);
+    check(r.resetOk, '移速: 重生重置迟滞与倍率（跨局无残留）');
+  }
 } else if (ver === 'v33') {
   // 变异者处决终结技：残血人类近身 E → 必定感染 + 回血 200 + 顿帧震屏
   await goto('&mode=infection');

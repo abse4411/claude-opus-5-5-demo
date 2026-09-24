@@ -49,6 +49,7 @@ export class Actor {
     this.hp = 100; this.armor = 100; this.alive = true; this.deadT = 0;
     this.crouch = false; this.height = STAND_H; this.eyeH = EYE_STAND;
     this.protectT = 3; this.onGround = true;
+    this.staggerT = 0; this.speedMul = 1; // 重置命中迟滞/移速倍率（修复跨回合减速残留）
     this.giveLoadout(this.nextPrimary || this.primary);
     this.soldier.reset();
     this.soldier.root.position.copy(this.pos);

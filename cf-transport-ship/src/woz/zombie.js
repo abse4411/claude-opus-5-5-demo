@@ -50,8 +50,7 @@ export class Zombie extends Actor {
   update(dt) {
     const g = this.game, now = g.time;
     if (!this.alive) return;
-    // 命中暂缓：移动迟滞 + 攻击硬直
-    this.staggerT = Math.max(0, (this.staggerT || 0) - dt);
+    // 命中暂缓：移动迟滞 + 攻击硬直（衰减统一在 game.simulate 全角色处理）
     const staggered = this.staggerT > 0;
     const rules = g.woz?.rules;
     this.thinkT -= dt;

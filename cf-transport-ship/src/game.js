@@ -801,6 +801,7 @@ export class Game {
       for (const a of this.actors) {
         a.radarT = Math.max(0, a.radarT - dt);
         if (a.blindT > 0) a.blindT = Math.max(0, a.blindT - dt); // 震撼弹/尖啸致盲统一衰减
+        if (a.staggerT > 0) a.staggerT = Math.max(0, a.staggerT - dt); // 命中暂缓统一衰减（原来只有僵尸会恢复→人类被打后永久减速）
         if (a.alive) {
           a.protectT = Math.max(0, a.protectT - dt);
           const s = a.soldier;
