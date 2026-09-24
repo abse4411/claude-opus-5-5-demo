@@ -1130,9 +1130,9 @@ export class WozManager {
         else g.hud.toast('附近没有可吞噬的变异者尸体', 1);
       }
     }
-    // G 技能
-    if (p.consumePressed('KeyG')) {
-      if (!rules.tryUseSkill(p.id)) g.hud.toast(`技能充能 ${(st.skillCharge * 100) | 0}%`, 1);
+    // G 技能（F 亦可，见 player.js 的变异者 F 路由）
+    if (p.consumePressed('KeyG') || p.consumePressed('KeyF')) {
+      if (!rules.tryUseSkill(p.id)) g.hud.toast(`技能冷却中 ${(st.skillCharge * 100) | 0}%`, 1);
     }
     // 5/6/7/8/9 子体变身
     for (const [code, cls] of [['Digit5', MutantClass.Nightrunner], ['Digit6', MutantClass.Souleater], ['Digit7', MutantClass.Devourer], ['Digit8', MutantClass.Tangler], ['Digit9', MutantClass.Bomber]]) {
@@ -1224,6 +1224,13 @@ export class WozManager {
     } else {
       audio.playKnife('heavy', 'wall', a.isPlayer ? null : eye);
     }
+  }
+
+  // 变异者 F 键技能（原作技能键）：由 player.js 直接路由
+  onPlayerSkillKey(p) {
+    const rules = this.rules;
+    if (!rules || rules.phase !== 'battle' || !p.alive) return;
+    if (!rules.tryUseSkill(p.id)) this.g.hud.toast(`技能冷却中 ${(rules.state(p.id).skillCharge * 100) | 0}%`, 1);
   }
 
   // 感染变身选择面板：玩家已转化但尚未主动选职业（WOZ 特色交互）

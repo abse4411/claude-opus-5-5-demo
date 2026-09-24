@@ -254,7 +254,7 @@ export class WozRules {
     p.alive = true;
     p.skillActive = false;
     p.skillTimeLeft = 0;
-    p.skillCharge = rebirth ? 0.5 : 0;
+    p.skillCharge = 1; // 感染/再变异后技能立即可用（原作：使用后进入冷却，槽满再放）
     p.devourCooldown = 0;
     if (!rebirth) {
       p.maxHp = this.baseHp(p);

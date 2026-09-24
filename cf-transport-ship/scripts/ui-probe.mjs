@@ -416,6 +416,100 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v41') {
+  // 感染后技能立即可用 + 六技能逐个验证（效果符合描述）
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const out = {};
+      // 准备一名未感染人类作为技能靶（放置在玩家正前方 5m）
+      const prepTarget = () => {
+        const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+        if (!v) return null;
+        p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 999;
+        if (p.vel.set) p.vel.set(0, 0, 0);
+        v.pos.set(0, 0.1, 0); v.protectT = 0; v.armor = 0; // 固定开阔点：距玩家 5m
+        g.fastForward(1 / 30, 1 / 30);
+        p.updateCamera(0.016);
+        return v;
+      };
+      const conv = (cls) => {
+        rules.convertToMutant(p.id, cls, false);
+        g.woz.convertNow(p, true);
+        const st = rules.state(p.id);
+        return st;
+      };
+      // ① 夜行者：疾冲（立即释放 + 向前冲量）
+      let st = conv('nightrunner');
+      out.nrReady = st.skillCharge === 1;
+      out.nrFired = rules.tryUseSkill(p.id);
+      out.nrDash = st.skillActive && (Math.abs(p.vel.x) + Math.abs(p.vel.z)) > 1;
+      // ② 噬魂者：致盲尖啸（18m 内人类致盲 3s）
+      let v = prepTarget();
+      st = conv('souleater');
+      out.seFired = rules.tryUseSkill(p.id);
+      out.seBlind = v && v.blindT > 0;
+      // ③ 猎食者：投掷斧头（生成抛射物）
+      v = prepTarget();
+      st = conv('devourer');
+      out.dvFired = rules.tryUseSkill(p.id);
+      out.dvAxe = g.woz.axes.length > 0;
+      // ④ 缠绕者：缠绕（触须抓取目标）
+      v = prepTarget();
+      st = conv('tangler');
+      st.skillCharge = 1;
+      out.tgFired = rules.tryUseSkill(p.id);
+      out.tgGrab = g.woz.grabs.length > 0 || (v && v.rootT > 0);
+      // ⑤ 爆破者：自爆（点燃引信）
+      st = conv('bomber');
+      out.bmFired = rules.tryUseSkill(p.id);
+      out.bmFuse = g.woz.fuses.length > 0;
+      // ⑥ 母体：狂暴咆哮（群体加速）
+      rules.convertToMutant(p.id, 'mother', true);
+      g.woz.convertNow(p, true);
+      st = rules.state(p.id);
+      st.skillCharge = 1;
+      out.moFired = rules.tryUseSkill(p.id);
+      out.moRage = rules.motherRageActive();
+      // HUD 技能环就绪文案
+      const ring = document.getElementById('wzRingTxt')?.textContent || '';
+      out.ringText = ring;
+      return out;
+    });
+    check(r.nrReady, `感染: 转化后技能立即可用 (charge=${r.nrReady})`);
+    check(r.nrFired && r.nrDash, `夜行者: 疾冲生效 (fired=${r.nrFired} dash=${r.nrDash})`);
+    check(r.seFired && r.seBlind, `噬魂者: 致盲尖啸命中 (fired=${r.seFired} blind=${r.seBlind})`);
+    check(r.dvFired && r.dvAxe, `猎食者: 投掷斧头出膛 (fired=${r.dvFired} axe=${r.dvAxe})`);
+    check(r.tgFired && r.tgGrab, `缠绕者: 触须抓取生效 (fired=${r.tgFired} grab=${r.tgGrab})`);
+    check(r.bmFired && r.bmFuse, `爆破者: 自爆引信点燃 (fired=${r.bmFired} fuse=${r.bmFuse})`);
+    check(r.moFired && r.moRage, `母体: 狂暴咆哮生效 (fired=${r.moFired} rage=${r.moRage})`);
+    // ⑦ F 键释放（原作技能键）：重新变身缠绕者 → 按 F → 抓取
+    await page.keyboard.press('KeyF');
+    const fkey = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      rules.convertToMutant(p.id, 'tangler', false);
+      g.woz.convertNow(p, true);
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0; p.protectT = 999;
+      if (p.vel.set) p.vel.set(0, 0, 0);
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      v.pos.set(0, 0.1, 0); v.protectT = 0; v.armor = 0;
+      g.fastForward(1 / 30, 1 / 30);
+      p.updateCamera(0.016);
+      return { ok: true, charge: rules.state(p.id).skillCharge };
+    });
+    await page.keyboard.press('KeyF'); // 真实键盘事件 → consumePressed 队列
+    const fRes = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      g.fastForward(0.1, 1 / 30);
+      return { fired: rules.state(p.id).skillCharge < 1 || g.woz.grabs.length > 0 };
+    });
+    check(fkey.ok && fRes.fired, `技能键: F 键释放缠绕 (charge=${fkey.charge})`);
+  }
 } else if (ver === 'v40') {
   // ① M79 连发回归：三发依次发射，不再第一发后卡死
   await goto('&mode=infection');

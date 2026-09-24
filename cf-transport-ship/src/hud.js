@@ -190,7 +190,7 @@ export class HUD {
       '<kbd>W A S D</kbd> 移动 · <kbd>Shift</kbd> 静步 · <kbd>空格</kbd> 跳 · <kbd>C</kbd> 蹲',
       '<kbd>左键</kbd> 开火 · <kbd>右键</kbd> 开镜/重击 · <kbd>R</kbd> 换弹 · <kbd>B</kbd> 武器商店',
       '人类：<kbd>E</kbd> 拾取地面武器 / 按住安放核弹',
-      '变异者：<kbd>E</kbd> 吞噬尸体回血 · <kbd>G</kbd> 释放职业技能 · <kbd>5/6/7/8/9</kbd> 切换形态',
+      '变异者：<kbd>E</kbd> 吞噬/处决 · <kbd>G</kbd>/<kbd>F</kbd> 释放职业技能 · <kbd>5/6/7/8/9</kbd> 切换形态',
       '死亡后：<kbd>空格</kbd> 切换 自由 / 队友第一人称 / 队友第三人称 观战',
       '<kbd>Tab</kbd> 计分板 · <kbd>H</kbd> 帮助 · <kbd>Esc</kbd> 暂停',
     ].map((s) => `<div>${s}</div>`).join('');
