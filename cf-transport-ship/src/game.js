@@ -813,7 +813,7 @@ export class Game {
     // WOZ 打击反馈：击退冲量 + 命中暂缓（变异者躯体重，击退衰减但暂缓吃满）
     if (dir && v.alive) {
       const kdef = WEAPONS[wid] || {};
-      const heavy = v.wozHeavy ? 0.12 : 1; // 变异者质量大：子弹击退大幅衰减（修复：原 0.35 连发累积会把变异者推着走）
+      const heavy = v.wozHeavy ? 0.5 : 1; // 变异者质量大：击退减半但仍可感知（0.12 配 9/s 摩擦位移仅 1-2cm 不可见；2.6m/s 上限防连发推走）
       if (kdef.knock) {
         v.vel.x += dir.x * kdef.knock * heavy; v.vel.z += dir.z * kdef.knock * heavy;
         if (v.wozHeavy) { // 变异者击退速度上限 2.6m/s

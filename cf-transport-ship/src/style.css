@@ -212,6 +212,7 @@ body.lk #clinks{opacity:.22}
 .card .srow span{width:28px;font-size:10px;color:#9aa4ae;text-align:left}
 .card .srow i{flex:1;height:4px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden;display:block;text-align:left}
 .card .srow i b{display:inline-block;height:100%;background:linear-gradient(90deg,#4fa0ff,#8fd0ff);border-radius:2px}
+.card .srow em{width:34px;font:700 10px/1 Consolas,monospace;color:#cfe0ff;text-align:right;font-style:normal;flex:none}
 .helpGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .hcard{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:12px 14px;text-align:left}
 .hcard h3{margin:0 0 8px;font-size:14px;color:#f5b321;letter-spacing:1px}

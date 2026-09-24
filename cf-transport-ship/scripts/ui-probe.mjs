@@ -416,6 +416,47 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v61') {
+  // V71：购买页全卡种数值+条 / 变异者可见击退
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const tab = (t) => { g.toggleLoadout(); const b = document.querySelector(`#loadTabs button[data-t="${t}"]`); if (b && !b.classList.contains('on')) b.click(); const cards = [...document.querySelectorAll(`#${t} .card`)]; const ret = cards.map((c) => ({ n: c.querySelectorAll('.srow').length, ems: [...c.querySelectorAll('.srow em')].map((e) => e.textContent) })); g.toggleLoadout(); return ret; };
+      const prim = tab('loadCards'), sec = tab('secCards'), mel = tab('meleeCards'), nad = tab('nadeCards');
+      const allHave3 = prim.every((c) => c.n === 3) && sec.every((c) => c.n === 3) && mel.every((c) => c.n === 3);
+      const nadeOk = nad.every((c) => c.n >= 2);
+      const emOk = prim[0].ems.length === 3 && /^\d+$/.test(prim[0].ems[0]);
+      // 击退位移：BOT 转化的变异者被 AWM 击中后 0.3s 位移应可感知（>8cm）
+      const st = rules.state(p.id);
+      if (st.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      p.giveLoadout('awm', 'deagle', 'knife');
+      p.inv[0].mag = 5; p.inv[0].reserve = 20;
+      p.slot = 0; p.readyAt = 0;
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      rules.convertToMutant(v.id, 'devourer', false);
+      g.woz.convertNow(v, true);
+      v.pos.set(3, 0.1, 0); v.protectT = 0; v.armor = 0; v.rootT = 0;
+      if (v.vel.set) v.vel.set(0, 0, 0);
+      g.fastForward(2 / 30, 1 / 30);
+      const x0 = v.pos.x, z0 = v.pos.z;
+      g.damage(v, p, 30, 'chest', 'awm', { x: 1, y: 0, z: 0 }, false);
+      const capped = Math.hypot(v.vel.x, v.vel.z) <= 2.6 + 0.01;
+      g.fastForward(0.3, 1 / 30);
+      const disp = Math.hypot(v.pos.x - x0, v.pos.z - z0);
+      return { ok: true, allHave3, nadeOk, emOk, sample: prim[0].ems, disp: +disp.toFixed(2), capped };
+    });
+    check(r.ok, 'V71: 场景搭建');
+    check(r.allHave3 === true, 'V71: 主/副/近战卡均有 3 条数值条');
+    check(r.nadeOk === true, 'V71: 投掷卡均有数值条');
+    check(r.emOk === true, `V71: 数值列显示 (${r.sample})`);
+    check(r.disp > 0.08, `V71: AWM 命中变异者位移可感知 (${r.disp}m)`);
+    check(r.capped === true, 'V71: 击退速度不超过 2.6m/s 上限');
+  }
 } else if (ver === 'v60') {
   // V66-V68：击杀图标/尖啸冲击波环/职业卡剪影
   await goto('&mode=infection');
@@ -786,17 +827,20 @@ if (ver === 'v1') {
       g.fastForward(1 / 30, 1 / 30);
       // 12m 外：伪装生效 → 不应被选为目标
       const disguised12 = g.woz.isDisguised(p);
+      bot.yaw = Math.PI / 2;
       bot.target = null; bot.visible = false; bot.think();
       const skipFar = bot.target !== p;
       // 3m 内：识破
       p.pos.set(9.5, 0.1, 0);
       g.fastForward(1 / 30, 1 / 30);
+      bot.yaw = Math.PI;
       bot.target = null; bot.visible = false; bot.think();
       const revealNear = bot.target === p;
-      // 对照：夜行者 12m 外仍会被锁定
+      // 对照：夜行者 12m 外仍会被锁定（固定 BOT 朝向消除视野角随机）
       rules.setMutantClass(p.id, 'nightrunner');
       p.pos.set(0, 0.1, 0);
       g.fastForward(1 / 30, 1 / 30);
+      bot.yaw = Math.PI / 2; // 面向玩家（dx=-9.5 → atan2(9.5,0)）
       bot.target = null; bot.visible = false; bot.think();
       const nrTargeted = bot.target === p;
       // 出爪暴露
@@ -1414,7 +1458,7 @@ if (ver === 'v1') {
       const drift = Math.abs(v.pos.x) + Math.abs(v.vel.x);
       return { ok: true, drift: +drift.toFixed(2), alive: v.hp > 0 };
     });
-    check(kb.ok && kb.drift < 1.0, `击退: 连中 10 发位移 <1m (${kb.drift})`);
+    check(kb.ok && kb.drift < 2.0, `击退: 单发冲量有感知且上限内 (${kb.drift})`);
     // ③ 菜单选图：默认页（船图）改选地图后开局即时切换
     await goto('');
     await page.evaluate(() => { const g = window.__game; g.opts.map = 'city'; g.opts.mode = 'infection'; g.startMatch(); });

@@ -551,31 +551,48 @@ export class HUD {
 
 function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
+// V71 武器卡数值+可视化条：伤害 / 射速 / 机动（全部卡种）
+const statBar = (label, txt, pct) => `<div class="srow"><span>${label}</span><i><b style="width:${Math.round(Math.min(1, Math.max(0, pct)) * 100)}%"></b></i><em>${txt}</em></div>`;
+const gunStatRows = (d) => statBar('伤害', d.dmg, d.dmg / 60)
+  + statBar('射速', d.rpm >= 1000 ? (d.rpm / 1000).toFixed(1) + 'k' : d.rpm, d.rpm / 1000)
+  + statBar('机动', Math.round(d.speed * 100) + '%', (d.speed - 0.7) / 0.35);
+const meleeStatRows = (d) => statBar('伤害', d.dmgLight + '/' + d.dmgHeavy, d.dmgHeavy / 200)
+  + statBar('攻速', (1 / d.rateLight).toFixed(1) + '/s', (1 / d.rateLight) / 4)
+  + statBar('机动', Math.round(d.speed * 100) + '%', (d.speed - 0.7) / 0.35);
+const nadeStatRows = (d) => statBar('伤害', d.dmg, d.dmg / 160)
+  + (d.radius ? statBar('半径', d.radius + 'm', d.radius / 10) : '')
+  + (d.blind ? statBar('致盲', d.blind + 's', d.blind / 3) : '');
+
 const PRIM_CARDS = PRIMARIES.map((id) => {
   const d = WEAPONS[id];
   const sub = { ak47: '潜伏者经典 · 伤害高', m4a1: '保卫者经典 · 稳定', awm: '一枪致命 · 需开镜', mp5: '射速快 · 移动灵活' }[id] || '生化战场同源武器';
-  const bar = (label, pct) => `<div class="srow"><span>${label}</span><i><b style="width:${Math.round(Math.min(1, pct) * 100)}%"></b></i></div>`;
   return `<div class="card" data-w="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small>
-    ${bar('伤害', d.dmg / 55)}${bar('射速', d.rpm / 900)}${bar('机动', (d.speed - 0.75) / 0.25)}
+    ${gunStatRows(d)}
   </div>`;
 }).join('');
 
 const MELEE_CARDS = MELEES.map((id) => {
   const d = WEAPONS[id];
   const sub = { knife: '军刀 · 快速均衡', axe: '消防斧 · 重劈高伤', crowbar: '撬棍 · 极速连击', shovel: '铁锹 · 重击开路' }[id] || '';
-  return `<div class="card" data-m="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
+  return `<div class="card" data-m="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small>
+    ${meleeStatRows(d)}
+  </div>`;
 }).join('');
 
 const SEC_CARDS = SECONDARIES.map((id) => {
   const d = WEAPONS[id];
   const sub = { deagle: '高伤手炮 · 默认', usp: '稳健精准 · 消音', r8: '左轮重炮 · 一击致命', dualdeagle: '双持手炮 · 火力翻倍' }[id] || '';
-  return `<div class="card" data-s="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
+  return `<div class="card" data-s="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small>
+    ${gunStatRows(d)}
+  </div>`;
 }).join('');
 
 const NADE_CARDS = ['he', 'molotov', 'frost', 'gas', 'venom', 'flash', 'sticky'].map((id) => {
   const d = WEAPONS[id];
   const sub = { he: '高爆 · 范围杀伤', molotov: '火海 · 持续灼烧', frost: '寒爆 · 大幅冻缓', gas: '毒雾 · 持续毒伤', venom: '毒液 · 高蚀速杀伤', flash: '强光 · 致盲扫点', sticky: '黏附必中 · 反丧尸神器' }[id];
-  return `<div class="card" data-g="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small></div>`;
+  return `<div class="card" data-g="${id}"><img alt=""><b>${d.name}</b><small>${sub}</small>
+    ${nadeStatRows(d)}
+  </div>`;
 }).join('');
 
 const MODE_CARDS = [

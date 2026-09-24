@@ -90,7 +90,7 @@ await page.evaluate(() => window.__game.fastForward(260, 1 / 30));
     g.damage(z, g.player, 20, 'chest', 'awm', { x: 0, z: -1 }, false);
     return {
       ok: true,
-      knockApplied: Math.abs(z.vel.z + 7.5 * 0.12) < 0.5, // AWM 击退 7.5 × 重躯体 0.12（V47 调整：连发不再推着变异者走）
+      knockApplied: Math.abs(Math.abs(z.vel.z) - 2.6) < 0.1, // AWM 7.5×0.5=3.75 → 被 2.6m/s 上限截断（V71：可见击退且封顶）
       stagger: z.staggerT > 0,
       damaged: z.hp < hpBefore,
       infoLen: (document.getElementById('modeInfo')?.innerHTML || '').length,
