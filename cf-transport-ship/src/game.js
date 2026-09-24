@@ -874,6 +874,7 @@ export class Game {
     if (v.wozHeavy) {
       // V84 变异者死亡溶解：躯体上升的暗红雾团
       for (let i = 0; i < 8; i++) this.fx.smoke.emit({ x: v.pos.x + (Math.random() - 0.5) * 0.6, y: v.pos.y + 0.4 + Math.random() * 1.2, z: v.pos.z + (Math.random() - 0.5) * 0.6, vx: 0, vy: 0.9 + Math.random() * 0.8, vz: 0, life: 0, max: 0.9 + Math.random() * 0.5, s0: 0.3, s1: 0.9, r: 0.75, g: 0.16, b: 0.1, a0: 0.5, a1: 0, drag: 0.8 });
+      wozAudio.growl(v.pos.clone()); // V101 变异者死亡嘶吼（低沉收场）
     }
     audio.playDeath(v.soldier.chestWorld(new THREE.Vector3()));
     const p = this.player;

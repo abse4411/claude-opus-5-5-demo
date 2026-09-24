@@ -3181,6 +3181,43 @@ if (ver === 'v1') {
   check(r.hardenSet && r.hardenHips < 0.95, `硬化: 蹲伏蓄力 (hips=${r.hardenHips.toFixed(2)})`);
   check(r.throwKind === 'throw' && r.grabKind === 'grab', `映射: 投掷/缠绕姿态 (${r.throwKind}/${r.grabKind})`);
   check(r.allDecayed, `衰减: 全部姿态到期复位 (${r.allDecayed})`);
+} else if (ver === 'v75') {
+  // V101 变异者空中扑击姿态 + 沉重坠地 + 死亡嘶吼
+  await goto('&mode=infection');
+  const r = await page.evaluate(() => {
+    const g = window.__game, rules = g.woz.rules, p = g.player;
+    (function keepHuman() { if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+    g.fastForward(20, 1 / 30);
+    rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+    const st0 = rules.state(p.id);
+    if (st0.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+    // 人类 bot（对照组）与变异者 bot
+    const human = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+    rules.convertToMutant(human.id, 'nightrunner', false); g.woz.convertNow(human, true);
+    human.protectT = 0; human.morphT = 0; human.rootT = 999;
+    const S = human.soldier;
+    const out = {};
+    // 空中扑击：腾空时双爪前探 + 前倾（对比地面姿态）
+    human.onGround = true; g.fastForward(1 / 30, 1 / 30);
+    out.armGround = S.B.upperArmR.rotation.x;
+    human.pos.y = 2.0; human.vel.y = 0; human.onGround = false; g.fastForward(1 / 30, 1 / 30);
+    out.armAir = S.B.upperArmR.rotation.x;
+    out.spineAir = S.B.spine.rotation.x;
+    human.vel.set(0, 0, 0); human.pos.y = 0; human.onGround = true;
+    // 死亡：变异者 fallSpeed 1.3×、死亡嘶吼 growl
+    const growls = [];
+    const origGrowl = window.__wozAudio.growl.bind(window.__wozAudio);
+    window.__wozAudio.growl = (pos) => { growls.push(1); return origGrowl(pos); };
+    human.protectT = 0; human.hp = 100;
+    g.kill(human, p, 'awm', false, false, { x: 0, y: 0, z: -1 });
+    out.fallSpeed = S.fallSpeed;
+    out.growls = growls.length;
+    return out;
+  });
+  check(r.armAir < r.armGround - 0.8, `扑击: 腾空双爪前探 (${r.armGround.toFixed(2)}→${r.armAir.toFixed(2)})`);
+  check(r.spineAir > 0.3, `扑击: 躯干前倾 (${r.spineAir.toFixed(2)})`);
+  check(Math.abs(r.fallSpeed - 1.3) < 0.01, `坠地: 变异者沉重坠落 ×1.3 (${r.fallSpeed})`);
+  check(r.growls >= 1, `死亡: 嘶吼音效 (${r.growls})`);
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

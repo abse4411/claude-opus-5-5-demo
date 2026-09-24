@@ -189,3 +189,9 @@ V73 猎食者视觉对齐（嗜血红皮+手持斧）；V74 疾冲残影拖尾�
 - 接线：onSkillFired 入口 castMap 映射（dash/blindWail/rage/harden/axeThrow/entangle/selfDestruct）。
 - 修测：e2e 复仇者用例确定性修复（清场循环 2→1 起，1 号位状态此前随机导致 humansAlive=2 触发不了 V94 单幸存者阈值）；v62 咆哮用例清环境母体 skillActive（motherRageActive 全局判定会让 before 已带 ×1.25）、自爆/到期断言改抗干扰形式；v62 斧头用例冻结靶位（AI 走位躲斧）。
 - 测试：probe v74 新增 7 断言（roar 后仰 neck−0.25/0.8s 复位/dash 前倾 +0.45/harden hips 0.85/throw·grab 映射/全姿态到期）。v62 三连绿；rules 83 + e2e 20 + e2e2 21 + smoke 通过。
+
+### V101 变异者空中扑击与坠地（2026-09-26）
+- **空中扑击姿态**（Soldier team MUT 专属）：腾空时双腿后收蓄势 + 覆盖持械臂 IK 双爪前探（upperArm −1.5/−1.3）+ 躯干前倾（spine +0.35/chest +0.25）——掠食者飞扑剪影；人类腾空姿态不变。
+- **沉重坠地**：变异者死亡 fallSpeed ×1.3（躯体质量感，爆头再 ×1.4）。
+- **死亡嘶吼**：kill() wozHeavy 分支追加 wozAudio.growl（溶解雾+低沉收场成套）。
+- 测试：probe v75 新增 5 断言（腾空爪臂 0.62→−1.50/前倾 0.36/坠速 1.3/嘶吼）。rules 83 + e2e 41 + smoke 通过。

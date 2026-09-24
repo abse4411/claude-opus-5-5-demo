@@ -318,7 +318,10 @@ export class Soldier {
     thL = thL * (1 - ck) + (0.55 - swing * 0.3) * ck;
     shR = shR * (1 - ck) + -1.9 * ck;
     shL = shL * (1 - ck) + (-1.2 + Math.min(0, -swing)) * ck;
-    if (!st.onGround) { thR = 0.7; thL = 0.25; shR = -1.1; shL = -0.6; }
+    if (!st.onGround) {
+      if (this.team === 'MUT') { thR = 0.5; thL = 0.4; shR = -1.5; shL = -1.3; } // 变异者腾空：双腿后收蓄势
+      else { thR = 0.7; thL = 0.25; shR = -1.1; shL = -0.6; }
+    }
     B.thighR.rotation.set(thR, 0, 0.02); B.thighL.rotation.set(thL, 0, -0.02);
     B.shinR.rotation.set(shR, 0, 0); B.shinL.rotation.set(shL, 0, 0);
     B.footR.rotation.set(-thR - shR - 0.0, 0, 0); B.footL.rotation.set(-thL - shL, 0, 0);
@@ -415,6 +418,12 @@ export class Soldier {
         B.upperArmL.rotation.set(0.3, 0, -0.15); B.forearmL.rotation.set(0.6, 0, 0);
       }
     }
+    // V101 变异者空中扑击（覆盖持械臂 IK）：前倾 + 双爪前探（掠食者飞扑姿态）
+    if (!st.onGround && this.team === 'MUT' && this.deadT < 0) {
+      B.upperArmR.rotation.set(-1.5, 0, -0.35); B.forearmR.rotation.set(0.25, 0, 0);
+      B.upperArmL.rotation.set(-1.3, 0, 0.35); B.forearmL.rotation.set(0.3, 0, 0);
+      B.spine.rotation.x += 0.35; B.chest.rotation.x += 0.25;
+    }
     B.handR.rotation.set(0, 0, 0); B.handL.rotation.set(0, 0, 0);
   }
   kick() { this.recoilK = 1; }
@@ -430,7 +439,7 @@ export class Soldier {
     const dot = fwd.x * dirX + fwd.z * dirZ;
     this.fallDir = dot > 0 ? 1 : -1; // 被从背后打 -> 向前倒
     this.fallSide = (Math.random() - 0.5) * 0.8;
-    this.fallSpeed = headshot ? 1.4 : 1;
+    this.fallSpeed = (this.team === 'MUT' ? 1.3 : 1) * (headshot ? 1.4 : 1); // V101 变异者躯体沉重：坠地更快
     this.limbR = [Math.random(), Math.random(), Math.random(), Math.random()];
     this.opacity = 1; this.material.transparent = false; this.material.opacity = 1;
   }
