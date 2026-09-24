@@ -553,10 +553,11 @@ export class Game {
       const r = b.soldier.hitTest(eye, dir, d.rangeLight, this.frame);
       if (r && (!hit || r.t < hit.t)) hit = { a: b, t: r.t, part: r.part };
     }
-    if (!hit) return;
+    if (!hit) { wozAudio.saw(a.isPlayer ? null : eye, 0); return; } // V102 挥空：锯链怠速嗡鸣
     const dmg = heavy ? d.dmgHeavy : d.dmgLight;
     this.damage(hit.a, a, dmg, hit.part, a.weapon?.id || 'chainsaw', dir, false, true);
     this.fx.impact(eye.clone().addScaledVector(dir, hit.t), dir.clone().negate(), 'flesh', dir);
+    wozAudio.saw(a.isPlayer ? null : eye, heavy ? 1 : 0.6); // V102 切割负载掉速音
     audio.playKnife('light', 'flesh', a.isPlayer ? null : eye);
   }
   melee(a, heavy) {

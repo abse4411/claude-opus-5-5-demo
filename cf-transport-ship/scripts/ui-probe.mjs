@@ -3218,6 +3218,39 @@ if (ver === 'v1') {
   check(r.spineAir > 0.3, `扑击: 躯干前倾 (${r.spineAir.toFixed(2)})`);
   check(Math.abs(r.fallSpeed - 1.3) < 0.01, `坠地: 变异者沉重坠落 ×1.3 (${r.fallSpeed})`);
   check(r.growls >= 1, `死亡: 嘶吼音效 (${r.growls})`);
+} else if (ver === 'v76') {
+  // V102 电锯音效：挥空怠速嗡鸣 / 切割负载掉速
+  await goto('&mode=revenge');
+  const r = await page.evaluate(() => {
+    const g = window.__game, rules = g.woz.rules, p = g.player;
+    (function keepHuman() { if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+    g.fastForward(20, 1 / 30);
+    rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+    const st0 = rules.state(p.id);
+    if (st0.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+    const saw = { id: 'chainsaw', dmgLight: 60, dmgHeavy: 9999, rangeLight: 2.2, rangeHeavy: 1.9 }; // 与 weapons.js 定义同值
+    const calls = [];
+    const origSaw = window.__wozAudio.saw.bind(window.__wozAudio);
+    window.__wozAudio.saw = (pos, load) => { calls.push(load); return origSaw(pos, load); };
+    p.pos.set(0, 0.1, 0); p.yaw = Math.PI / 2; p.protectT = 999; p.vel.set(0, 0, 0);
+    // 1) 挥空（前方无目标）：怠速 load=0
+    g.sawCut(p, saw, false);
+    const missCalls = calls.slice();
+    // 2) 切割：放一只变异者到面前
+    const bot = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+    rules.convertToMutant(bot.id, 'nightrunner', false); g.woz.convertNow(bot, true);
+    bot.protectT = 0; bot.morphT = 0; bot.armor = 0; bot.hp = 800; bot.rootT = 999;
+    bot.pos.set(-1.2, 0.1, 0); if (bot.vel.set) bot.vel.set(0, 0, 0);
+    g.fastForward(2 / 30, 1 / 30);
+    p.yaw = Math.PI / 2;
+    const hp0 = bot.hp;
+    g.sawCut(p, saw, false);
+    window.__wozAudio.saw = origSaw;
+    return { missCalls, cutCalls: calls.slice(missCalls.length), dmg: hp0 - bot.hp };
+  });
+  check(r.missCalls.length === 1 && r.missCalls[0] === 0, `挥空: 怠速嗡鸣 (calls=${JSON.stringify(r.missCalls)})`);
+  check(r.cutCalls.length === 1 && r.cutCalls[0] > 0, `切割: 负载掉速音 (load=${r.cutCalls[0]})`);
+  check(r.dmg > 0, `切割: 伤害结算 (${r.dmg.toFixed(0)})`);
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

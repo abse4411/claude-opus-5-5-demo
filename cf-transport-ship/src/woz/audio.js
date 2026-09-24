@@ -72,6 +72,22 @@ export const wozAudio = {
   },
 
   // V75 引信滴滴声：短促方波蜂鸣（freq Hz，pos 可选做距离衰减）
+  // V102 电锯（复仇者）：锯链嗡鸣——怠速高频 / 切割负载掉速 + AM 抖动（刮擦感）
+  saw(pos, load = 0) {
+    play(pos, (c, g, t0, vol) => {
+      const o = c.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(load > 0 ? 74 : 96, t0);
+      o.frequency.linearRampToValueAtTime(load > 0 ? 58 : 106, t0 + (load > 0 ? 0.18 : 0.3));
+      const o2 = c.createOscillator(); o2.type = 'square'; o2.frequency.value = load > 0 ? 148 : 192;
+      const g2 = c.createGain(); g2.gain.value = 0.3; o2.connect(g2); g2.connect(g);
+      const lfo = c.createOscillator(); lfo.frequency.value = load > 0 ? 46 : 27;
+      const lg = c.createGain(); lg.gain.value = 0.1;
+      lfo.connect(lg); lg.connect(g.gain);
+      o.connect(g);
+      env(g, t0, 0.01, 0.26 * vol, load > 0 ? 0.24 : 0.32);
+      o.start(t0); o.stop(t0 + 0.4); o2.start(t0); o2.stop(t0 + 0.4); lfo.start(t0); lfo.stop(t0 + 0.4);
+    });
+  },
   beep(pos, freq = 880, dur = 0.07) {
     play(pos, (c, g, t0, vol) => {
       const o = c.createOscillator();
