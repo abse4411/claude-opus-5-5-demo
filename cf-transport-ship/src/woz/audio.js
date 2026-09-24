@@ -144,6 +144,96 @@ export const wozAudio = {
     });
   },
 
+  // 投掷斧头（V26）：破空呼啸
+  axeThrow(pos) {
+    play(pos, (c, g, t0, v) => {
+      const n = c.createBufferSource(); n.buffer = noiseBuf(c, 0.3);
+      const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 3;
+      f.frequency.setValueAtTime(1600, t0);
+      f.frequency.exponentialRampToValueAtTime(500, t0 + 0.26);
+      const trem = c.createOscillator(); trem.frequency.value = 13; // 斧刃旋转切风
+      const tg = c.createGain(); tg.gain.value = 0.12;
+      trem.connect(tg); tg.connect(g.gain);
+      n.connect(f); f.connect(g);
+      env(g, t0, 0.01, 0.2 * v, 0.26);
+      n.start(t0); n.stop(t0 + 0.3); trem.start(t0); trem.stop(t0 + 0.3);
+    });
+  },
+
+  // 缠绕（V26）：触须鞭击 + 湿润收缩
+  entangle(pos) {
+    play(pos, (c, g, t0, v) => {
+      const n = c.createBufferSource(); n.buffer = noiseBuf(c, 0.22);
+      const f = c.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 2;
+      f.frequency.setValueAtTime(400, t0);
+      f.frequency.exponentialRampToValueAtTime(2600, t0 + 0.1);
+      f.frequency.exponentialRampToValueAtTime(300, t0 + 0.2);
+      n.connect(f); f.connect(g);
+      env(g, t0, 0.005, 0.24 * v, 0.2);
+      n.start(t0); n.stop(t0 + 0.22);
+      const o = c.createOscillator(); o.type = 'sawtooth'; // 湿性低鸣
+      o.frequency.setValueAtTime(160, t0 + 0.08);
+      o.frequency.exponentialRampToValueAtTime(70, t0 + 0.3);
+      const og = c.createGain(); env(og, t0 + 0.08, 0.02, 0.12 * v, 0.22);
+      o.connect(og); og.connect(g);
+      o.start(t0 + 0.08); o.stop(t0 + 0.32);
+    });
+  },
+
+  // 自爆引信（V26）：加速蜂鸣
+  fuse(pos) {
+    play(pos, (c, g, t0, v) => {
+      for (let i = 0; i < 6; i++) {
+        const t = t0 + i * (0.09 + i * 0.012);
+        const o = c.createOscillator(); o.type = 'square'; o.frequency.value = 980 + i * 60;
+        const og = c.createGain(); env(og, t, 0.004, 0.1 * v, 0.05);
+        o.connect(og); og.connect(g);
+        o.start(t); o.stop(t + 0.06);
+      }
+    });
+  },
+
+  // 人类必杀技（V26）：上行能量爆发
+  ult() {
+    play(null, (c, g, t0, v) => {
+      const o = c.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(180, t0);
+      o.frequency.exponentialRampToValueAtTime(720, t0 + 0.35);
+      const f = c.createBiquadFilter(); f.type = 'lowpass';
+      f.frequency.setValueAtTime(600, t0);
+      f.frequency.exponentialRampToValueAtTime(4200, t0 + 0.35);
+      o.connect(f); f.connect(g);
+      env(g, t0, 0.02, 0.2 * v, 0.5);
+      o.start(t0); o.stop(t0 + 0.55);
+      [440, 554, 659].forEach((f0, i) => { // 确认和弦
+        const h = c.createOscillator(); h.type = 'triangle'; h.frequency.value = f0;
+        const hg = c.createGain(); env(hg, t0 + 0.36 + i * 0.05, 0.01, 0.07 * v, 0.4);
+        h.connect(hg); hg.connect(g);
+        h.start(t0 + 0.36 + i * 0.05); h.stop(t0 + 0.9);
+      });
+    });
+  },
+
+  // 进化阶段升迁（V26）：变异咆哮上扬
+  evo(pos) {
+    play(pos, (c, g, t0, v) => {
+      const o = c.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(90, t0);
+      o.frequency.exponentialRampToValueAtTime(240, t0 + 0.4);
+      const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 800;
+      o.connect(f); f.connect(g);
+      env(g, t0, 0.04, 0.26 * v, 0.5);
+      o.start(t0); o.stop(t0 + 0.55);
+      const n = c.createBufferSource(); n.buffer = noiseBuf(c, 0.4); // 喉音气声
+      const nf = c.createBiquadFilter(); nf.type = 'bandpass'; nf.Q.value = 1;
+      nf.frequency.setValueAtTime(300, t0);
+      nf.frequency.exponentialRampToValueAtTime(900, t0 + 0.35);
+      const ng = c.createGain(); env(ng, t0, 0.05, 0.14 * v, 0.38);
+      n.connect(nf); nf.connect(ng); ng.connect(g);
+      n.start(t0); n.stop(t0 + 0.42);
+    });
+  },
+
   // 复仇者觉醒：上行电音和弦
   avenger(pos) {
     play(pos, (c, g, t0, v) => {

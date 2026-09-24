@@ -130,6 +130,14 @@ await page.evaluate(() => window.__game.fastForward(125, 1 / 30));
     g.woz.tide.forEach((z) => g.renderer.scene.remove(z.soldier.root));
     g.actors = g.actors.filter((a) => !g.woz.tide.includes(a));
     g.woz.tide = [];
+    // 保底双方各留活口，防全灭提前结算抢在尸潮触发之前
+    const mut = g.actors.find((a) => a.alive && a.id < rules.playerCount && rules.isMutantSide(a.id));
+    if (!mut) {
+      const cand = g.actors.find((a) => a.alive && a.id < rules.playerCount);
+      if (cand) { rules.convertToMutant(cand.id, 'nightrunner', false); g.woz.convertNow(cand, true); }
+    }
+    const hum = g.actors.find((a) => a.alive && a.id < rules.playerCount && !rules.isMutantSide(a.id));
+    if (!hum && g.player) { const st = rules.state(g.player.id); st.side = 'human'; st.alive = true; g.player.team = 'GR'; g.player.alive = true; }
     rules.phase = 'battle';
     rules.phaseTimeLeft = 60;
     g.fastForward(2, 1 / 30);

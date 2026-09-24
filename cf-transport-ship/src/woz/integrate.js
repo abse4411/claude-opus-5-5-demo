@@ -247,6 +247,7 @@ export class WozManager {
     this.axes.push({ live: true, mesh: grp, pos, vel: dir.multiplyScalar(WOZ.axeSpeed), owner: a, dmg: WOZ.axeDamage * mul, life: WOZ.axeLifetime });
     if (a.isPlayer) g.hud.toast('投掷斧头！', 0.8);
     g.audio.playGrenadeThrow();
+    wozAudio.axeThrow(a.isPlayer ? null : a.pos.clone());
   }
 
   tickAxes(dt) {
@@ -324,6 +325,7 @@ export class WozManager {
     const tent = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.09, 1, 6), new THREE.MeshLambertMaterial({ color: 0x8a2f1d, emissive: 0x2a0a04 }));
     g.renderer.scene.add(tent);
     this.grabs.push({ live: true, v: best, owner: a, t: 0, tent });
+    wozAudio.entangle(a.isPlayer ? null : a.pos.clone());
     if (a.isPlayer) g.hud.toast('缠绕！拖拽目标中', 1);
     if (best.isPlayer) { g.hud.toast('<b style="color:#ff5040">被触须缠住了！</b>', 1.5); g.fx.shake = 1.2; }
   }
@@ -378,6 +380,7 @@ export class WozManager {
     );
     g.renderer.scene.add(core);
     this.fuses.push({ live: true, a, t: WOZ.selfDestructFuse, core });
+    wozAudio.fuse(a.isPlayer ? null : a.pos.clone());
     if (a.isPlayer) g.hud.toast('<b style="color:#ff5040">自爆引信已点燃！</b>冲进人堆！', 1.5);
     else g.hud.eventFeed(`${a.name} 点燃了自爆引信！`, 'avg');
   }
@@ -953,6 +956,7 @@ export class WozManager {
       for (const w of p.inv) if (w && w.def.type !== 'melee' && w.def.type !== 'grenade') w.mag = w.def.mag; // 狂暴：瞬间满弹
       g.hud.toast('<b style="color:#ffd24a">必杀技：狂暴！</b>5 秒伤害 ×1.5', 2);
       g.hud.eventFeed(`${p.name} 释放了<b>必杀技·狂暴</b>！`, 'avg');
+      wozAudio.ult();
       return true;
     }
     if (rules.humanTier(p.id) >= WOZ.humanMaxTier) {
@@ -1255,8 +1259,9 @@ export class WozManager {
     a.soldier.root.add(a.heroLight); // 英雄光环
     a.wozOut = false; a.alive = true; a.respawnT = 0;
     a.inv = a.inv.map((w) => (w && w.def.type === 'melee' ? new WeaponState('chainsaw') : w));
-    if (!a.inv.some((w) => w && w.id === 'chainsaw')) a.inv[2] = new WeaponState('chainsaw');
-    a.slot = 2; // 电锯在军刀槽，按 3 可切回主武器/副武器/投掷
+    const sawAt = a.inv.findIndex((w) => w && w.id === 'chainsaw');
+    if (sawAt < 0) a.inv[2] = new WeaponState('chainsaw');
+    a.slot = sawAt >= 0 ? sawAt : 2; // 电锯槽（转化体单槽 inv 时落在实际所在槽）
     a.readyAt = g.time + 0.5;
     a.soldier.reset();
     a.soldier.setWeapon('chainsaw');
@@ -1287,6 +1292,7 @@ export class WozManager {
       this._evoStageSeen[mutantId] = stage;
       const names = ['', '一阶进化：攻击强化', '二阶进化：防御强化', '三阶进化：特殊进化！'];
       if (names[stage]) {
+        wozAudio.evo(a.isPlayer ? null : a.pos.clone());
         if (a.isPlayer) g.hud.toast(`<b style="color:#ffb040">${names[stage]}</b>`, 2);
         g.hud.eventFeed(`${a.name} 达成<b>${names[stage]}</b>`, 'evo');
       }
