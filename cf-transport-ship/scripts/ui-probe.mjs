@@ -416,6 +416,36 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v31') {
+  // 补给变异体：刷新 → 击杀必掉双份补给
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st0 = rules.state(p.id);
+      if (st0.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      g.woz.supplyT = 0.01;
+      g.fastForward(1, 1 / 30);
+      const z = g.woz.tide.find((x) => x.alive && x.isSupplyCrate);
+      if (!z) return { ok: false };
+      const before = g.woz.pickups.list.length;
+      z.protectT = 0;
+      g.damage(z, p, 99999, 'chest', 'ak47', { x: 1, z: 0 }, false);
+      g.fastForward(0.2, 1 / 30);
+      return {
+        ok: true,
+        drops: g.woz.pickups.list.length - before,
+        alive: z.alive,
+        slow: !!z.supplySlow,
+      };
+    });
+    check(r.ok, '补给: 补给变异体已刷新');
+    check(r.drops >= 2 && !r.alive, `补给: 击杀必掉双份补给 (掉落 ${r.drops})`);
+    check(r.slow, '补给: 驮补给移速迟缓');
+  }
 } else if (ver === 'v30') {
   // 新武器批次 B：95式 / XM8 / 双持乌兹 / 撬棍
   await goto('&mode=infection');

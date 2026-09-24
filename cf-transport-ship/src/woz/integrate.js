@@ -41,6 +41,7 @@ export class WozManager {
     this.fuses = [];                  // 爆破者自爆引信
     this.airdrops = [];               // 补给空投
     this.dropT = AIRDROP.first;
+    this.supplyT = 45;                // 补给变异体刷新（V35）
     this._evoStageSeen = {};          // 进化阶段播报去重
   }
 
@@ -520,6 +521,15 @@ export class WozManager {
     }
     this.devourAndSkills(dt);
     this.ambientGrowl(dt);
+    // 补给变异体（V35）：感染族战斗期周期出现，场上最多 1 只
+    if (rules.phase === 'battle' && this.cat() === 'infection') {
+      this.supplyT -= dt;
+      const supplyAlive = this.tide.some((z) => z.alive && z.isSupplyCrate);
+      if (this.supplyT <= 0 && !supplyAlive) {
+        this.supplyT = 45;
+        this.spawnSupplyZombie();
+      }
+    }
     // 生化模式：AI 怪物波次刷新（原作尸潮感）+ 掉落拾取
     if (this.mode === 'bio') {
       this.waveT = (this.waveT ?? BIO.waveFirst) - dt;
@@ -545,6 +555,24 @@ export class WozManager {
   }
 
   // ---- 生化模式 AI 怪物 ----
+  // 补给变异体（V35）：驮补给的特感，击杀必掉双份补给
+  spawnSupplyZombie() {
+    const g = this.g;
+    const z = new Zombie(g, { id: 70 + this.tide.length + ((Math.random() * 90) | 0), name: '补给变异体', team: 'BL' });
+    g.actors.push(z);
+    this.tide.push(z);
+    z.spawn(this.pickSpawn('BL'));
+    this.formZombie(z, 600);
+    z.protectT = 0.5;
+    z.supplySlow = true;
+    z.isSupplyCrate = true;
+    z.soldier.root.scale.setScalar(1.15);
+    z.soldier.material.color.setHex(0x9a7440); // 土黄补给驮色
+    g.hud.toast('<b style="color:#ffd24a">补给变异体出现了！</b>击杀掉落双份补给', 2.5);
+    g.hud.eventFeed('📦 补给变异体混入了尸群', 'evt');
+    return z;
+  }
+
   spawnAiZombie() {
     const g = this.g;
     const z = new Zombie(g, { id: 100 + this.tide.length + ((Math.random() * 90) | 0), name: '变异爬行者', team: 'BL', wozExtra: true });
@@ -1041,8 +1069,12 @@ export class WozManager {
     }
     const vid = victim.id;
     if (vid >= rules.playerCount) {
-      // 生化模式：AI 怪物死亡掉落补给
-      if (this.mode === 'bio') this.pickups.randomDrop(victim.pos);
+      // 尸潮 AI：生化模式掉落；补给变异体必掉双份（V35）
+      if (victim.isSupplyCrate) {
+        this.pickups.randomDrop(victim.pos);
+        this.pickups.randomDrop({ x: victim.pos.x + 0.8, y: 0, z: victim.pos.z + 0.5 });
+        g.hud.toast('<b style="color:#ffd24a">补给变异体被击杀！</b>快去拾取', 2);
+      } else if (this.mode === 'bio') this.pickups.randomDrop(victim.pos);
       return;
     } // 尸潮 AI 不进规则层
     const attId = attacker && attacker !== victim && attacker.id < rules.playerCount ? attacker.id : -1;
