@@ -137,6 +137,7 @@ export class Actor {
         this.lastSlot = this.slot; this.slot = inp.sw;
         this.readyAt = now + tgt.def.draw;
         this.scoped = 0; this.scopeReady = false;
+        this.reScope = 0; // 修复：切枪清掉栓动恢复镜标记（否则切回狙击枪会自动开镜）
         this.soldier.setWeapon(tgt.id);
         g.onSwitch(this);
       }

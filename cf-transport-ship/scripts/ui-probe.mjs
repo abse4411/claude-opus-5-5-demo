@@ -416,6 +416,46 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v46') {
+  // 狙击切枪自动开镜 bug 回归 + 栓动恢复镜功能保持
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st0 = rules.state(p.id);
+      if (st0.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      p.inv[0] = new (p.inv[0].constructor)('awm');
+      p.inv[0].mag = 5; p.inv[0].reserve = 20;
+      p.slot = 0; p.readyAt = 0; p.protectT = 999;
+      p.pos.set(5, 0.1, 0); p.yaw = Math.PI / 2; p.pitch = 0;
+      if (p.vel.set) p.vel.set(0, 0, 0);
+      // 场景：开镜射击（栓动循环暂存恢复镜标记）→ 立即切枪 → 切回
+      p.scoped = 1;
+      p.weaponUpdate(0.016, { firePressed: true, fire: false, alt: false, altPressed: false, reload: false, sw: null });
+      const afterShot = { scoped: p.scoped, reScope: p.reScope };
+      p.weaponUpdate(0.016, { firePressed: false, fire: false, alt: false, altPressed: false, reload: false, sw: 1 }); // 切副武器
+      const awayScoped = p.scoped;
+      g.fastForward(1.5, 1 / 30); // 越过栓动时间与切枪 draw
+      p.weaponUpdate(0.016, { firePressed: false, fire: false, alt: false, altPressed: false, reload: false, sw: 0 }); // 切回狙击
+      g.fastForward(p.readyAt - g.time > 0 ? p.readyAt - g.time + 0.05 : 0.05, 1 / 30); // 越过拔枪时间
+      const backScoped = p.scoped; // 修复前：reScope 残留 → 自动开镜
+      // 栓动恢复镜功能本身保持：同枪不开切枪流程下应恢复
+      p.scoped = 1;
+      p.weaponUpdate(0.016, { firePressed: true, fire: false, alt: false, altPressed: false, reload: false, sw: null });
+      const reSaved = p.reScope;
+      g.fastForward(p.inv[0].boltUntil - g.time + 0.05 > 0 ? p.inv[0].boltUntil - g.time + 0.05 : 0.05, 1 / 30);
+      p.weaponUpdate(0.016, { firePressed: false, fire: false, alt: false, altPressed: false, reload: false, sw: null });
+      const reRestored = p.scoped === 1 && p.reScope === 0;
+      return { ok: true, afterShot, awayScoped, backScoped, reSaved, reRestored };
+    });
+    check(r.ok && r.afterShot.reScope === 1 && r.afterShot.scoped === 0, `狙击: 射击后进入栓动暂存 (reScope=${r.afterShot.reScope})`);
+    check(r.awayScoped === 0, '狙击: 切枪后未开镜');
+    check(r.backScoped === 0, `狙击: 切回狙击枪不再自动开镜 (scoped=${r.backScoped})`);
+    check(r.reSaved === 1 && r.reRestored, `狙击: 同枪栓动后恢复镜功能保持 (reSaved=${r.reSaved} restored=${r.reRestored})`);
+  }
 } else if (ver === 'v45') {
   // 噬魂者分裂：致盲尖啸同时召唤 2 只 20s 分裂体，到期消散
   await goto('&mode=infection');
