@@ -712,7 +712,7 @@ if (ver === 'v1') {
       b: !!document.querySelector('#loadCards .card[data-w="xm8"]'),
       c: !!document.querySelector('#loadCards .card[data-w="dualuzi"]'),
     }));
-    check(r.cards === 20 && r.a && r.b && r.c, `武器B: 20 张卡片含 95式/XM8/双持乌兹 (${r.cards})`);
+    check(r.cards === 21 && r.a && r.b && r.c, `武器B: 21 张卡片含 95式/XM8/双持乌兹 (${r.cards})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', primary: 'qbz95', melee: 'crowbar', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');
@@ -1037,7 +1037,7 @@ if (ver === 'v1') {
       flash: !!document.querySelector('#nadeCards .card[data-g="flash"]'),
     }));
     check(cards.meleeSeg, '近战: 菜单消防斧选项存在');
-    check(cards.nades === 5 && cards.flash, `投掷: 5 种投掷物含震撼弹 (${cards.nades})`);
+    check(cards.nades === 6 && cards.flash, `投掷: 6 种投掷物含震撼弹/黏性炸弹 (${cards.nades})`);
     await page.evaluate(() => localStorage.setItem('cf_ship_opts', JSON.stringify({ mode: 'infection', map: 'ship', melee: 'axe', grenade: 'flash', diff: 'normal', quality: 'low' })));
   }
   await page.goto(base + '&mode=infection');
