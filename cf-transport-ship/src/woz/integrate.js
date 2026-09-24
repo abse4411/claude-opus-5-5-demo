@@ -1256,7 +1256,7 @@ export class WozManager {
         const c = this.findCorpse(a);
         if (rules.tryDevour(a.id, c)) a.hp = st.hp;
       }
-      if (!st.skillActive && st.skillCharge >= 1 && Math.random() < 0.09) { // V69 平衡：AI 用技频率提升（感染局偏人类 4:1）
+      if (!st.skillActive && st.skillCharge >= 1 && Math.random() < 0.075) { // V89 平衡：AI 用技频率 0.075（0.09 后变异方过热 0:3，0.06 偏人类 4:1）
         // 职业化用技（V25）：各变异者按语境释放，不再无脑空放
         const enemy = this.nearestEnemy(a);
         const dist = enemy ? a.pos.distanceTo(enemy.pos) : 1e9;
