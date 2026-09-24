@@ -83,7 +83,16 @@ export class HUD {
           b.classList.add('on');
           o[k] = isNaN(+b.dataset.v) ? b.dataset.v : +b.dataset.v;
           this.saveOpts();
-          if (k === 'mode') this.showModeInfo(o[k]);
+          if (k === 'mode') {
+            this.showModeInfo(o[k]);
+            // V95 原作：对抗模式特色地图=死亡城市（浓雾掩蔽+废弃街道），选模式时自动切换
+            if (o[k] === 'confront' && o.map !== 'city') {
+              o.map = 'city';
+              const mseg = this.root.querySelector('.seg[data-k="map"]');
+              if (mseg) for (const x of mseg.querySelectorAll('button')) x.classList.toggle('on', x.dataset.v === 'city');
+              this.showMapMeta('city');
+            }
+          }
           if (k === 'map') this.showMapMeta(o[k]);
           this.g.onOption?.(k, o[k]);
           this.g.audio?.playUI('click');
@@ -105,6 +114,13 @@ export class HUD {
         o.mode = c.dataset.v;
         for (const x of this.root.querySelectorAll('#modeCards .mcard')) x.classList.toggle('on', x === c);
         this.showModeInfo(o.mode);
+        // V95 原作：对抗模式特色地图=死亡城市，选模式卡时自动切换
+        if (o.mode === 'confront' && o.map !== 'city') {
+          o.map = 'city';
+          const mseg = this.root.querySelector('.seg[data-k="map"]');
+          if (mseg) for (const x of mseg.querySelectorAll('button')) x.classList.toggle('on', x.dataset.v === 'city');
+          this.showMapMeta('city');
+        }
         this.saveOpts();
         this.g.onOption?.('mode', o.mode);
         this.g.audio?.playUI('click');

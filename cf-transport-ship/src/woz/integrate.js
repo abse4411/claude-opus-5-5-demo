@@ -160,7 +160,7 @@ export class WozManager {
     g.timeLeft = isConfront ? CONFRONT.battleTime : DEMOL.battleTime;
     const modeName = isConfront ? '生化对抗' : '生化爆破';
     const tip = isConfront
-      ? `人类攻方：占领全部 <b style="color:#8cc8ff">3</b> 个据点！变异者：守住到时间耗尽`
+      ? `特色地图<b style="color:#c8b06a">死亡城市</b> · 人类（攻击方）占领全部 <b style="color:#8cc8ff">3</b> 个据点！变异者（防守方）借浓雾阻止——占领越深，雾中增援越猛`
       : `人类攻方：冲入巢穴安放<b style="color:#ffd24a">核弹</b>！变异者：消灭人类或摧毁装置`;
     g.hud.toast(`<b style="color:#ff5040">${modeName}</b> · 先胜 ${ROUND_WINS} 回合 · ${tip}`, 4.5);
   }

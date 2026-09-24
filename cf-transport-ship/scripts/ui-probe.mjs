@@ -2930,6 +2930,45 @@ if (ver === 'v1') {
   check(r.triggered && r.isAvg, `阈值: 最后一名幸存者觉醒 (av=${r.triggered} avg=${r.isAvg})`);
   check(r.emits >= 30, `觉醒: 金色光柱粒子 (emits=${r.emits})`);
   check(r.reserveGain > 0 || r.reserve0 === -1, `升档: 备弹奖励 (${r.reserve0}→+${r.reserveGain})`);
+} else if (ver === 'v69') {
+  // V95 对抗模式精修：死亡城市自动绑定 / 攻守框架播报 / 雾密度随占领加浓
+  await page.goto(pathToFileURL(resolve('dist/index.html')).href + '?q=low&nolock=1');
+  await page.waitForFunction(() => window.__game && window.__game.hud, null, { timeout: 60000 });
+  {
+    // 菜单：点选生化对抗 → 地图自动切到死亡城市
+    const r = await page.evaluate(() => {
+      const g = window.__game;
+      const btn = document.querySelector('#modeCards .mcard[data-v="confront"]');
+      if (!btn) return { ok: false, why: 'no confront button' };
+      btn.click();
+      return { ok: true, map: (g.hud || g).opts.map, segOn: document.querySelector('.seg[data-k="map"] button[data-v="city"]')?.classList.contains('on') };
+    });
+    check(r.ok && r.map === 'city' && r.segOn, `菜单: 选对抗自动绑定死亡城市 (map=${r.map} seg=${r.segOn})`);
+  }
+  {
+    // 进局：开场播报含攻守框架 + 死亡城市；场景有浓雾；占领越多雾越浓
+    const r = await page.evaluate(() => {
+      const g = window.__game;
+      window.__toasts = [];
+      const orig = g.hud.toast.bind(g.hud);
+      g.hud.toast = (m, d) => { window.__toasts.push(String(m)); return orig(m, d); };
+      g.startMatch();
+      g.fastForward(0.2, 1 / 30);
+      const toasts = window.__toasts.slice();
+      const fog0 = g.renderer.scene.fog ? g.renderer.scene.fog.density : 0;
+      // 模拟占领 2 点后的雾密度
+      g.woz.points.forEach((p, i) => { if (i < 2) p.owner = 'GR'; });
+      g.woz.reinforceT = 0; // 强制下一 tick 触发增援波 → 间隔按占领数收缩
+      g.woz.tickConfront(1 / 30);
+      const fog2 = g.renderer.scene.fog ? g.renderer.scene.fog.density : 0;
+      const reinforcing = g.woz.reinforceT;
+      return { toasts, fog0, fog2, reinforcing };
+    });
+    check(r.toasts.some((t) => t.includes('死亡城市') && t.includes('攻击方') && t.includes('防守方')), `播报: 攻守框架+特色地图 (${r.toasts.filter((t) => t.includes('死亡城市')).length} 条)`);
+    check(r.fog0 > 0, `浓雾: 死亡城市场景雾存在 (${r.fog0.toFixed(4)})`);
+    check(r.fog2 > r.fog0 * 1.4, `浓雾: 占领2点后密度加大 (${r.fog0.toFixed(4)}→${r.fog2.toFixed(4)})`);
+    check(Math.abs(r.reinforcing - 18) < 0.01, `增援: 占2点后波间隔收缩至 18s (${r.reinforcing.toFixed(1)}s)`);
+  }
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }
