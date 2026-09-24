@@ -416,6 +416,52 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v25') {
+  // BOT 变异者职业化用技：决策表逐职业断言 + 爆破者实弹链路
+  await goto('&mode=infection');
+  {
+    const d = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const mk = (cls, hpFrac) => ({ cls, hp: 0, maxHp: 1500, evoPoints: 0, __hpFrac: hpFrac, get hp() { return this.maxHp * this.__hpFrac; } });
+      const want = (st, dist, los) => g.woz.botSkillWant(st, dist, los);
+      return {
+        bomHigh: want(mk('bomber', 1), 5, true),       // 满血 → 不自爆
+        bomLow: want(mk('bomber', 0.3), 5, true),      // 残血近身 → 自爆
+        bomFar: want(mk('bomber', 0.3), 15, true),     // 残血但远 → 不自爆
+        souleater: want(mk('souleater', 1), 12, true), // 尖啸范围 → 释放
+        runner: want(mk('nightrunner', 1), 10, true),  // 中距 → 疾冲
+        runnerClose: want(mk('nightrunner', 1), 3, true), // 贴脸 → 不冲
+        tangler: want(mk('tangler', 1), 10, true),     // 有视线 → 缠绕
+        tanglerNoLos: want(mk('tangler', 1), 10, false), // 无视线 → 不放
+        devourer: want(mk('devourer', 1), 12, true),   // 有视线 → 投斧
+      };
+    });
+    check(!d.bomHigh && d.bomLow && !d.bomFar, `BOT: 爆破者残血近身才自爆 (${d.bomHigh}/${d.bomLow}/${d.bomFar})`);
+    check(d.souleater && d.runner && !d.runnerClose, `BOT: 尖啸范围释放/疾冲中距释放 (${d.souleater}/${d.runner}/${d.runnerClose})`);
+    check(d.tangler && !d.tanglerNoLos && d.devourer, `BOT: 缠绕/投掷需视线 (${d.tangler}/${d.tanglerNoLos}/${d.devourer})`);
+    // 实弹验证：爆破者残血近身 → 引信点燃
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      const bm = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!bm) return { ok: false };
+      rules.convertToMutant(bm.id, 'bomber', false);
+      g.woz.convertNow(bm, true);
+      const stb = rules.state(bm.id);
+      stb.skillCharge = 1;
+      stb.hp = Math.round(stb.maxHp * 0.3);
+      if (g.actors[bm.id]) g.actors[bm.id].hp = stb.hp;
+      const t3 = g.actors.find((a) => a.alive && a !== bm && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!t3) return { ok: false };
+      t3.pos.set(bm.pos.x + 4, t3.pos.y, bm.pos.z);
+      t3.protectT = 0; t3.armor = 0;
+      g.fastForward(3, 1 / 30);
+      return { ok: true, fused: g.woz.fuses.length > 0 || !g.actors[bm.id].alive || !rules.state(bm.id).alive || stb.skillCharge < 1 };
+    });
+    check(r.ok && r.fused, `BOT: 爆破者实弹自爆链路 (${r.fused})`);
+  }
 } else if (ver === 'v24') {
   // 补给空投：投放 → 落地雷达标记 → 走近拾取补给
   await goto('&mode=infection');

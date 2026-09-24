@@ -850,16 +850,34 @@ export class WozManager {
         const c = this.findCorpse(a);
         if (rules.tryDevour(a.id, c)) a.hp = st.hp;
       }
-      if (!st.skillActive && st.skillCharge >= 1 && Math.random() < 0.02) {
+      if (!st.skillActive && st.skillCharge >= 1 && Math.random() < 0.06) {
+        // 职业化用技（V25）：各变异者按语境释放，不再无脑空放
         const enemy = this.nearestEnemy(a);
         const dist = enemy ? a.pos.distanceTo(enemy.pos) : 1e9;
-        if (dist < 25 || st.hp < this.effMaxHp(st) * 0.4) rules.tryUseSkill(a.id);
+        let los = false;
+        if (enemy) {
+          const eye = enemy.soldier.chestWorld(new THREE.Vector3());
+          const from = a.pos.clone(); from.y += 1.5;
+          const dir = eye.clone().sub(from);
+          const L = dir.length(); dir.divideScalar(L || 1);
+          los = L > 0.5 && !g.world.raycast(from.x, from.y, from.z, dir.x, dir.y, dir.z, L, 'sight');
+        }
+        if (this.botSkillWant(st, dist, los)) rules.tryUseSkill(a.id);
       }
     }
   }
 
   effMaxHp(st) {
     return st.maxHp + st.evoPoints * WOZ.evoHpPerPoint;
+  }
+
+  // BOT 用技决策表（V25）：按职业语境判定（纯逻辑，可单测）
+  botSkillWant(st, dist, hasLos) {
+    if (st.cls === MutantClass.Bomber) return st.hp < this.effMaxHp(st) * 0.45 && dist < 9; // 残血冲人堆自爆
+    if (st.cls === MutantClass.Souleater) return dist < WOZ.blindWailRange * 0.9;           // 尖啸开团致盲
+    if (st.cls === MutantClass.Nightrunner) return dist > 5 && dist < 16;                    // 疾冲拉近
+    if (st.cls === MutantClass.Devourer || st.cls === MutantClass.Tangler) return dist > 4 && dist < 20 && hasLos; // 投掷/缠绕需视线
+    return dist < 25 || st.hp < this.effMaxHp(st) * 0.4; // 母体咆哮
   }
 
   findCorpse(a) {
