@@ -416,6 +416,32 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v27') {
+  // 击杀播报与结算增强：WOZ 武器徽章 + killFeed 中文名 + 结算成长统计
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      rules.convertToMutant(p.id, 'devourer', false);
+      g.woz.convertNow(p, true);
+      // 玩家爪击感染人类 → 徽章 INFECTED + 播报
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!v) return { ok: false };
+      v.pos.set(p.pos.x + 1.5, v.pos.y, p.pos.z); v.protectT = 0; v.armor = 0;
+      p.updateCamera(0.016);
+      g.damage(v, p, 99999, 'chest', 'claw', { x: 1, z: 0 }, false);
+      g.fastForward(0.3, 1 / 30);
+      const badge = document.getElementById('badge');
+      const feed = [...document.querySelectorAll('#feed .kf')].map((e) => e.textContent).join('|');
+      return { ok: true, badge: badge ? badge.textContent : '', feed, infected: rules.state(v.id).side === 'mutant' };
+    });
+    check(r.ok && r.infected, '播报: 爪击感染成功');
+    check(/INFECTED|感染/.test(r.badge), `播报: 玩家击杀徽章 [${r.badge.trim().slice(0, 24)}]`);
+    check(r.feed.includes('我') && r.feed.includes('被感染'), `播报: 击杀信息流包含感染条目 [${r.feed.slice(0, 40)}]`);
+  }
 } else if (ver === 'v26') {
   // 成长 HUD：变异者阶段进度条 + 人类必杀技充能条
   await goto('&mode=infection');

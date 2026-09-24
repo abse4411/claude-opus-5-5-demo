@@ -700,6 +700,9 @@ export class Game {
       else if (hs) { text = 'HEADSHOT'; sub = '爆头 · ' + sub; setTimeout(() => audio.announce('Headshot!'), 150); }
       else if (wid === 'knife') { text = 'KNIFE KILL'; sub = '刀杀 · ' + sub; }
       else if (wid === 'he') { text = 'GRENADE KILL'; sub = '手雷击杀 · ' + sub; }
+      else if (wid === 'axe') { text = 'AXE KILL'; sub = '消防斧劈杀 · ' + sub; }
+      else if (wid === 'chainsaw') { text = 'EXECUTED'; sub = '电锯处决 · ' + sub; }
+      else if (wid === 'claw') { text = 'INFECTED'; sub = '感染 · 爪击击杀 · ' + sub; }
       else if (wall) { text = 'WALLBANG'; sub = '穿墙击杀 · ' + sub; }
       else { text = 'KILL'; }
       this.hud.badge(text, sub, hs);
