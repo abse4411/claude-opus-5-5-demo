@@ -416,6 +416,34 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v32') {
+  // 人类急救包：拾取 → 按住 X 引导条 → 2s 自疗 +60
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st0 = rules.state(p.id);
+      if (st0.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      // 发急救包：空投/补给体同款
+      g.woz.pickups.spawnDrop({ x: p.pos.x + 1, y: 0, z: p.pos.z }, 'medkit');
+      g.fastForward(0.4, 1 / 30); // 走近拾取
+      const got = p.medkits > 0;
+      p.hp = 30; p.protectT = 999;
+      p.keys.add('KeyX'); // 按住 X 引导
+      g.fastForward(1, 1 / 30);
+      const progOn = g.woz._medT > 0;
+      g.fastForward(1.2, 1 / 30);
+      const healed = p.hp;
+      const used = p.medkits;
+      p.keys.delete('KeyX');
+      return { ok: true, got, progOn, healed, used };
+    });
+    check(r.ok && r.got, '急救: 急救包拾取入包');
+    check(r.progOn && r.healed >= 90 - 0.4, `急救: 按住 X 2s 自疗 (hp=${r.healed.toFixed(0)} 剩${r.used})`);
+  }
 } else if (ver === 'v31') {
   // 补给变异体：刷新 → 击杀必掉双份补给
   await goto('&mode=infection');

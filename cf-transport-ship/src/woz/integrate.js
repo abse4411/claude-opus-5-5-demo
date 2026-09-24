@@ -424,6 +424,22 @@ export class WozManager {
     this.fuses = [];
   }
 
+  // ---- 人类急救包（V36 交互）：按住 X 2s 自疗 +60，移动/受击打断 ----
+  tickMedkit(dt) {
+    const g = this.g, p = g.player;
+    if (!p.alive || p.team !== 'GR' || !(p.medkits > 0) || p.hp >= 100) { this._medT = 0; return; }
+    const holding = p.keys.has('KeyX') && (p.speed || 0) < 2;
+    if (!holding) { this._medT = 0; return; }
+    this._medT += dt;
+    if (this._medT >= 2) {
+      this._medT = 0;
+      p.medkits--;
+      p.hp = Math.min(100, p.hp + 60);
+      g.hud.toast('<b style="color:#4aff8a">急救包使用成功！</b>+60 HP', 2);
+      g.hud.eventFeed(`${p.name} 使用了急救包`, 'evt');
+    }
+  }
+
   // ---- 补给空投（V24）：战斗期周期空投全补给箱，雷达金菱形标记 ----
   spawnAirdrop() {
     const g = this.g;
@@ -476,6 +492,7 @@ export class WozManager {
             if (w && w.def.type !== 'melee') { w.reserve = w.def.reserve; if (w.def.type !== 'grenade') w.mag = w.def.mag; else w.mag = Math.min(1, w.mag + 1); }
           }
           if (taker.hp > 0) taker.hp = Math.min(taker.wozMaxHp || 100, taker.hp + 60);
+          if (taker.team === 'GR') taker.medkits = Math.min(1, (taker.medkits || 0) + 1); // 空投附带急救包
           g.hud.toast(`<b style="color:#ffd24a">获得空投补给！</b>弹药补满 · 医疗 · 手雷`, 2.5);
           g.hud.eventFeed(`${taker.name} 获取了补给空投`, 'evt');
           audio.playUI('buy');
@@ -521,6 +538,7 @@ export class WozManager {
     }
     this.devourAndSkills(dt);
     this.ambientGrowl(dt);
+    this.tickMedkit(dt);
     // 补给变异体（V35）：感染族战斗期周期出现，场上最多 1 只
     if (rules.phase === 'battle' && this.cat() === 'infection') {
       this.supplyT -= dt;
@@ -542,9 +560,10 @@ export class WozManager {
         g.hud.toast(`<b style="color:#ff7040">第 ${this.waveN} 波</b> 变异爬行者来袭 ×${n}！`, 2.5);
         wozAudio.tide();
       }
-      for (const ev of this.pickups.update(dt)) {
-        if (ev.actor.isPlayer) wozAudio.devour(null);
-      }
+    }
+    // 掉落拾取：全感染族可用（V35 补给变异体/急救包落地在感染/复仇也生效）
+    for (const ev of this.pickups.update(dt)) {
+      if (ev.actor.isPlayer) wozAudio.devour(null);
     }
     this.hud.update(rules, g.player, this);
     // 回合推进
@@ -822,6 +841,11 @@ export class WozManager {
 
   // 玩家所处目标区域的情境交互提示（null = 无提示）
   promptFor(p) {
+    // 急救包引导（V36）：按住 X 自疗
+    if (this._medT > 0 && p.alive && p.team === 'GR' && p.medkits > 0) {
+      return { kind: 'gold', title: '包扎中…', sub: '松开或移动会打断', prog: Math.min(1, this._medT / 2) };
+    }
+
     if (!p || !p.alive) return null;
     const human = p.team === 'GR';
     for (const pt of this.points) {
@@ -1072,7 +1096,7 @@ export class WozManager {
       // 尸潮 AI：生化模式掉落；补给变异体必掉双份（V35）
       if (victim.isSupplyCrate) {
         this.pickups.randomDrop(victim.pos);
-        this.pickups.randomDrop({ x: victim.pos.x + 0.8, y: 0, z: victim.pos.z + 0.5 });
+        this.pickups.spawnDrop({ x: victim.pos.x + 0.8, y: 0, z: victim.pos.z + 0.5 }, 'medkit');
         g.hud.toast('<b style="color:#ffd24a">补给变异体被击杀！</b>快去拾取', 2);
       } else if (this.mode === 'bio') this.pickups.randomDrop(victim.pos);
       return;

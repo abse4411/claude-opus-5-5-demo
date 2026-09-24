@@ -6,6 +6,7 @@ const KINDS = {
   hp: { color: 0xff4a3a, label: '医疗补给 +50 HP' },
   ammo: { color: 0xffd24a, label: '弹药箱 · 备弹 +1 弹匣' },
   skill: { color: 0x60e0ff, label: '生化能量 · 技能充满' },
+  medkit: { color: 0x4aff8a, label: '急救包 · 按住 X 自疗（+60）' },
 };
 
 export class Pickups {
@@ -78,6 +79,8 @@ export class Pickups {
     } else if (kind === 'skill' && rules) {
       const st = a.id < rules.playerCount ? rules.state(a.id) : null;
       if (st) st.skillCharge = 1;
+    } else if (kind === 'medkit') {
+      a.medkits = Math.min(1, (a.medkits || 0) + 1); // 急救包（V36）：限带 1 个
     }
     if (a.isPlayer) g.hud.toast(`拾取 ${KINDS[kind].label}`, 1.5);
     this.game.onFootstep ? null : null;
