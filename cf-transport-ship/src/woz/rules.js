@@ -1,6 +1,6 @@
 // WOZ 规则状态机：纯逻辑、零渲染依赖，可在 node 下直接断言测试。
 // 阵营约定：人类侧 = 'GR'（保卫者），变异者侧 = 'BL'（潜伏者）。
-import { WOZ, MutantClass, skillOf, skillDuration , skillCooldownSec } from './config.js';
+import { WOZ, MutantClass, MutantSkill, skillOf, skillDuration , skillCooldownSec } from './config.js';
 
 // xorshift32 确定性随机（同种子同结果，供测试与回放）
 export class WozRng {
@@ -231,6 +231,7 @@ export class WozRules {
     if (p.cls === MutantClass.Devourer) return WOZ.devourerHp;
     if (p.cls === MutantClass.Tangler) return WOZ.tanglerHp;
     if (p.cls === MutantClass.Bomber) return WOZ.bomberHp;
+    if (p.cls === MutantClass.Crawler) return WOZ.crawlerHp;
     return WOZ.childHp;
   }
 
@@ -357,6 +358,7 @@ export class WozRules {
     const p = this.players[id];
     if (this.phase !== 'battle' || !p.alive || p.side !== 'mutant') return false;
     if (p.cls === MutantClass.None) return false;
+    if (skillOf(p.cls) === MutantSkill.None) return false; // 纯属性型（爬行者）无技能
     if (p.skillActive || p.skillCharge < 1) return false;
     p.skillCharge = 0;
     p.skillActive = true;
@@ -420,6 +422,7 @@ export class WozRules {
     if (!p) return WOZ.mutantSpeed; // 尸潮 AI 等非规则层角色
     let m = WOZ.mutantSpeed;
     if (p.cls === MutantClass.Nightrunner) m += WOZ.nightrunnerSpeed;
+    if (p.cls === MutantClass.Crawler) m -= WOZ.crawlerSlow; // 巨躯迟缓
     if (p.skillActive && p.cls === MutantClass.Nightrunner) m *= WOZ.dashSpeed * 0.55;
     if (this.motherRageActive() && p.cls !== MutantClass.Mother) m *= 1.25;
     if (p.skillActive && p.cls === MutantClass.Mother) m *= 1.35;

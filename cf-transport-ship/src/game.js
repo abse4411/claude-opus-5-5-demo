@@ -797,6 +797,8 @@ export class Game {
     let hpD = amt;
     if (att && att.dmgBuff > 1) hpD *= att.dmgBuff; // 连杀狂怒（V43）
     if (this.woz) hpD *= this.woz.adjustDamage(v, att);
+    // V51 爬行者：蜥蜴巨躯——躯体减伤 40%，爆头 1.5 倍伤并定身（原作：抗射击/爆头停止移动）
+    if (this.woz) hpD *= this.woz.classPartDamage(v, part);
     if (v.armor > 0 && part !== 'leg') {
       const ap = def?.armorPen ?? 0.75;
       hpD = amt * ap;

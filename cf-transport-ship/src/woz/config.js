@@ -95,6 +95,11 @@ export const WOZ = {
   selfDestructRadius: 7,
   selfDestructFuse: 1.2,
   selfDestructSpeed: 1.3,   // 引爆冲锋期间移速加成
+  crawlerHp: 3600,          // 爬行者：蜥蜴基因巨躯（调研：2米/400斤，血量惊人，纯属性型无技能）
+  crawlerSlow: 0.05,        // 移速低于普通变异体
+  crawlerBodyArmor: 0.6,    // 躯体减伤 40%（调研：抗击打强，移动中被射击影响不大）
+  crawlerHeadMul: 1.5,      // 爆头额外伤害
+  crawlerHeadStop: 0.9,     // 爆头定身时长（调研：被击中头部会停止移动）
 };
 
 // ---- 生化对抗：人类攻方占领战术据点，变异者守方 ----
@@ -157,6 +162,7 @@ export const MutantClass = {
   Devourer: 'devourer',
   Tangler: 'tangler',
   Bomber: 'bomber',
+  Crawler: 'crawler',
 };
 
 export const MutantSkill = {
@@ -177,6 +183,7 @@ export const CLASS_LABEL = {
   [MutantClass.Devourer]: '猎食者',
   [MutantClass.Tangler]: '缠绕者',
   [MutantClass.Bomber]: '爆破者',
+  [MutantClass.Crawler]: '爬行者',
 };
 
 export const SKILL_LABEL = {
@@ -196,6 +203,7 @@ export function skillOf(cls) {
   if (cls === MutantClass.Devourer) return MutantSkill.AxeThrow;
   if (cls === MutantClass.Tangler) return MutantSkill.Entangle;
   if (cls === MutantClass.Bomber) return MutantSkill.SelfDestruct;
+  // 爬行者：原作纯属性型变异者，无技能（17173 变异者技能解析）
   return MutantSkill.None;
 }
 

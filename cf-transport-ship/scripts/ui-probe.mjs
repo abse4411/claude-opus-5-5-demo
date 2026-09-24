@@ -319,7 +319,7 @@ if (ver === 'v1') {
         sideBtnsHidden: document.getElementById('wozClasses').style.display === 'none',
       };
     });
-    check(r.visible && r.cards === 5, `变身: 选择面板弹出且 5 张职业卡 (${r.cards})`);
+    check(r.visible && r.cards === 6, `变身: 选择面板弹出且 6 张职业卡 (${r.cards})`);
     check(r.sideBtnsHidden, '变身: 面板打开时右下迷你按钮隐藏');
     await page.waitForTimeout(200);
     await shot('pick');
@@ -415,6 +415,66 @@ if (ver === 'v1') {
     await page.evaluate(() => window.__game.toggleHelp());
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
+  }
+} else if (ver === 'v47') {
+  // V51 爬行者：部位伤害（躯体 0.6 / 爆头 1.5+定身）、Digit0 变身、体型染色、职业卡
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { const rules = window.__game.woz.rules; if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      // 玩家转爬行者
+      if (rules.state(p.id).side !== 'mutant') rules.convertToMutant(p.id, 'crawler', false);
+      g.woz.convertNow(p, true);
+      p.protectT = 999;
+      const scale = p.soldier.root.scale.x;
+      const tint = p.soldier.material.color.getHex();
+      // 部位伤害对比：同面板找一名人类-bot 作为攻击者，或直接用规则外 actor 打玩家
+      const att = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      if (!att) return { ok: false };
+      att.pos.set(-5, 0.1, 0); att.protectT = 0;
+      p.pos.set(0, 0.1, 0);
+      g.fastForward(1 / 30, 1 / 30);
+      const dir = { x: 1, y: 0, z: 0 };
+      const hp0 = p.hp;
+      p.protectT = 0; // 伤害测试需关出生保护
+      g.damage(p, att, 100, 'body', 'ak47', dir, false, false);
+      const bodyLoss = hp0 - p.hp;
+      const hp1 = p.hp;
+      g.damage(p, att, 100, 'head', 'ak47', dir, false, false);
+      const headLoss = hp1 - p.hp;
+      const rootT = p.rootT;
+      // 对照组：换夜行者重复躯体伤害
+      rules.setMutantClass(p.id, 'nightrunner');
+      g.woz.applyClassVisual(p);
+      p.rootT = 0;
+      const hp2 = p.hp;
+      g.damage(p, att, 100, 'body', 'ak47', dir, false, false);
+      const nrBodyLoss = hp2 - p.hp;
+      // Digit0 换回爬行者（真实按键事件）
+      g.woz.onPlayerInput(p); // 清残留按键
+      return { ok: true, scale, tint, bodyLoss, headLoss, rootT, nrBodyLoss };
+    });
+    const kb = await page.keyboard.press('0');
+    await page.waitForTimeout(120);
+    const r2 = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      const cls = rules.state(p.id).cls;
+      const cards = document.querySelectorAll('#wozPick .pcard').length;
+      const btn = !!document.querySelector('#wozClasses button[data-c="crawler"]');
+      return { cls, cards, btn };
+    }).catch(() => ({ cls: 'err' }));
+    check(r.ok, '爬行者: 场景搭建');
+    check(Math.abs(r.scale - 1.24) < 0.01, `爬行者: 体型 1.24 (${r.scale})`);
+    check(r.tint !== 0xffffff, `爬行者: 蜥蜴绿染色 (${r.tint.toString(16)})`);
+    check(r.nrBodyLoss > 0 && Math.abs(r.bodyLoss - r.nrBodyLoss * 0.6) < 1.5, `爬行者: 躯体减伤 40% (${r.bodyLoss.toFixed(1)} vs 基准 ${r.nrBodyLoss.toFixed(1)})`);
+    check(Math.abs(r.headLoss - r.nrBodyLoss * 1.5) < 1.5, `爬行者: 爆头 1.5× (${r.headLoss.toFixed(1)})`);
+    check(r.rootT >= 0.89, `爬行者: 爆头定身 0.9s (${r.rootT?.toFixed(2)})`);
+    check(r2.cls === 'crawler', `爬行者: Digit0 变身生效 (${r2.cls})`);
+    check(r2.cards === 6, `爬行者: 选择面板 6 张职业卡 (${r2.cards})`);
+    check(r2.btn, '爬行者: 侧栏变身按钮存在');
   }
 } else if (ver === 'v46') {
   // 狙击切枪自动开镜 bug 回归 + 栓动恢复镜功能保持

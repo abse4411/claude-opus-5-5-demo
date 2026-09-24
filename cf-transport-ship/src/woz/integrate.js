@@ -1086,6 +1086,7 @@ export class WozManager {
 
   // BOT 用技决策表（V25）：按职业语境判定（纯逻辑，可单测）
   botSkillWant(st, dist, hasLos) {
+    if (st.cls === MutantClass.Crawler) return false; // 纯属性型无技能
     if (st.cls === MutantClass.Bomber) return st.hp < this.effMaxHp(st) * 0.45 && dist < 9; // 残血冲人堆自爆
     if (st.cls === MutantClass.Souleater) return dist < WOZ.blindWailRange * 0.9;           // 尖啸开团致盲
     if (st.cls === MutantClass.Nightrunner) return dist > 5 && dist < 16;                    // 疾冲拉近
@@ -1161,8 +1162,8 @@ export class WozManager {
     if (p.consumePressed('KeyG') || p.consumePressed('KeyF')) {
       if (!rules.tryUseSkill(p.id)) g.hud.toast(`技能冷却中 ${(st.skillCharge * 100) | 0}%`, 1);
     }
-    // 5/6/7/8/9 子体变身
-    for (const [code, cls] of [['Digit5', MutantClass.Nightrunner], ['Digit6', MutantClass.Souleater], ['Digit7', MutantClass.Devourer], ['Digit8', MutantClass.Tangler], ['Digit9', MutantClass.Bomber]]) {
+    // 5/6/7/8/9/0 子体变身（V51 增爬行者）
+    for (const [code, cls] of [['Digit5', MutantClass.Nightrunner], ['Digit6', MutantClass.Souleater], ['Digit7', MutantClass.Devourer], ['Digit8', MutantClass.Tangler], ['Digit9', MutantClass.Bomber], ['Digit0', MutantClass.Crawler]]) {
       if (p.consumePressed(code) && rules.setMutantClass(p.id, cls)) this.playerClassChosen = true;
     }
   }
@@ -1402,7 +1403,7 @@ export class WozManager {
     a.soldier.setWeapon('claw');
     a.soldier.root.position.copy(a.pos);
     a.soldier.root.visible = !a.isPlayer;
-    a.soldier.root.scale.setScalar(st.isMother ? 1.28 : st.cls === MutantClass.Devourer ? 1.18 : 1.08);
+    this.applyClassVisual(a);
     if (a.isPlayer) {
       a.deathCam = null;
       g.vm.equip('claw', 0.4);
@@ -1460,6 +1461,36 @@ export class WozManager {
   }
 
   // ================= 规则层回调 =================
+  // V51 爬行者部位伤害：躯体 0.6 / 爆头 1.5 并定身 0.9s（原作：抗击打，爆头停止移动）
+  classPartDamage(v, part) {
+    const rules = this.rules;
+    if (!rules || !v || v.id >= rules.playerCount) return 1;
+    const st = rules.state(v.id);
+    if (st.side !== 'mutant' || st.cls !== MutantClass.Crawler) return 1;
+    if (part === 'head') {
+      if (v.alive) v.rootT = Math.max(v.rootT || 0, WOZ.crawlerHeadStop);
+      return WOZ.crawlerHeadMul;
+    }
+    return WOZ.crawlerBodyArmor;
+  }
+
+  isClass(v, key) {
+    const rules = this.rules;
+    if (!rules || !v || v.id >= rules.playerCount) return false;
+    return rules.state(v.id).cls === key;
+  }
+
+  // 职业外观：体型 + 皮肤乘法染色（新 Soldier 材质为白，restoreHuman 重建时自动复位）
+  applyClassVisual(a) {
+    const st = this.rules?.state(a.id);
+    if (!st || st.side !== 'mutant') return;
+    const cls = st.cls;
+    const scale = st.isMother ? 1.28 : cls === MutantClass.Crawler ? 1.24 : cls === MutantClass.Devourer ? 1.18 : 1.08;
+    a.soldier.root.scale.setScalar(scale);
+    if (cls === MutantClass.Crawler) a.soldier.material.color.setHex(0x9cc08a); // 蜥蜴沼泽绿
+    else a.soldier.material.color.setHex(0xffffff);
+  }
+
   onMutantConverted(id, cls, isMother, rebirth) {
     // 母体：爆发瞬间直接落地引擎形态；再变异：即时重生
     if (rebirth || isMother) {
@@ -1475,7 +1506,7 @@ export class WozManager {
     if (!a) return;
     const st = this.rules.state(id);
     a.hp = Math.max(1, st.hp);   // 规则层已按新职业重置血池
-    a.soldier.root.scale.setScalar(st.cls === MutantClass.Devourer ? 1.18 : 1.08); // 体型同步
+    this.applyClassVisual(a);    // 体型 + 职业染色同步（V51）
     if (this._autoCls === id) { this._autoCls = -1; } // 感染时的自动默认职业不重复播报
     else g.hud.eventFeed(`${a.name} 进化为 <b>${CLASS_LABEL[cls] || '变异者'}</b>`, 'evo');
     if (a.isPlayer) g.hud.toast(`已变身：<b style="color:#ff7040">${CLASS_LABEL[cls]}</b>`, 2);
@@ -1489,7 +1520,7 @@ export class WozManager {
     if (!a || a.isPlayer || this.rules.state(victimId).isMother) return;
     this._autoCls = victimId;
     const r = Math.random();
-    const changed = this.rules.setMutantClass(victimId, r < 0.35 ? MutantClass.Nightrunner : r < 0.55 ? MutantClass.Souleater : r < 0.72 ? MutantClass.Devourer : r < 0.87 ? MutantClass.Tangler : MutantClass.Bomber);
+    const changed = this.rules.setMutantClass(victimId, r < 0.3 ? MutantClass.Nightrunner : r < 0.5 ? MutantClass.Souleater : r < 0.66 ? MutantClass.Devourer : r < 0.8 ? MutantClass.Tangler : r < 0.92 ? MutantClass.Bomber : MutantClass.Crawler);
     if (!changed) this._autoCls = -1; // 职业未变（默认夜行者）时清除抑制标记，避免吃掉后续手动播报
   }
 

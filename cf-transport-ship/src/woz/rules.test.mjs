@@ -1,6 +1,6 @@
 // WOZ 规则层断言测试：node src/woz/rules.test.mjs （零依赖，直接跑）
 import { WozRules } from './rules.js';
-import { WOZ, MutantClass } from './config.js';
+import { WOZ, MutantClass, MutantSkill, skillOf } from './config.js';
 
 let passed = 0, failed = 0;
 function check(cond, name) {
@@ -361,6 +361,28 @@ console.log('== WOZ 规则层断言 ==');
   check(sim.rules.tryEnergySkill(hid, 'V'), 'V46: V 必杀技释放成功');
   check(h.ultActiveT > 0, 'V46: 狂暴激活');
   check(Math.abs(sim.rules.humanDamageBoost(hid) - WOZ.humanUltDamage) < 1e-6, 'V46: 伤害 ×1.5');
+}
+
+// V51 爬行者：纯属性型新变异体（蜥蜴巨躯）
+{
+  const sim = new ArenaSim('infection', 777);
+  skipBuy(sim);
+  const id = firstNonMother(sim);
+  const st = sim.rules.state(id);
+  st.side = 'mutant'; st.alive = true; // 转化为子体后再选职业
+  check(WOZ.crawlerHp > WOZ.devourerHp - 800 && WOZ.crawlerHp === 3600, 'V51: 爬行者 3600HP 血池');
+  check(sim.rules.setMutantClass(id, MutantClass.Crawler), 'V51: 可切换为爬行者');
+  check(st.cls === MutantClass.Crawler, 'V51: 爬行者职业生效');
+  check(sim.rules.baseHp(st) === WOZ.crawlerHp, 'V51: baseHp 取爬行者血池');
+  check(skillOf(MutantClass.Crawler) === MutantSkill.None, 'V51: 纯属性型无技能');
+  check(sim.rules.tryUseSkill(id) === false, 'V51: 爬行者无法释放技能');
+  const crawlSpd = sim.rules.mutantSpeedMultiplier(id);
+  check(crawlSpd < WOZ.mutantSpeed, `V51: 爬行者移速低于普通变异体 (${crawlSpd.toFixed(3)} < ${WOZ.mutantSpeed})`);
+  const baseSpd = WOZ.mutantSpeed;
+  check(Math.abs(crawlSpd - (baseSpd - WOZ.crawlerSlow)) < 1e-6, 'V51: 减速量 = crawlerSlow');
+  // 换回其他职业仍可用
+  check(sim.rules.setMutantClass(id, MutantClass.Nightrunner), 'V51: 爬行者可换回夜行者');
+  check(skillOf(MutantClass.Nightrunner) === MutantSkill.Dash, 'V51: 夜行者技能保留');
 }
 
 console.log(`\n结果: ${passed} 通过, ${failed} 失败`);
