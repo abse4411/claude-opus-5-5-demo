@@ -416,6 +416,38 @@ if (ver === 'v1') {
     const closed = await page.evaluate(() => document.getElementById('help').classList.contains('hidden'));
     check(closed, '帮助: 再次按 H / 点击关闭');
   }
+} else if (ver === 'v21') {
+  // 新地图「废弃医院」：加载/命名/雷达/目标点兼容
+  await goto('&mode=infection&map=hospital');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game;
+      g.fastForward(20, 1 / 30);
+      return {
+        name: document.querySelector('#radarWrap .lbl')?.textContent,
+        spawnY: +g.player.pos.y.toFixed(2),
+        inField: Math.abs(g.player.pos.x) < 40 && Math.abs(g.player.pos.z) < 15,
+        radar: !!g.hud.radarImg,
+      };
+    });
+    check(r.name === '废弃医院', `医院: 地图加载与命名 [${r.name}]`);
+    check(r.inField && r.spawnY > -0.5 && r.spawnY < 3, `医院: 出生点位于场地内 (${r.spawnY})`);
+    check(r.radar, '医院: 雷达图自动生成');
+    await page.evaluate(() => {
+      const g = window.__game, cam = g.renderer.camera;
+      cam.position.set(-30, 3.2, 0); cam.lookAt(10, 1, 0); // 室内走廊定机位
+    });
+    await page.waitForTimeout(300);
+    await shot('hospital');
+    const pts = await page.evaluate(() => {
+      const g = window.__game;
+      return [[12, 0, 'A'], [-2, 0, 'B'], [-16, 0, 'C'], [-30, 0, '核']].map(([x, z, n]) => {
+        const blocked = g.world.raycast(x, 1.0, z, 0, 1, 0, 3.5, 'sight');
+        return { n, blocked: !!blocked };
+      });
+    });
+    check(pts.every((p) => !p.blocked), `医院: 据点 A/B/C 与核弹点位置畅通 (${pts.map((p) => p.n + (p.blocked ? '✗' : '✓')).join(',')})`);
+  }
 } else if (ver === 'v20') {
   // 消防斧近战 + 震撼弹
   await goto('&mode=infection');
