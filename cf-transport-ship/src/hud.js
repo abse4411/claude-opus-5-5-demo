@@ -1,5 +1,6 @@
 // HUD 与菜单（DOM）
 import { WEAPONS, PRIMARIES, SECONDARIES, MELEES } from './weapons.js';
+import { rankOf, loadXp } from './woz/ranks.js';
 
 const TEAM_CN = { BL: '潜伏者', GR: '保卫者' };
 // WOZ 原作两大阵营（搜狗百科）：GR=保卫军，BL=原罪军；TDM 保留 CF 命名
@@ -31,6 +32,7 @@ export class HUD {
     this.buildMenu();
     this.showModeInfo(this.opts.mode);
     this.showMapMeta(this.opts.map);
+    this.renderMenuRank(); // V105 大厅军衔条（跨局 localStorage）
   }
   saveOpts() { try { localStorage.setItem('cf_ship_opts', JSON.stringify(this.opts)); } catch (e) { /* 忽略 */ } }
 
@@ -68,6 +70,54 @@ export class HUD {
   showMapMeta(map) {
     const el = document.getElementById('mapMeta');
     if (el) el.textContent = HUD.MAP_META[map] || '';
+  }
+
+  // V105 大厅军衔条：官方 74 级表（与局内 V104 徽章同一数据源，localStorage 跨局）
+  renderMenuRank() {
+    const el = document.getElementById('wozMenuRank');
+    if (!el) return;
+    const rk = rankOf(loadXp());
+    const chev = '▲'.repeat(Math.min(rk.chevrons, 5));
+    const pct = (rk.frac * 100).toFixed(1);
+    el.innerHTML = `<span class="chev" style="color:${rk.chev}">${chev}</span>`
+      + `<span class="rname" style="color:${rk.color}">${rk.name}</span>`
+      + `<span class="rtier">${rk.tierName}</span>`
+      + `<span class="rbar"><i style="width:${pct}%;background:${rk.color}"></i></span>`
+      + `<span class="rxp">${rk.next ? `${rk.next - rk.cur - Math.floor(rk.frac * (rk.next - rk.cur))} 经验晋级` : '已达最高军衔'}</span>`;
+  }
+
+  // V105 读取页面（原作每图专属读取页，561188「豪华住宅读取页面」）：地图代号 + 战术提示
+  static MAP_LOAD = {
+    ship: { cn: '运输船', en: 'TRANSPORT SHIP' },
+    city: { cn: '死亡城市', en: 'DEAD CITY' },
+    lab: { cn: '生化实验室', en: 'BIO LAB' },
+    plaza: { cn: '都会广场', en: 'URBAN PLAZA' },
+    harbor: { cn: '雾港', en: 'FOG HARBOR' },
+    hospital: { cn: '废弃医院', en: 'ABANDONED HOSPITAL' },
+    subway: { cn: '地铁绝境', en: 'SUBWAY DEADLOCK' },
+  };
+  static TIPS = [
+    '射击变异者时重点射击头部，发挥最大威力。',
+    '补给出现前节省子弹，补给时需要队友掩护。',
+    '感染者阵亡后可切换变异者按 E 附身，部分特殊变异者不可附身。',
+    '无线电消息 Z / X / C —— 战场沟通从喊话开始。',
+    '变异者技能 F：角色等级越高，技能效果越强。',
+    '占据制高点互相掩护：狙击手远程射杀，突击手交替掩护。',
+    '变异者按 E 吞噬尸体恢复生命并积累进化。',
+    '人类阵营能量技能 T / F / V，能量随击杀、伤害与时间增长。',
+  ];
+  startWithLoading() {
+    const L = HUD.MAP_LOAD[this.opts.map] || { cn: this.opts.map, en: '' };
+    const wrap = document.getElementById('wozLoad');
+    if (!wrap) return this.g.startMatch(); // 元素缺失兜底直开
+    document.getElementById('wlName').textContent = L.cn;
+    document.getElementById('wlEn').textContent = L.en;
+    document.getElementById('wlTip').textContent = HUD.TIPS[Math.floor(Math.random() * HUD.TIPS.length)];
+    const bar = wrap.querySelector('.wlBar i');
+    bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = ''; // 重启进度动画
+    wrap.classList.add('show');
+    this.g.audio?.playUI('start');
+    setTimeout(() => { wrap.classList.remove('show'); this.g.startMatch(); }, 1500);
   }
 
   // ---------- 菜单 ----------
@@ -126,7 +176,9 @@ export class HUD {
         this.g.audio?.playUI('click');
       });
     }
-    $('#btnStart').addEventListener('click', () => this.g.startMatch());
+    $('#btnStart').addEventListener('click', () => this.startWithLoading()); // V105 读取页 → 入场
+    $('#btnManual').addEventListener('click', () => { document.getElementById('manualWrap').classList.remove('hidden'); this.g.audio?.playUI('click'); });
+    $('#btnManualClose').addEventListener('click', () => document.getElementById('manualWrap').classList.add('hidden'));
     $('#btnResume').addEventListener('click', () => this.g.resume());
     $('#btnQuit').addEventListener('click', () => this.g.quitToMenu());
     $('#btnAgain').addEventListener('click', () => this.g.startMatch());
@@ -191,6 +243,7 @@ export class HUD {
   }
   show(name) {
     if (name === 'menu' || name === 'pause') this.syncControls();
+    if (name === 'menu') this.renderMenuRank(); // V105 回大厅刷新军衔条（局末经验已入账）
     for (const n of ['menu', 'pause', 'end', 'loadout', 'loading', 'help']) this.el[n].classList.toggle('hidden', n !== name);
     this.el.hud.classList.toggle('hidden', name === 'menu' || name === 'loading' || name === 'end');
   }
@@ -657,31 +710,33 @@ const TEMPLATE = `
 
 <div id="menu" class="screen hidden">
   <div class="menuBox">
-    <div class="title">
-      <div class="logo">CROSSFIRE · 团队竞技</div>
-      <h1>运输船</h1>
-      <div class="en">TRANSPORT SHIP</div>
-      <p>联合国维和行动在监视非法军火出口时，发现一艘从俄罗斯驶往尼日利亚的可疑货轮。保卫者（Global Risk）奉命登船突击检查，却遭到潜伏者（Black List）伏击。<br>船头船尾两个船舱出生，中路 V 形斜放集装箱、两侧 L 形箱堆，左右各有一条只能从己方出生点进入的集装箱管道，管道顶上就是可以架枪的二楼。</p>
-      <div class="keys">
-        <kbd>W A S D</kbd><span>移动　<kbd>Shift</kbd> 静步　<kbd>空格</kbd> 跳　<kbd>C</kbd> 蹲</span>
-        <kbd>鼠标左键</kbd><span>开火　<kbd>右键</kbd> 狙击开镜 / 刀重击</span>
-        <kbd>1 2 3 4</kbd><span>主武器 / 手枪 / 刀 / 手雷　<kbd>Q</kbd> 快切　<kbd>滚轮</kbd> 切换</span>
-        <kbd>R</kbd><span>换弹　<kbd>F</kbd> 检视武器　<kbd>B</kbd> 更换主武器</span>
-        <kbd>Tab</kbd><span>计分板　<kbd>Esc</kbd> 暂停 / 设置</span>
+    <div class="title wozLobby">
+      <div class="lobbyTop">
+        <div class="wlogo"><b>生化战场</b><span>WORLD OF ZOMBIES</span></div>
+        <div class="wrank" id="wozMenuRank"></div>
       </div>
+      <div class="slogan">☣ 变异病毒席卷战场 —— 撕裂阴暗的人性：感染，或者被感染。</div>
+      <div class="keys">
+        <kbd>W A S D</kbd><span>移动　<kbd>Shift</kbd> 静走　<kbd>Ctrl</kbd> 蹲　<kbd>空格</kbd> 跳</span>
+        <kbd>左键</kbd><span>射击　<kbd>右键</kbd> 武器特殊动作 / 近战重击</span>
+        <kbd>E</kbd><span>动作：拆弹 / 吞噬 / 附身　<kbd>F</kbd> 变异者技能</span>
+        <kbd>1-5</kbd><span>主 / 副 / 近身 / 投掷 / 特殊装备　<kbd>Q</kbd> 切回上一武器　<kbd>B</kbd> 更换背包</span>
+        <kbd>R</kbd><span>换弹　<kbd>Z X C</kbd> 无线电消息　<kbd>Tab</kbd> 状态栏</span>
+      </div>
+      <button id="btnManual" class="manualBtn">📘 战地手册</button>
       <div class="note hidden" id="touchNote">检测到触屏设备：已启用虚拟摇杆（左侧移动、右侧滑动视角）。电脑 + 鼠标体验最佳。</div>
     </div>
     <div class="opts">
       <div class="mcards" id="modeCards">${MODE_CARDS}</div>
       <div id="modeInfo" style="grid-column:1/-1;margin:2px 0 8px;padding:8px 12px;border:1px solid rgba(245,179,33,.35);border-radius:8px;background:rgba(20,16,6,.5);font:12px/1.7 "PingFang SC","Microsoft YaHei",sans-serif;color:#d8cdb0;text-align:left"></div>
-      <div class="opt"><div class="lab">地图</div><div class="seg" data-k="map"><button data-v="ship">运输船</button><button data-v="city">死亡城市</button><button data-v="lab">生化实验室</button><button data-v="plaza">都会广场</button><button data-v="harbor">雾港</button><button data-v="hospital">废弃医院</button><button data-v="subway">地铁绝境</button></div></div>
+      <div class="opt"><div class="lab">作战地图</div><div class="seg" data-k="map"><button data-v="ship">运输船</button><button data-v="city">死亡城市</button><button data-v="lab">生化实验室</button><button data-v="plaza">都会广场</button><button data-v="harbor">雾港</button><button data-v="hospital">废弃医院</button><button data-v="subway">地铁绝境</button></div></div>
       <div class="mapMeta" id="mapMeta"></div>
-      <div class="opt"><div class="lab">阵营</div><div class="seg team" data-k="team"><button data-v="BL">潜伏者<small>Black List</small></button><button data-v="GR">保卫者<small>Global Risk</small></button></div></div>
-      <div class="opt"><div class="lab">主武器</div><div class="seg" data-k="primary"><button data-v="ak47">AK-47</button><button data-v="m4a1">M4A1</button><button data-v="awm">AWM</button><button data-v="mp5">MP5</button><button data-v="m60">M60</button></div></div>
-      <div class="opt"><div class="lab">副武器</div><div class="seg" data-k="secondary"><button data-v="deagle">沙漠之鹰</button><button data-v="usp">USP</button><button data-v="r8">R8 左轮</button></div></div>
-      <div class="opt"><div class="lab">近战</div><div class="seg" data-k="melee"><button data-v="knife">军刀</button><button data-v="axe">消防斧</button></div></div>
+      <div class="opt"><div class="lab">作战阵营</div><div class="seg team" data-k="team"><button data-v="BL">潜伏者<small>Black List</small></button><button data-v="GR">保卫者<small>Global Risk</small></button></div></div>
+      <div class="opt"><div class="lab">仓库 · 主武器</div><div class="seg" data-k="primary"><button data-v="ak47">AK-47</button><button data-v="m4a1">M4A1</button><button data-v="awm">AWM</button><button data-v="mp5">MP5</button><button data-v="m60">M60</button></div></div>
+      <div class="opt"><div class="lab">仓库 · 副武器</div><div class="seg" data-k="secondary"><button data-v="deagle">沙漠之鹰</button><button data-v="usp">USP</button><button data-v="r8">R8 左轮</button></div></div>
+      <div class="opt"><div class="lab">仓库 · 近身武器</div><div class="seg" data-k="melee"><button data-v="knife">军刀</button><button data-v="axe">消防斧</button></div></div>
       <div class="row2">
-        <div class="opt"><div class="lab">对战规模</div><div class="seg" data-k="size"><button data-v="4">4v4</button><button data-v="6">6v6</button><button data-v="8">8v8</button></div></div>
+        <div class="opt"><div class="lab">作战规模</div><div class="seg" data-k="size"><button data-v="4">4v4</button><button data-v="6">6v6</button><button data-v="8">8v8</button></div></div>
         <div class="opt"><div class="lab">目标击杀</div><div class="seg" data-k="goal"><button data-v="30">30</button><button data-v="50">50</button><button data-v="100">100</button></div></div>
       </div>
       <div class="opt"><div class="lab">电脑难度</div><div class="seg" data-k="diff"><button data-v="easy">简单</button><button data-v="normal">普通</button><button data-v="hard">困难</button><button data-v="hell">地狱</button></div></div>
@@ -694,7 +749,7 @@ const TEMPLATE = `
         <div class="opt"><div class="lab">视野 FOV</div><div class="slider" data-k="fov"><input type="range" min="65" max="100" step="1"><span></span></div></div>
         <div class="opt"><div class="lab">音量</div><div class="slider" data-k="vol"><input type="range" min="0" max="1" step="0.05"><span></span></div></div>
       </div>
-      <button class="go" id="btnStart">开 始 游 戏</button>
+      <button class="go" id="btnStart">开始游戏 · 进入战场</button>
       <div class="note">点击开始后鼠标将被锁定，按 Esc 暂停。画质切换会重新加载页面。</div>
       <div class="mlinks"><a href="https://github.com/riba2534/claude-opus-5-5-demo" target="_blank" rel="noopener noreferrer">GitHub 源码</a><span>·</span><a href="https://x.com/riba2534" target="_blank" rel="noopener noreferrer">X @riba2534</a></div>
     </div>
@@ -734,5 +789,47 @@ const TEMPLATE = `
 <div id="end" class="screen hidden"><div class="endBox">  <div class="res" id="endRes">胜利</div><div class="sc" id="endSc"></div><div class="mvp" id="endMvp"></div><div class="mvp" id="endMe" style="color:#dfe4e8"></div>
   <div id="endTable" class="tbl"></div>
   <div style="display:flex;gap:10px;margin-top:16px"><button class="go" id="btnAgain">再 来 一 局</button><button class="go sec" id="btnMenu">主菜单</button></div>
+</div></div>
+
+<div id="manualWrap" class="hidden"><div id="manualPanel">
+  <div class="mhead"><b>📘 战地手册 · FIELD MANUAL</b><button id="btnManualClose">✕ 关闭</button></div>
+  <div class="mcols">
+    <div>
+      <h4>⌨ 官方键位</h4>
+      <table class="mkey">
+        <tr><td>W / S / A / D</td><td>前进 / 后退 / 左移 / 右移</td></tr>
+        <tr><td>Ctrl · Shift · 空格</td><td>蹲下 · 行走（静步）· 跳跃</td></tr>
+        <tr><td>鼠标左键 · 右键</td><td>射击 · 武器特殊动作</td></tr>
+        <tr><td>R · G</td><td>换弹 · 丢弃装备</td></tr>
+        <tr><td><b>E</b></td><td><b>动作：拆弹 / 吞噬 / 附身</b></td></tr>
+        <tr><td><b>F</b></td><td><b>使用变异者技能</b></td></tr>
+        <tr><td>Q · B</td><td>切换回之前武器 · 更换背包</td></tr>
+        <tr><td>1 / 2 / 3 / 4 / 5</td><td>主武器 / 副武器 / 近身 / 投掷 / 特殊装备</td></tr>
+        <tr><td>Z / X / C</td><td>无线电消息 1 / 2 / 3</td></tr>
+        <tr><td>Tab · Insert · Delete</td><td>状态栏 · 队友名称 · 小地图</td></tr>
+        <tr><td>Home / End · PgUp / PgDn</td><td>提升 / 降低亮度 · 鼠标灵敏度</td></tr>
+        <tr><td>~ · T · F1</td><td>战术地图 · 喷涂 · 帮助</td></tr>
+      </table>
+      <h4>🎖 军衔等级</h4>
+      <p>士兵 → 军士 → 尉官 → 校官 → 将官 → <b style="color:#d4af37">元帅</b>，共 74 级。局末按<b>击杀 / 伤害 / 感染 / 复仇者觉醒 / 胜负 / 时长</b>结算经验，跨局累计晋级。</p>
+    </div>
+    <div>
+      <h4>👥 角色名录</h4>
+      <p><b style="color:#8cc8ff">保卫军 WGF</b><br>Roi · WGF 战斗模范<br>Duke · 超越自我<br>Ian · 我在战地中成长</p>
+      <p><b style="color:#ff8a70">原罪军 RF9</b><br>Cris · 冷血硬汉<br>Bale · 战斗领先者<br>Caden · 作战成功的保证</p>
+      <h4>☣ 变异者图鉴（技能 LV1）</h4>
+      <p>夜行者 · 疾冲：移速 125% / 3s<br>噬魂者 · 闪光：致盲 4s<br>猎食者 · 飞斧：伤害 60 + 击退<br>缠绕者 · 触须：射程 8m 拖拽<br>爆破者 · 自爆：半径 6m / 伤害 60</p>
+      <p class="dim">角色等级提升后技能强化（LV2/LV3）。</p>
+    </div>
+  </div>
+</div></div>
+
+<div id="wozLoad"><div class="wlInner">
+  <div class="wlBio">☣</div>
+  <div class="wlMap" id="wlName"></div>
+  <div class="wlEn" id="wlEn"></div>
+  <div class="wlBar"><i></i></div>
+  <div class="wlTip" id="wlTip"></div>
+  <div class="wlFoot">生化战场 · WORLD OF ZOMBIES</div>
 </div></div>
 `;

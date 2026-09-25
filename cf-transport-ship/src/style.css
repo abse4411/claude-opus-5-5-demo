@@ -231,3 +231,62 @@ body.lk #clinks{opacity:.22}
   #ammo .mag{font-size:34px}
   .cards{grid-template-columns:repeat(2,1fr)}
 }
+
+/* ================= V105 WOZ 大厅（生化战场主页面） ================= */
+/* 评测口径：登录后界面简洁明了、色彩调配有十足生化氛围 —— 深绿黑基底 + 毒绿/血红点缀 */
+#menu{background:
+  radial-gradient(ellipse at 22% 12%,rgba(30,60,26,.5),transparent 55%),
+  radial-gradient(ellipse at 85% 90%,rgba(70,16,12,.42),transparent 55%),
+  radial-gradient(ellipse at 30% 40%,rgba(5,10,16,.35),rgba(3,5,8,.9) 78%)}
+#menu::after{content:'';position:absolute;inset:0;pointer-events:none;mix-blend-mode:overlay;opacity:.5;
+  background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.35) 2px 4px)}
+#menu .menuBox{background:linear-gradient(160deg,rgba(10,18,12,.93),rgba(6,9,8,.95));border:1px solid rgba(126,227,106,.22);box-shadow:0 30px 90px rgba(0,0,0,.75),inset 0 0 60px rgba(20,60,20,.18)}
+.wozLobby .lobbyTop{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.wlogo b{display:block;font-size:44px;letter-spacing:10px;font-weight:900;line-height:1.05;
+  background:linear-gradient(180deg,#eaffea,#7ee36a 55%,#3f7a2e);-webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 24px rgba(126,227,106,.25)}
+.wlogo span{font-family:var(--num);display:block;letter-spacing:7px;font-size:12px;color:#8fae86;margin-top:3px}
+.wozLobby .slogan{color:#c8d6c0;font-size:13px;letter-spacing:1px;margin:10px 0 2px;padding:6px 10px;border-left:2px solid rgba(126,227,106,.45);background:rgba(20,40,18,.25)}
+.wrank{display:grid;grid-template-columns:auto auto;gap:2px 8px;justify-items:end;align-content:center;padding:6px 10px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:rgba(8,14,10,.6);min-width:150px}
+.wrank .chev{font-size:11px;letter-spacing:1px;grid-column:1/3}
+.wrank .rname{font-size:16px;font-weight:800;letter-spacing:2px}
+.wrank .rtier{grid-column:1/3;font-size:10px;color:#93a08d;letter-spacing:3px}
+.wrank .rbar{grid-column:1/3;width:130px;height:4px;background:rgba(255,255,255,.12);border-radius:3px;overflow:hidden}
+.wrank .rbar i{display:block;height:100%;border-radius:3px}
+.wrank .rxp{grid-column:1/3;font-size:10px;color:#9db394}
+.manualBtn{margin-top:10px;padding:7px 16px;border-radius:7px;cursor:pointer;font-size:12.5px;letter-spacing:2px;
+  color:#d9e8cf;background:rgba(30,52,24,.55);border:1px solid rgba(126,227,106,.35)}
+.manualBtn:hover{background:rgba(45,80,34,.65);border-color:rgba(126,227,106,.7)}
+#menu .mcard.on{border-color:#7ee36a;background:rgba(126,227,106,.13);box-shadow:inset 0 0 0 1px rgba(126,227,106,.65),0 0 18px rgba(126,227,106,.18)}
+#menu .mcard:hover{background:rgba(30,52,24,.55)}
+#menu .go{background:linear-gradient(160deg,#a3221a,#6e120d);border:1px solid rgba(255,120,100,.4);letter-spacing:6px}
+#menu .go:hover{box-shadow:0 0 26px rgba(220,60,40,.45)}
+/* 战地手册（二测功能：官方键位/军衔/角色/图鉴） */
+#manualWrap{position:absolute;inset:0;z-index:60;background:rgba(2,4,3,.78);display:flex;align-items:center;justify-content:center;pointer-events:auto}
+#manualPanel{width:min(860px,94vw);max-height:88vh;overflow:auto;padding:20px 24px;border-radius:12px;
+  background:linear-gradient(160deg,rgba(12,20,13,.97),rgba(6,10,7,.98));border:1px solid rgba(126,227,106,.3);box-shadow:0 30px 90px rgba(0,0,0,.8)}
+#manualPanel .mhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+#manualPanel .mhead b{color:#d9e8cf;letter-spacing:3px;font-size:15px}
+#btnManualClose{padding:5px 14px;border-radius:6px;cursor:pointer;color:#e0b0a6;background:rgba(90,20,14,.5);border:1px solid rgba(255,110,90,.35)}
+#manualPanel .mcols{display:grid;grid-template-columns:1.1fr 1fr;gap:20px}
+#manualPanel h4{color:#7ee36a;font-size:13px;letter-spacing:2px;margin:12px 0 6px}
+#manualPanel p{color:#c2cec0;font-size:12.5px;line-height:1.8;margin:4px 0}
+#manualPanel p.dim{color:#8a968a;font-size:11.5px}
+#manualPanel table.mkey{width:100%;border-collapse:collapse;font-size:12px}
+#manualPanel table.mkey td{padding:4px 8px;border-bottom:1px solid rgba(255,255,255,.08);color:#c9d4c7}
+#manualPanel table.mkey td:first-child{font-family:var(--num);color:#e8f2e4;white-space:nowrap;width:44%}
+/* 读取页面（原作：每图专属读取页，地图名+战术提示） */
+#wozLoad{position:absolute;inset:0;z-index:70;display:none;align-items:center;justify-content:center;flex-direction:column;
+  background:radial-gradient(ellipse at 50% 42%,rgba(24,44,20,.55),rgba(2,4,3,.96) 75%)}
+#wozLoad.show{display:flex}
+#wozLoad .wlInner{text-align:center;width:min(680px,90vw)}
+#wozLoad .wlBio{font-size:64px;line-height:1;color:#7ee36a;text-shadow:0 0 40px rgba(126,227,106,.55);animation:wlPulse 1.4s ease-in-out infinite}
+#wozLoad .wlMap{font-size:40px;font-weight:900;letter-spacing:12px;color:#eaffea;margin-top:14px}
+#wozLoad .wlEn{font-family:var(--num);letter-spacing:8px;color:#8fae86;font-size:14px;margin-top:6px}
+#wozLoad .wlBar{height:5px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;margin:26px auto 0;width:70%}
+#wozLoad .wlBar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#3f7a2e,#7ee36a);animation:wlFill 1.5s linear forwards}
+#wozLoad .wlTip{margin-top:22px;color:#c8d6c0;font-size:13.5px;letter-spacing:1px}
+#wozLoad .wlFoot{margin-top:40px;font-family:var(--num);letter-spacing:6px;font-size:11px;color:#6d7d68}
+@keyframes wlFill{from{width:0}to{width:100%}}
+@keyframes wlPulse{0%,100%{opacity:.75}50%{opacity:1}}
+@media (max-width:900px){#manualPanel .mcols{grid-template-columns:1fr}}

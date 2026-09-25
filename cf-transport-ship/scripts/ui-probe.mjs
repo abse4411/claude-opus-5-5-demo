@@ -473,9 +473,12 @@ if (ver === 'v1') {
       g.woz.convertNow(nr, true);
       nr.protectT = 0; nr.armor = 0; nr.pos.set(4, 0.1, 0);
       g.fastForward(1 / 30, 1 / 30);
-      const smoke0 = g.fx.smoke.p.length;
+      let dissEmit = 0; // V104 承伤充能后环境特效更频繁，粒子池常驻饱和，p.length 不再反映发射——改量 emit 次数
+      const origDiss = g.fx.smoke.emit.bind(g.fx.smoke);
+      g.fx.smoke.emit = (o) => { dissEmit++; return origDiss(o); };
       g.damage(nr, p, 99999, 'chest', 'awm', { x: 1, y: 0, z: 0 }, false);
-      const dissolve = g.fx.smoke.p.length - smoke0;
+      g.fx.smoke.emit = origDiss;
+      const dissolve = dissEmit;
       // V85 血雾分级：走真实子弹路径（traceBullet），高伤武器雾更浓
       const v2 = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
       const tiers = {};
@@ -898,8 +901,10 @@ if (ver === 'v1') {
       for (const pt of g.woz.points) pt.owner = 'GR';
       const fired = g.woz.mutantCounterAttack();
       const counter = g.woz.tide.filter((z) => z.alive && z.sorrowFast).length;
-      // B 点回血（固定增援计时防干扰）
+      // B 点回血（固定增援计时防干扰；清反扑尸潮 + 钉死玩家阵营/血量上限——快进中偶发阵亡转队会吃掉回血）
+      for (const z of g.woz.tide) z.alive = false;
       g.woz.reinforceT = 999;
+      p.alive = true; p.team = 'GR'; p.wozMaxHp = 100;
       p.hp = 50;
       for (const pt of g.woz.points) if (pt.def.name === 'B') pt.owner = 'GR';
       g.woz.supplyT = 0.001;
@@ -3306,6 +3311,73 @@ if (ver === 'v1') {
   await page.waitForTimeout(400);
   const beeps = await page.evaluate(() => window.__beeps | 0);
   check(beeps >= 3, `音效: 晋升号角三连 (${beeps})`);
+} else if (ver === 'v78') {
+  // V105 主页面 WOZ 化：大厅 logo+军衔条 / 官方键位口径 / 战地手册 / 读取页入场
+  await page.goto(pathToFileURL(resolve('dist/index.html')).href + '?q=low'); // 不带 autostart —— 停在大厅
+  await page.waitForFunction(() => {
+    const m = document.getElementById('menu');
+    return window.__game && window.__game.hud && m && !m.classList.contains('hidden');
+  }, null, { timeout: 60000 });
+  await page.waitForTimeout(300);
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game;
+      const rank = document.getElementById('wozMenuRank');
+      localStorage.setItem('woz_xp_v1', '1360000'); // 上尉5 档内 37.3%（1304000~1453999）
+      g.hud.renderMenuRank();
+      const rankHtml1 = rank.innerHTML;
+      localStorage.setItem('woz_xp_v1', '12454000');
+      g.hud.renderMenuRank();
+      const marshal = rank.textContent.includes('元帅') && rank.textContent.includes('最高');
+      localStorage.setItem('woz_xp_v1', '0'); g.hud.renderMenuRank();
+      return {
+        logo: document.querySelector('#menu .wlogo')?.textContent || '',
+        rankHasChev: rankHtml1.includes('▲') && rankHtml1.includes('上尉5'),
+        rankBarW: (rankHtml1.match(/width:([\d.]+)%/) || [])[1] || '0',
+        marshal,
+        keys: document.querySelector('#menu .keys')?.textContent || '',
+        loadHidden0: !document.getElementById('wozLoad').classList.contains('show'),
+        manualHidden0: document.getElementById('manualWrap').classList.contains('hidden'),
+      };
+    });
+    check(r.logo.includes('生化战场') && r.logo.includes('WORLD OF ZOMBIES'), `大厅: WOZ logo (${r.logo.trim().slice(0, 26)}…)`);
+    check(r.rankHasChev, `军衔条: XP 1304000 → 上尉5 + V形纹`);
+    check(parseFloat(r.rankBarW) > 0, `军衔条: 档内经验条 (${r.rankBarW}%)`);
+    check(r.marshal, `军衔条: 元帅封顶文案`);
+    check(r.keys.includes('无线电') && r.keys.includes('附身') && r.keys.includes('变异者技能'), `键位: 官方口径 E 动作 + F 变异者技能 + Z X C 无线电`);
+    check(r.loadHidden0 && r.manualHidden0, `初始: 读取页/手册默认隐藏`);
+    // 战地手册（二测官方功能：键位/军衔/角色名录/变异者图鉴）
+    await page.click('#btnManual');
+    const m = await page.evaluate(() => ({
+      vis: !document.getElementById('manualWrap').classList.contains('hidden'),
+      html: document.getElementById('manualPanel').innerHTML,
+    }));
+    check(m.vis && m.html.includes('无线电消息') && m.html.includes('Roi') && m.html.includes('Bale') && m.html.includes('元帅') && m.html.includes('疾冲'), `手册: 键位+角色名录+军衔+图鉴齐全 (vis=${m.vis})`);
+    await page.click('#btnManualClose');
+    const closed = await page.evaluate(() => document.getElementById('manualWrap').classList.contains('hidden'));
+    check(closed, `手册: 可关闭`);
+    // 模式卡 → 阵营原作名联动（原逻辑回归）
+    await page.click('#modeCards .mcard[data-v="infection"]');
+    const team = await page.evaluate(() => document.querySelector('.seg.team button[data-v="BL"]').textContent);
+    check(team.includes('原罪军'), `联动: 感染模式阵营显示原罪军 (${team.trim()})`);
+    await page.screenshot({ path: `scripts/shots/${ver}-lobby.png` });
+    // 读取页 → 入场（原作：每图专属读取页）
+    await page.click('#btnStart');
+    await page.waitForTimeout(250);
+    const l = await page.evaluate(() => ({
+      show: document.getElementById('wozLoad').classList.contains('show'),
+      name: document.getElementById('wlName').textContent,
+      en: document.getElementById('wlEn').textContent,
+      tip: document.getElementById('wlTip').textContent,
+    }));
+    check(l.show && l.name.length > 0 && l.en.length > 0 && l.tip.length > 0, `读取页: 地图名/英文代号/战术提示 (${l.name} · ${l.en})`);
+    await page.waitForFunction(() => window.__game && window.__game.playing, null, { timeout: 60000 });
+    const after = await page.evaluate(() => ({
+      hidden: !document.getElementById('wozLoad').classList.contains('show'),
+      mode: window.__game.opts.mode,
+    }));
+    check(after.hidden && after.mode === 'infection', `入场: 读取页自动关闭且模式应用 (${after.mode})`);
+  }
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }
