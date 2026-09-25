@@ -372,17 +372,6 @@ export class HUD {
   }
   endScreen(win, score, actors, myId) {
     this.show('end');
-    // WOZ 模式：附加个人成长统计（感染/吞噬/进化/档位）
-    if (this.g.woz?.rules) {
-      try {
-        const rules = this.g.woz.rules, st = rules.state(myId);
-        const extra = st.side === 'mutant' || st.isMother
-          ? `变异者生涯：吞噬 ${st.devourCount} · 进化 ${st.evoPoints} 点 · ${['基础', '一阶', '二阶', '三阶'][rules.evoStage(st)]}阶段${st.infections ? ` · 感染 ${st.infections} 人` : ''}`
-          : `人类生涯：进化 Lv.${rules.humanTier(myId)} · 击杀 ${st.kills}${st.isAvenger ? ' · ⚡复仇者' : ''}`;
-        const em = this.el.endMe;
-        if (em) em.innerHTML = `${em.textContent}<br><span style="color:#ffd24a">${extra}</span>`;
-      } catch (e) { /* 结算统计失败不影响主流程 */ }
-    }
     const r = this.el.endRes;
     r.textContent = win === null ? '平局' : win ? '胜利' : '失败';
     r.className = 'res ' + (win ? 'win' : 'lose');
@@ -392,6 +381,20 @@ export class HUD {
     const me = actors.find((a) => a.id === myId);
     const acc = me && me.stats.shots ? ((me.stats.hits / me.stats.shots) * 100).toFixed(1) : '0';
     this.el.endMe.textContent = me ? `你的战绩：${me.stats.k} 击杀 · ${me.stats.d} 死亡 · ${me.stats.hs} 爆头 · 命中率 ${acc}%` : '';
+    // WOZ 模式：附加个人成长统计（感染/吞噬/进化/档位）+ 军衔结算行
+    // V104 修正：追加在战绩行赋值之后（此前先写 innerHTML 会被上方 textContent 赋值整行覆盖丢失）
+    if (this.g.woz?.rules) {
+      try {
+        const rules = this.g.woz.rules, st = rules.state(myId);
+        const extra = st.side === 'mutant' || st.isMother
+          ? `变异者生涯：吞噬 ${st.devourCount} · 进化 ${st.evoPoints} 点 · ${['基础', '一阶', '二阶', '三阶'][rules.evoStage(st)]}阶段${st.infections ? ` · 感染 ${st.infections} 人` : ''}`
+          : `人类生涯：进化 Lv.${rules.humanTier(myId)} · 击杀 ${st.kills}${st.isAvenger ? ' · ⚡复仇者' : ''}`;
+        const rg = this.g.woz.lastRankGain;
+        const rank = rg ? `<br><span style="color:#9fd0ff">🎖 ${rg.to} · 本局 +${rg.gained} 经验${rg.up ? `（晋升：${rg.from} → ${rg.to}）` : ''}</span>` : '';
+        const em = this.el.endMe;
+        if (em) em.innerHTML += `<br><span style="color:#ffd24a">${extra}</span>${rank}`;
+      } catch (e) { /* 结算统计失败不影响主流程 */ }
+    }
     const rows = (team) => actors.filter((a) => a.team === team).sort((a, b) => b.stats.k - a.stats.k)
       .map((a) => `<tr class="${a.id === myId ? 'me' : ''}"><td>${esc(a.name)}</td><td>${a.stats.k}</td><td>${a.stats.d}</td><td>${a.stats.hs}</td></tr>`).join('');
     const tbl = (team) => `<table class="t${team}"><tr><th class="team">${this.teamName(team)}</th><th>击杀</th><th>死亡</th><th>爆头</th></tr>${rows(team)}</table>`;

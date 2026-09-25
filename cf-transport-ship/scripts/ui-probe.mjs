@@ -2630,6 +2630,10 @@ if (ver === 'v1') {
       // 强制玩家（伤害最高者）作为【最后的幸存者】变身复仇者（V94：阈值=1，玩家 id 不一定为 0）
       const pid = p.id;
       rules.avengerUsed = false;
+      // V104：阈值=2 时清场中途（剩两人瞬间）就会即时觉醒——先把玩家垫成伤害最高者，保证觉醒人选是玩家
+      const p0 = rules.state(pid);
+      p0.side = 'human'; p0.alive = true; p0.reviveTimer = 0; p0.humanDamage = 999999;
+      if (g.actors[pid]) { g.actors[pid].team = 'GR'; g.actors[pid].alive = true; }
       for (let i = 0; i < rules.playerCount; i++) {
         if (i === pid) continue;
         const st = rules.state(i), a = g.actors[i];
@@ -2640,9 +2644,6 @@ if (ver === 'v1') {
         const st = rules.state(i); // 残留（复活计时中/引擎已死）直接状态手术清出人类
         if (st.side === 'human') { st.side = 'mutant'; st.alive = false; }
       }
-      const p0 = rules.state(pid);
-      p0.side = 'human'; p0.alive = true; p0.reviveTimer = 0; p0.humanDamage = 999999;
-      if (g.actors[pid]) { g.actors[pid].team = 'GR'; g.actors[pid].alive = true; }
       g.fastForward(0.1, 1 / 30);
       if (rules.avengerId() < 0) rules.tryTriggerAvenger();
       if (rules.avengerId() !== pid) return { ok: false, av: rules.avengerId() };
@@ -2900,31 +2901,32 @@ if (ver === 'v1') {
   check(r.motherMorph === 0 || r.motherMorph === -1, `母体: 爆发落地不走尸变 (${r.motherMorph})`);
   check(toasts.some((t) => t.includes('病毒爆发')), `播报: 爆发全场警报已触发 (${toasts.length} 条)`);
 } else if (ver === 'v68') {
-  // V94 复仇模式精修：最后幸存者触发阈值 / 觉醒光柱 / 人类升档播报
+  // V104 复仇模式精修（官方口径回正）：仅剩【两名】幸存者觉醒（yzz 516896 上线公告）/ 觉醒光柱 / 人类升档播报
   await goto('&mode=revenge');
   const r = await page.evaluate(() => {
     const g = window.__game, rules = g.woz.rules, p = g.player;
     g.fastForward(20, 1 / 30);
     rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
-    // 场景 A：两名幸存者并存 → 不触发（原作：最后的幸存者，单数）
+    // 场景 A：三名幸存者并存 → 不触发（官方：仅剩两名时才觉醒）
     rules.avengerUsed = false;
-    for (const i of [0, 1]) {
+    for (const i of [0, 1, 2]) {
       const st = rules.state(i), a = g.actors[i];
       st.side = 'human'; st.alive = true; st.isAvenger = false; st.reviveTimer = 0;
       if (a) { a.team = 'GR'; a.alive = true; a.protectT = 0; }
     }
-    for (let i = 2; i < rules.playerCount; i++) {
+    rules.state(0).humanDamage = 999999; // 觉醒人选 = 幸存者中伤害最高者，钉死确定性
+    for (let i = 3; i < rules.playerCount; i++) {
       const st = rules.state(i), a = g.actors[i];
       if (st.side === 'human' && st.alive && a && a.alive) { a.protectT = 0; g.damage(a, null, 9999, 'chest', 'he', { x: 0.6, z: 0.8 }, false); }
     }
     rules.tryTriggerAvenger();
-    const noTriggerAtTwo = rules.avengerId() < 0;
-    // 场景 B：仅剩最后一人 → 触发 + 金色光柱粒子
+    const noTriggerAtThree = rules.avengerId() < 0;
+    // 场景 B：仅剩两名幸存者 → 触发 + 金色光柱粒子（伤害最高者 0 号觉醒）
     let emits = 0;
     const origEmit = g.fx.add.emit.bind(g.fx.add);
     g.fx.add.emit = (o) => { emits++; return origEmit(o); };
-    const st1 = rules.state(1), a1 = g.actors[1];
-    st1.alive = false; if (a1) a1.alive = false;
+    const st2 = rules.state(2), a2 = g.actors[2];
+    st2.alive = false; if (a2) a2.alive = false;
     rules.tryTriggerAvenger();
     g.fx.add.emit = origEmit;
     const av = rules.avengerId();
@@ -2932,10 +2934,10 @@ if (ver === 'v1') {
     const reserve0 = p.inv[0] && p.inv[0].def.type !== 'melee' ? p.inv[0].reserve : -1;
     g.woz.onHumanTierUp(p.id, 1);
     const reserve1 = p.inv[0] && p.inv[0].def.type !== 'melee' ? p.inv[0].reserve : -1;
-    return { noTriggerAtTwo, triggered: av === 0, emits, reserveGain: reserve1 - reserve0, isAvg: rules.isAvenger(0) };
+    return { noTriggerAtThree, triggered: av === 0, emits, reserve0, reserveGain: reserve1 - reserve0, isAvg: rules.isAvenger(0) };
   });
-  check(r.noTriggerAtTwo, `阈值: 两名幸存者不触发 (${r.noTriggerAtTwo})`);
-  check(r.triggered && r.isAvg, `阈值: 最后一名幸存者觉醒 (av=${r.triggered} avg=${r.isAvg})`);
+  check(r.noTriggerAtThree, `阈值: 三名幸存者不触发 (${r.noTriggerAtThree})`);
+  check(r.triggered && r.isAvg, `阈值: 仅剩两名时伤害最高者觉醒 (av=${r.triggered} avg=${r.isAvg})`);
   check(r.emits >= 30, `觉醒: 金色光柱粒子 (emits=${r.emits})`);
   check(r.reserveGain > 0 || r.reserve0 === -1, `升档: 备弹奖励 (${r.reserve0}→+${r.reserveGain})`);
 } else if (ver === 'v69') {
@@ -3259,6 +3261,51 @@ if (ver === 'v1') {
   check(r.missCalls.length === 1 && r.missCalls[0] === 0, `挥空: 怠速嗡鸣 (calls=${JSON.stringify(r.missCalls)})`);
   check(r.cutCalls.length === 1 && r.cutCalls[0] > 0, `切割: 负载掉速音 (load=${r.cutCalls[0]})`);
   check(r.dmg > 0, `切割: 伤害结算 (${r.dmg.toFixed(0)})`);
+} else if (ver === 'v77') {
+  // V104 军衔等级系统：官方 74 级表 · 经验结算公式 · localStorage 持久化 · 晋升播报/号角 · HUD 徽章 · 结算页军衔行
+  await goto('&mode=infection');
+  const r = await page.evaluate(() => {
+    const g = window.__game, rules = g.woz.rules, p = g.player;
+    (function keepHuman() { if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+    g.fastForward(20, 1 / 30);
+    rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+    localStorage.setItem('woz_xp_v1', '0'); g.woz.rankXp = 0; g.woz.lastRankGain = null;
+    const st = rules.state(p.id);
+    if (st.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+    st.kills = 8; st.humanDamage = 4000; st.damageDealt = 0; st.infections = 0; st.isAvenger = false;
+    g.woz._rankT0 = performance.now() - 180000; // 3 分钟 → 时长经验 30
+    window.__toasts = []; const t0 = g.hud.toast.bind(g.hud); g.hud.toast = (h, d) => { window.__toasts.push(String(h)); return t0(h, d); };
+    window.__beeps = 0; const ob = window.__wozAudio.beep.bind(window.__wozAudio); window.__wozAudio.beep = (a, b, c) => { window.__beeps++; return ob(a, b, c); };
+    const rg = g.woz.settleRank(true);
+    const lsAfter = localStorage.getItem('woz_xp_v1');
+    g.fastForward(0.2, 1 / 30); // 一帧让 syncRank 刷经验条
+    const rankHtml = document.getElementById('wzRank').innerHTML;
+    const rankXpTxt = document.getElementById('wzRankXp').textContent;
+    // 晋升路径：590 + (1杀×25 + 胜局150) = 765 ≥ 600 → 二等兵
+    g.woz.rankXp = 590; localStorage.setItem('woz_xp_v1', '590');
+    st.kills = 1; st.humanDamage = 0; st.damageDealt = 0; st.isAvenger = false;
+    g.woz._rankT0 = performance.now();
+    const rg2 = g.woz.settleRank(true);
+    g.hud.endScreen(true, { GR: 2, BL: 1 }, g.actors, p.id);
+    const endHtml = (document.getElementById('endMe') || {}).innerHTML || '';
+    g.hud.toast = t0;
+    return { gained: rg.gained, up: rg.up, to: rg.to, lsAfter, rankHtml, rankXpTxt,
+      up2: rg2.up, to2: rg2.to, xp2: rg2.xp, ls2: localStorage.getItem('woz_xp_v1'),
+      toasts: window.__toasts, endHtml };
+  });
+  check(r.gained === 460, `结算: 经验公式 8杀×25+4000伤÷50+3分×10+胜150=460 (${r.gained})`);
+  check(!r.up && r.to === '训练兵', `结算: 460 经验仍为训练兵 (${r.to})`);
+  check(r.lsAfter === '460', `持久化: localStorage 入账 (${r.lsAfter})`);
+  check(r.rankHtml.includes('训练兵') && r.rankHtml.includes('▲'), `徽章: 军衔名+V形纹 (${r.rankHtml.trim()})`);
+  check(/460\s*\/\s*600/.test(r.rankXpTxt), `徽章: 档内经验条 (${r.rankXpTxt.trim()})`);
+  check(r.up2 && r.to2 === '二等兵' && r.xp2 === 765, `晋升: 590+175 越过 600 门槛 (${r.to2} ${r.xp2})`);
+  check(r.ls2 === '765', `晋升: 持久化同步 (${r.ls2})`);
+  check(r.toasts.some((t) => t.includes('军衔晋升')), `播报: 晋升 toast (${r.toasts.length}条)`);
+  check(r.endHtml.includes('经验') && r.endHtml.includes('+175') && r.endHtml.includes('二等兵'), `结算页: 军衔经验行 (${r.endHtml.includes('+175')})`);
+  check(r.endHtml.includes('生涯'), `结算页: 生涯统计不再被覆盖 (回归修复)`);
+  await page.waitForTimeout(400);
+  const beeps = await page.evaluate(() => window.__beeps | 0);
+  check(beeps >= 3, `音效: 晋升号角三连 (${beeps})`);
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);
 }

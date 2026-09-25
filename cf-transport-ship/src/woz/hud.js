@@ -1,5 +1,6 @@
 // WOZ HUD：身份牌 / 技能充能 / 吞噬提示 / 存活比 / 致盲遮罩 / 职业变身
 import { CLASS_LABEL, SKILL_LABEL, skillOf, WOZ } from './config.js';
+import { rankOf } from './ranks.js';
 
 // 感染变身选择面板卡片（WOZ 特色：感染后自选形态）
 const CLASS_PICK = [
@@ -124,6 +125,8 @@ export class WozHud {
           <div class="row"><span id="wzHpTxt">100 HP</span><span id="wzTier"></span></div>
           <div class="row"><span id="wzEvo"></span><span id="wzDevour" style="color:#ffd24a"></span></div>
           <div class="ultbar"><i id="wzUltFill"></i><small id="wzUltTxt"></small></div>
+          <div class="row" id="wzRankRow"><span id="wzRank">🎖 训练兵</span><span id="wzRankXp"></span></div>
+          <div class="bar" id="wzRankWrap" style="height:3px"><i id="wzRankBar" style="width:0%;background:#7fb2e8"></i></div>
         </div>
       </div>
       <div id="wozBig" class="off">
@@ -164,6 +167,9 @@ export class WozHud {
       tier: document.getElementById('wzTier'),
       evo: document.getElementById('wzEvo'),
       devour: document.getElementById('wzDevour'),
+      rank: document.getElementById('wzRank'),
+      rankXp: document.getElementById('wzRankXp'),
+      rankBar: document.getElementById('wzRankBar'),
       big: document.getElementById('wozBig'),
       bigRole: document.getElementById('wzBigRole'),
       bigHp: document.getElementById('wzBigHp'),
@@ -194,10 +200,29 @@ export class WozHud {
     this.mounted = false;
   }
 
+  // V104 军衔徽章：官方 74 级表 → 档位色 + V 形纹数量 + 档内经验条（跨局 localStorage 持久）
+  syncRank(mgr) {
+    if (!this.el.rank || !mgr) return;
+    const xp = mgr.rankXp || 0;
+    const rk = rankOf(xp);
+    const label = `${rk.tierName}·${rk.name}`;
+    if (label !== this._rankLabel) {
+      this._rankLabel = label;
+      const chev = '▲'.repeat(Math.min(rk.chevrons, 5));
+      this.el.rank.innerHTML = `<span style="color:${rk.chev}">${chev}</span> <span style="color:${rk.color}">${rk.name}</span>`;
+    }
+    if (xp !== this._rankXpShown) {
+      this._rankXpShown = xp;
+      this.el.rankXp.textContent = rk.next ? `${xp - rk.cur} / ${rk.next - rk.cur}` : 'MAX';
+      this.el.rankBar.style.width = `${rk.frac * 100}%`;
+    }
+  }
+
   update(rules, player, mgr) {
     if (!this.mounted) return;
     const st = rules.state(player.id);
     const g = this.g;
+    this.syncRank(mgr); // V104 军衔徽章（XP 只在局末变动，内部有去重门槛）
     // 顶栏：阶段 + 存活比
     const phase = rules.phase === 'buy' ? '购买期'
       : rules.phase === 'battle' ? '感染战'

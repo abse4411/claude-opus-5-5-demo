@@ -12,6 +12,7 @@ import { wozAudio } from './audio.js';
 import { CapturePoint, NuclearBomb } from './objectives.js';
 import { Pickups } from './pickups.js';
 import { WOZ, MutantClass, CLASS_LABEL, CONFRONT, DEMOL, BIO, AIRDROP } from './config.js';
+import { rankOf, xpForMatch, loadXp, saveXp } from './ranks.js';
 import { audio } from '../audio.js';
 
 const ROUND_WINS = 3;
@@ -49,6 +50,9 @@ export class WozManager {
     this.supplyT = 45;                // 补给变异体刷新（V35）
     this.props = [];                  // 场景道具：爆炸油桶 / 可破坏木箱（V39）
     this._evoStageSeen = {};          // 进化阶段播报去重
+    this.rankXp = loadXp();           // V104 军衔经验（localStorage 持久化）
+    this._rankT0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+    this.lastRankGain = null;         // V104 局末军衔结算快照（HUD 结算页读取）
   }
 
   // 模式分类：infection 族（感染/复仇/生化）走规则层；对抗/爆破走目标物逻辑
@@ -62,6 +66,7 @@ export class WozManager {
   startMatch() {
     const g = this.g, o = g.opts;
     this.mode = o.mode;
+    this._rankT0 = (typeof performance !== 'undefined' ? performance.now() : Date.now()); // V104 本局起算（各模式通用）
     if (this.cat() !== 'infection') return this.startObjectives();
     g.audio.init(); g.audio.setVolumes({ master: o.vol }); g.audio.startAmbient(); g.audio.playUI('start');
     for (const a of g.actors) g.renderer.scene.remove(a.soldier.root);
@@ -2148,12 +2153,34 @@ export class WozManager {
     g.audio.playUI(human ? 'roundEnd' : 'death');
   }
 
+  // V104 军衔结算：官方 74 级表，经验入账 + 晋升号角播报（经验公式成分：杀敌/伤害/感染/觉醒/胜负/时长）
+  settleRank(win) {
+    const g = this.g;
+    let st = null;
+    try { st = this.rules ? this.rules.state(g.player.id) : null; } catch (e) { /* 规则未就绪不结算 */ }
+    const raw = ((typeof performance !== 'undefined' ? performance.now() : Date.now()) - this._rankT0) / 1000;
+    const gained = xpForMatch(st, win, isFinite(raw) ? Math.max(0, raw) : 0);
+    const before = this.rankXp || 0;
+    const old = rankOf(before), now = rankOf(before + gained);
+    this.rankXp = before + gained;
+    saveXp(this.rankXp);
+    this.lastRankGain = { gained, from: old.name, to: now.name, up: now.idx > old.idx, xp: this.rankXp };
+    if (now.idx > old.idx) {
+      wozAudio.beep(null, 660, 0.09);
+      setTimeout(() => wozAudio.beep(null, 880, 0.09), 130);
+      setTimeout(() => wozAudio.beep(null, 1100, 0.13), 260);
+      g.hud.toast(`<b style="color:#ffd24a">🎖 军衔晋升：${now.tierName} · ${now.name}</b>`, 4);
+    }
+    return this.lastRankGain;
+  }
+
   endMatch() {
     const g = this.g;
     g.slowMoT = 0.8; g.slowMoScale = 0.35; // 感染族决胜慢动作（V32）
     g.ended = true; g.playing = false;
     this.disposeObjectives();
     const win = this.score.GR === this.score.BL ? null : this.score.GR > this.score.BL;
+    try { this.settleRank(win); } catch (e) { /* 军衔结算失败不影响主流程 */ }
     g.hud.endScreen(win, this.score, g.actors, g.player.id);
     g.audio.playUI('roundEnd'); g.audio.setLowHealth(false);
     g.audio.announce(win ? 'Mission accomplished' : win === null ? 'Draw' : 'Mission failed');

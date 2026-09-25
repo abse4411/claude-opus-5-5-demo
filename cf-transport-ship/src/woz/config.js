@@ -74,7 +74,7 @@ export const WOZ = {
   avengerSpeed: 1.2,
   avengerDef: 0.3,          // 复仇者防御被动（原作：超越人类体能极限的防御力）
   avengerSpinRadius: 2.8,   // 旋转清场半径（原作：被包围时原地旋转清除近身敌人）
-  avengerHumanThreshold: 1, // V94 对齐原作：人类【最后的幸存者】（单数）进化为复仇者
+  avengerHumanThreshold: 2, // V104 回正：官方上线公告原文「人类阵营仅剩两名幸存者时…成为复仇者」（yzz 516896；17173「最后的幸存者」为文学化表述）
   avengerTimeThreshold: 45,
   mutantRevives: 1,
   mutantReviveDelay: 5,

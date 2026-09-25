@@ -1,6 +1,7 @@
 // WOZ 规则层断言测试：node src/woz/rules.test.mjs （零依赖，直接跑）
 import { WozRules } from './rules.js';
 import { WOZ, MutantClass, MutantSkill, skillOf } from './config.js';
+import { RANK_XP, RANK_NAMES, rankOf, xpForMatch } from './ranks.js';
 
 let passed = 0, failed = 0;
 function check(cond, name) {
@@ -401,6 +402,27 @@ console.log('== WOZ 规则层断言 ==');
   check(hhSpd < nrSpd - WOZ.crawlerSlow, `V52: 断头者比爬行者更迟缓 (${hhSpd.toFixed(3)})`);
   check(Math.abs(hhSpd - (nrSpd - WOZ.headhunterSlow)) < 1e-6, 'V52: 减速量 = headhunterSlow');
   check(WOZ.headhunterLightMul * 40 === 70 && Math.round(WOZ.headhunterHeavyMul * 75) >= 195, 'V52: 双刀倍率 轻击70/重击秒杀≈199');
+}
+// ================= V104 军衔等级系统（官方 74 级表，叶子猪 473436） =================
+{
+  check(RANK_XP.length === 74 && RANK_NAMES.length === 74, 'V104: 军衔表 74 级完整');
+  let mono = true;
+  for (let i = 1; i < RANK_XP.length; i++) if (RANK_XP[i] <= RANK_XP[i - 1]) mono = false;
+  check(mono, 'V104: 经验阈值严格递增');
+  check(RANK_XP[1] === 600 && RANK_XP[4] === 6000 && RANK_XP[23] === 244000, 'V104: 关键锚点 二等兵600/兵长1·6000/少尉1·244000');
+  check(RANK_XP[73] === 12454000 && RANK_NAMES[73] === '元帅', 'V104: 元帅封顶 12454000');
+  check(rankOf(0).name === '训练兵' && rankOf(599).name === '训练兵' && rankOf(600).name === '二等兵', 'V104: 训练兵/二等兵边界');
+  check(rankOf(243999).name === '元士5' && rankOf(244000).name === '少尉1', 'V104: 军士→尉官边界');
+  check(rankOf(12453999).name === '上将5' && rankOf(12454000).name === '元帅' && rankOf(99999999).name === '元帅', 'V104: 元帅封顶钳制');
+  const rk = rankOf(1000);
+  check(rk.frac === 400 / 1200 && rk.next === 1800, 'V104: 档内进度 1000→1800 档');
+  check(rankOf(12454000).next === null && rankOf(12454000).frac === 1, 'V104: 元帅无下一档');
+  check(rankOf(0).tierName === '士兵' && rankOf(100000).tierName === '军士' && rankOf(500000).tierName === '尉官'
+    && rankOf(2000000).tierName === '校官' && rankOf(5000000).tierName === '将官' && rankOf(12454000).tierName === '元帅', 'V104: 六档分色 士兵/军士/尉官/校官/将官/元帅');
+  check(rankOf(0).chevrons === 1 && rankOf(26000).chevrons === 5 && rankOf(12454000).chevrons === 1, 'V104: V形纹 = 档内第几级');
+  check(xpForMatch({ kills: 8, humanDamage: 4000, damageDealt: 0, infections: 0, isAvenger: false }, true, 180) === 460, 'V104: 经验公式 杀25/伤÷50/胜150/分×10');
+  check(xpForMatch({ kills: 1, humanDamage: 0, infections: 3, isAvenger: true }, false, 0) === 25 + 120 + 100, 'V104: 感染×40 + 复仇者觉醒×100');
+  check(xpForMatch(null, false, 0) === 0 && xpForMatch({}, false, 0) === 0, 'V104: 空状态/败局零时长无经验');
 }
 
 console.log(`\n结果: ${passed} 通过, ${failed} 失败`);

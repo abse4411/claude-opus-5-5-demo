@@ -343,6 +343,11 @@ export class WozRules {
       p.humanDamage += amount;
       p.energy = Math.min(100, p.energy + amount * WOZ.energyPerDamage); // 伤害充能（V46）
     }
+    // V104 官方口径：变异者能量 = 感染人类 + 承受人类攻击伤害 + 时间（yzz 516896）→ 承伤充能（半速）
+    const v = victimId >= 0 && victimId < this.playerCount ? this.players[victimId] : null;
+    if (v && v !== p && v.side === 'mutant' && v.alive) {
+      v.skillCharge = Math.min(1, v.skillCharge + amount * WOZ.skillChargePerDamage * 0.5);
+    }
   }
 
   tryDevour(mutantId, corpseId) {
