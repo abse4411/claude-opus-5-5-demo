@@ -827,15 +827,17 @@ export class Game {
       v.armor = Math.max(0, v.armor - amt * (1 - ap) * 1.4);
     }
     v.hp -= hpD;
-    // WOZ 打击反馈：击退冲量 + 命中暂缓（变异者躯体重，击退衰减但暂缓吃满）
+    // WOZ 打击反馈：击退冲量 + 命中暂缓（V106：变异者命中进入击退窗口——窗口内 AI 停走让位给冲量，火力压制后退可见）
     if (dir && v.alive) {
       const kdef = WEAPONS[wid] || {};
-      const heavy = v.wozHeavy ? 0.5 : 1; // 变异者质量大：击退减半但仍可感知（0.12 配 9/s 摩擦位移仅 1-2cm 不可见；2.6m/s 上限防连发推走）
-      if (kdef.knock) {
-        v.vel.x += dir.x * kdef.knock * heavy; v.vel.z += dir.z * kdef.knock * heavy;
-        if (v.wozHeavy) { // 变异者击退速度上限 2.6m/s
-          const hs = Math.hypot(v.vel.x, v.vel.z);
-          if (hs > 2.6) { v.vel.x *= 2.6 / hs; v.vel.z *= 2.6 / hs; }
+      const heavy = v.wozHeavy ? 0.55 : 1; // 变异者质量大：冲量打折，但配合停走窗口净后退仍明显
+      const kn = (kdef.knock || 0) * heavy;
+      if (kn > 0) {
+        v.vel.x += dir.x * kn; v.vel.z += dir.z * kn;
+        if (v.wozHeavy) {
+          v.knockT = Math.max(v.knockT || 0, 0.24); // 击退窗口（Zombie.update 期间不前进）
+          const cap = 3.0, hs = Math.hypot(v.vel.x, v.vel.z); // 变异者击退速度上限（防霰弹推飞）
+          if (hs > cap) { v.vel.x *= cap / hs; v.vel.z *= cap / hs; }
         }
       }
       if (kdef.stagger) v.staggerT = Math.max(v.staggerT || 0, kdef.stagger);
@@ -1018,6 +1020,7 @@ export class Game {
         a.radarT = Math.max(0, a.radarT - dt);
         if (a.blindT > 0) a.blindT = Math.max(0, a.blindT - dt); // 震撼弹/尖啸致盲统一衰减
         if (a.staggerT > 0) a.staggerT = Math.max(0, a.staggerT - dt); // 命中暂缓统一衰减（原来只有僵尸会恢复→人类被打后永久减速）
+        if (a.knockT > 0) a.knockT = Math.max(0, a.knockT - dt); // V106 击退窗口衰减
         if (a.alive) {
           a.protectT = Math.max(0, a.protectT - dt);
           const s = a.soldier;

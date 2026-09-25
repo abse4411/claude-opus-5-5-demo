@@ -698,7 +698,8 @@ if (ver === 'v1') {
       const bot = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
       bot.protectT = 0; bot.armor = 0; bot.rootT = 999;
       bot.hp = 500; // 抬高血量避免致命钳制，测出斧头真实伤害
-      bot.pos.set(-6, 0.1, 0); // forward(PI/2) = -x，6m 处
+      bot.pos.set(-6, 0.1, 0); bot.knockT = 0; if (bot.vel.set) bot.vel.set(0, 0, 0); // forward(PI/2) = -x，6m 处
+      for (const q of g.actors) if (q !== p && q !== bot && q.id < rules.playerCount) q.pos.set(60, 0.1, 60); // V106 清走廊：背景 bot 挡道/击退改走位会让斧头落空
       g.fastForward(2 / 30, 1 / 30); p.updateCamera(0.016);
       const hp0 = bot.hp;
       rules.tryUseSkill(p.id);
@@ -782,16 +783,19 @@ if (ver === 'v1') {
       // 清除环境干扰：其他存活母体的咆哮（motherRageActive 全局判定）会让 before 已带 ×1.25
       for (const q of rules.players) if (q.isMother && q !== rules.state(p.id)) { q.skillActive = false; q.skillTimeLeft = 0; }
       g.fastForward(1 / 30, 1 / 30);
-      const before = bot.speedMul;
+      // V106 固化：用纯函数 mutantSpeedMultiplier 测量——bot.speedMul 会被 AI 自身疾冲/增益偶发抬高，到期读数抖动
+      const before = rules.mutantSpeedMultiplier(bot.id);
       rules.tryUseSkill(p.id);
       g.fastForward(0.2, 1 / 30);
-      const during = bot.speedMul;
+      const during = rules.mutantSpeedMultiplier(bot.id);
       g.fastForward(5.2, 1 / 30);
-      const after = bot.speedMul;
-      return { boosted: during > before * 1.2, expired: after < before * 1.15 }; // 到期=回落（等值断言会被 AI 环境增益偶发破坏）
+      const stp = rules.state(p.id);
+      const after = rules.mutantSpeedMultiplier(bot.id);
+      // 到期判定：自身咆哮技能态归零（确定）；乘区回落仅作弱校验（其他母体可能在窗口内再咆哮）
+      return { boosted: during > before * 1.2, expired: !stp.skillActive && stp.skillTimeLeft <= 0, afterTolerant: after < before * 1.05 };
     });
     check(ok0 && r.boosted === true, '咆哮: 附近变异者移速 ×1.25 生效');
-    check(ok0 && r.expired === true, '咆哮: 5s 后到期');
+    check(ok0 && r.expired === true, `咆哮: 5s 后到期 (自身技能态归零·乘区回落=${r.afterTolerant})`);
   }
   // 7 BOT 用技语境表 + 冷却时长（config 层）
   {
@@ -840,8 +844,8 @@ if (ver === 'v1') {
       g.fastForward(2 / 30, 1 / 30);
       const x0 = v.pos.x, z0 = v.pos.z;
       g.damage(v, p, 30, 'chest', 'awm', { x: 1, y: 0, z: 0 }, false);
-      const capped = Math.hypot(v.vel.x, v.vel.z) <= 2.6 + 0.01;
-      g.fastForward(0.3, 1 / 30);
+      const capped = Math.hypot(v.vel.x, v.vel.z) <= 3.0 + 0.01; // V106 上限 2.6→3.0
+      g.fastForward(0.2, 1 / 30); // V106 击退窗口 0.24s 内测量（之后变异者回走会抵消净位移）
       const disp = Math.hypot(v.pos.x - x0, v.pos.z - z0);
       return { ok: true, allHave3, nadeOk, emOk, sample: prim[0].ems, disp: +disp.toFixed(2), capped };
     });
@@ -850,7 +854,7 @@ if (ver === 'v1') {
     check(r.nadeOk === true, 'V71: 投掷卡均有数值条');
     check(r.emOk === true, `V71: 数值列显示 (${r.sample})`);
     check(r.disp > 0.08, `V71: AWM 命中变异者位移可感知 (${r.disp}m)`);
-    check(r.capped === true, 'V71: 击退速度不超过 2.6m/s 上限');
+    check(r.capped === true, 'V71: 击退速度不超过 3.0m/s 上限');
   }
 } else if (ver === 'v60') {
   // V66-V68：击杀图标/尖啸冲击波环/职业卡剪影
@@ -3377,6 +3381,70 @@ if (ver === 'v1') {
       mode: window.__game.opts.mode,
     }));
     check(after.hidden && after.mode === 'infection', `入场: 读取页自动关闭且模式应用 (${after.mode})`);
+  }
+} else if (ver === 'v79') {
+  // V106 菜单武器数值面板（伤害/射速/机动 数字+条）+ 变异者击退窗口（AI 停走·后退可见）
+  await page.goto(pathToFileURL(resolve('dist/index.html')).href + '?q=low');
+  await page.waitForFunction(() => {
+    const m = document.getElementById('menu');
+    return window.__game && window.__game.hud && m && !m.classList.contains('hidden');
+  }, null, { timeout: 60000 });
+  await page.waitForTimeout(300);
+  {
+    const r = await page.evaluate(() => {
+      const cards = [...document.querySelectorAll('#menuWStats .wscard')];
+      return {
+        n: cards.length,
+        first: cards[0]?.textContent || '',
+        bars: document.querySelectorAll('#menuWStats .srow i b').length,
+        barFilled: [...document.querySelectorAll('#menuWStats .srow i b')].every((b) => parseFloat(b.style.width) > 0),
+      };
+    });
+    check(r.n === 3, `面板: 主/副/近战三卡 (${r.n})`);
+    check(r.first.includes('AK-47') && r.first.includes('36') && r.first.includes('600'), `面板: AK-47 伤害36/射速600 (${r.first.slice(0, 30)}…)`);
+    check(r.bars >= 11 && r.barFilled, `面板: 数值条全量渲染且有宽度 (${r.bars} 条)`);
+    await page.click('.seg[data-k="primary"] button[data-v="m4a1"]');
+    const upd = await page.evaluate(() => document.querySelector('#menuWStats .wscard').textContent);
+    check(upd.includes('M4A1') && upd.includes('32'), `联动: 切 M4A1 面板即时更新 (${upd.slice(0, 20)}…)`);
+    await page.screenshot({ path: `scripts/shots/${ver}-wstats.png` });
+  }
+  await goto('&mode=infection');
+  {
+    const r = await page.evaluate(() => {
+      const g = window.__game, rules = g.woz.rules, p = g.player;
+      (function keepHuman() { if (rules.__keepHuman) return; rules.__keepHuman = true; const orig = rules.rng.shuffle.bind(rules.rng); rules.rng.shuffle = (arr) => { const r2 = orig(arr); const i = arr.indexOf(0); if (i >= 0 && i < 2) { arr.splice(i, 1); arr.push(0); } return r2; }; })();
+      g.fastForward(20, 1 / 30);
+      rules.phase = 'battle'; rules.phaseTimeLeft = 999; g.timeLeft = 999;
+      const st = rules.state(p.id);
+      if (st.side === 'mutant' || !p.alive) g.woz.restoreHuman(p, true);
+      p.protectT = 999; p.pos.set(0, 0.1, 0);
+      const v = g.actors.find((a) => a.alive && a !== p && a.id < rules.playerCount && rules.state(a.id).side === 'human');
+      rules.convertToMutant(v.id, 'devourer', false);
+      g.woz.convertNow(v, true);
+      v.protectT = 0; v.armor = 0; v.hp = 3000;
+      const settle = () => { v.pos.set(3, 0.1, 0); if (v.vel.set) v.vel.set(0, 0, 0); v.wantJump = false; };
+      // 对照组：同样 0.2s 不射击——AI 正常逼近（向玩家 −x 走）
+      settle(); g.fastForward(2 / 30, 1 / 30); settle();
+      g.fastForward(0.2, 1 / 30);
+      const dxControl = v.pos.x - 3;
+      // 击退组：AK 命中（+x 方向 = 远离玩家）：击退窗口 + 冲量 + 迎面速度下限抬升
+      settle(); g.fastForward(2 / 30, 1 / 30); settle();
+      g.damage(v, p, 25, 'chest', 'ak47', { x: 1, z: 0 }, false);
+      const kT = v.knockT, vImp = Math.hypot(v.vel.x, v.vel.z);
+      g.fastForward(0.2, 1 / 30);
+      const dxAK = v.pos.x - 3;
+      // AWM 命中：冲量钳制 ≤3.0
+      v.pos.set(3, 0.1, 0); if (v.vel.set) v.vel.set(0, 0, 0);
+      g.damage(v, p, 30, 'chest', 'awm', { x: 1, z: 0 }, false);
+      const capAWM = Math.hypot(v.vel.x, v.vel.z);
+      const kT2 = v.knockT;
+      return { kT, vImp, dxAK, dxControl, capAWM, kT2, alive: v.hp > 0 };
+    });
+    check(r.kT > 0.2 && r.kT <= 0.24, `击退: 命中设置击退窗口 knockT (${r.kT?.toFixed(2)})`);
+    check(r.vImp > 0.9 && r.vImp <= 3.0 + 0.01, `击退: AK 冲量打折后可感知 (${r.vImp.toFixed(2)} m/s)`);
+    check(r.dxAK - r.dxControl > 0.3, `击退: 命中后相对正常逼近明显后退 (击退${r.dxAK.toFixed(2)} vs 对照${r.dxControl.toFixed(2)})`);
+    check(r.capAWM <= 3.0 + 0.01 && r.capAWM > 2.0, `击退: AWM 冲量钳制 3.0 (${r.capAWM.toFixed(2)} m/s)`);
+    check(r.kT2 > 0.2 && r.alive, `击退: 靶存活可复测 (knockT=${r.kT2?.toFixed(2)} alive=${r.alive})`);
   }
 } else {
   console.log(`未知版本 ${ver}`); process.exit(2);

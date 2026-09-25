@@ -59,6 +59,8 @@ export class Zombie extends Actor {
     if (!this.alive) return;
     // 命中暂缓：移动迟滞 + 攻击硬直（衰减统一在 game.simulate 全角色处理）
     const staggered = this.staggerT > 0;
+    // V106 击退窗口：被人类火力命中后的短暂时间内不自主前进（vel 由击退冲量主导 → 后退可见）
+    const knocked = (this.knockT || 0) > 0;
     const rules = g.woz?.rules;
     this.thinkT -= dt;
     let repath = false;
@@ -117,7 +119,7 @@ export class Zombie extends Actor {
     this.yaw = wrapPi(this.yaw + THREE.MathUtils.clamp(wrapPi(dYaw - this.yaw), -turn, turn));
     const mStag = staggered ? 0.3 : 1;
     if (this.rootT > 0) { this.rootT -= dt; this.move(dt, 0, 0, false, false, false); } // 被缠绕定身
-    else this.move(dt, wishX * mStag, wishZ * mStag, this.wantJump, false, false);
+    else this.move(dt, knocked ? 0 : wishX * mStag, knocked ? 0 : wishZ * mStag, this.wantJump && !knocked, false, false);
     this.wantJump = false;
     // 攻击输入交给武器状态机（含攻速间隔）；暂缓硬直期间无法出爪
     const facing = Math.abs(wrapPi(dYaw - this.yaw)) < 0.7;

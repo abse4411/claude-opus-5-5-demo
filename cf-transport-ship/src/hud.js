@@ -33,6 +33,7 @@ export class HUD {
     this.showModeInfo(this.opts.mode);
     this.showMapMeta(this.opts.map);
     this.renderMenuRank(); // V105 大厅军衔条（跨局 localStorage）
+    this.renderMenuWStats(); // V106 武器数值面板
   }
   saveOpts() { try { localStorage.setItem('cf_ship_opts', JSON.stringify(this.opts)); } catch (e) { /* 忽略 */ } }
 
@@ -106,6 +107,27 @@ export class HUD {
     '变异者按 E 吞噬尸体恢复生命并积累进化。',
     '人类阵营能量技能 T / F / V，能量随击杀、伤害与时间增长。',
   ];
+  // V106 菜单武器数值面板：选中武器 伤害/射速/机动 数字 + 可视化条（与商店卡同一套 statBar 视觉）
+  renderMenuWStats() {
+    const el = document.getElementById('menuWStats');
+    if (!el) return;
+    const mk = (slot, id) => {
+      const d = WEAPONS[id];
+      if (!d) return '';
+      const gun = d.type !== 'melee';
+      return `<div class="wscard"><div class="wshead"><span>${slot}</span><b>${d.name}</b></div>
+        ${gun
+        ? statBar('伤害', d.dmg, d.dmg / 60)
+          + statBar('射速', d.rpm >= 1000 ? (d.rpm / 1000).toFixed(1) + 'k' : d.rpm, d.rpm / 1200)
+          + statBar('弹容', d.mag + '发', d.mag / 40)
+          + statBar('机动', Math.round(d.speed * 100) + '%', (d.speed - 0.7) / 0.35)
+        : statBar('伤害', d.dmgLight + '/' + d.dmgHeavy, d.dmgHeavy / 200)
+          + statBar('攻速', (1 / d.rateLight).toFixed(1) + '/s', (1 / d.rateLight) / 4)
+          + statBar('机动', Math.round(d.speed * 100) + '%', (d.speed - 0.7) / 0.35)}
+      </div>`;
+    };
+    el.innerHTML = mk('主武器', this.opts.primary) + mk('副武器', this.opts.secondary) + mk('近身', this.opts.melee);
+  }
   startWithLoading() {
     const L = HUD.MAP_LOAD[this.opts.map] || { cn: this.opts.map, en: '' };
     const wrap = document.getElementById('wozLoad');
@@ -144,6 +166,7 @@ export class HUD {
             }
           }
           if (k === 'map') this.showMapMeta(o[k]);
+          if (k === 'primary' || k === 'secondary' || k === 'melee') this.renderMenuWStats(); // V106 武器数值面板联动
           this.g.onOption?.(k, o[k]);
           this.g.audio?.playUI('click');
         });
@@ -735,6 +758,7 @@ const TEMPLATE = `
       <div class="opt"><div class="lab">仓库 · 主武器</div><div class="seg" data-k="primary"><button data-v="ak47">AK-47</button><button data-v="m4a1">M4A1</button><button data-v="awm">AWM</button><button data-v="mp5">MP5</button><button data-v="m60">M60</button></div></div>
       <div class="opt"><div class="lab">仓库 · 副武器</div><div class="seg" data-k="secondary"><button data-v="deagle">沙漠之鹰</button><button data-v="usp">USP</button><button data-v="r8">R8 左轮</button></div></div>
       <div class="opt"><div class="lab">仓库 · 近身武器</div><div class="seg" data-k="melee"><button data-v="knife">军刀</button><button data-v="axe">消防斧</button></div></div>
+      <div id="menuWStats" class="wstats"></div>
       <div class="row2">
         <div class="opt"><div class="lab">作战规模</div><div class="seg" data-k="size"><button data-v="4">4v4</button><button data-v="6">6v6</button><button data-v="8">8v8</button></div></div>
         <div class="opt"><div class="lab">目标击杀</div><div class="seg" data-k="goal"><button data-v="30">30</button><button data-v="50">50</button><button data-v="100">100</button></div></div>

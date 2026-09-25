@@ -90,7 +90,7 @@ await page.evaluate(() => window.__game.fastForward(260, 1 / 30));
     g.damage(z, g.player, 20, 'chest', 'awm', { x: 0, z: -1 }, false);
     return {
       ok: true,
-      knockApplied: Math.abs(Math.abs(z.vel.z) - 2.6) < 0.1, // AWM 7.5×0.5=3.75 → 被 2.6m/s 上限截断（V71：可见击退且封顶）
+      knockApplied: Math.abs(Math.abs(z.vel.z) - 3.0) < 0.1, // AWM 7.5×0.55=4.13 → 被 3.0m/s 上限截断（V106：可见击退且封顶）
       stagger: z.staggerT > 0,
       damaged: z.hp < hpBefore,
       infoLen: (document.getElementById('modeInfo')?.innerHTML || '').length,
